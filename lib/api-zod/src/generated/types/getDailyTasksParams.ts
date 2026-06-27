@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type GetDailyTasksParams = {
+/**
+ * ISO date string (defaults to today)
+ */
+date?: string;
+};

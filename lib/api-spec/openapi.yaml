@@ -1,22 +1,37 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Study OS API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: profiles
+    description: User profile operations
+  - name: study-plans
+    description: AI study plan operations
+  - name: daily-tasks
+    description: Daily task operations
+  - name: syllabus
+    description: Syllabus progress tracking
+  - name: current-affairs
+    description: Current affairs articles
+  - name: quiz
+    description: Quiz questions and attempts
+  - name: progress
+    description: Progress analytics
+  - name: ai
+    description: AI generation endpoints
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,345 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /profiles/me:
+    get:
+      operationId: getMyProfile
+      tags: [profiles]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: Profile not found
+    put:
+      operationId: upsertProfile
+      tags: [profiles]
+      summary: Create or update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "200":
+          description: Profile upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles/me/streak:
+    post:
+      operationId: updateStreak
+      tags: [profiles]
+      summary: Update streak after completing a task
+      responses:
+        "200":
+          description: Streak updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /study-plans/current:
+    get:
+      operationId: getCurrentStudyPlan
+      tags: [study-plans]
+      summary: Get the user's current study plan
+      responses:
+        "200":
+          description: Study plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPlan"
+        "404":
+          description: No plan found
+
+  /study-plans/generate:
+    post:
+      operationId: generateStudyPlan
+      tags: [study-plans]
+      summary: Generate AI study plan using Gemini
+      responses:
+        "200":
+          description: Generated study plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPlan"
+
+  /daily-tasks:
+    get:
+      operationId: getDailyTasks
+      tags: [daily-tasks]
+      summary: Get daily tasks for a date
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          description: ISO date string (defaults to today)
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyTask"
+
+  /daily-tasks/{id}/complete:
+    post:
+      operationId: completeTask
+      tags: [daily-tasks]
+      summary: Mark a task as complete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTask"
+
+  /syllabus:
+    get:
+      operationId: getSyllabus
+      tags: [syllabus]
+      summary: Get syllabus progress for the user's exam
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Syllabus topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyllabusItem"
+
+  /syllabus/{id}:
+    patch:
+      operationId: updateSyllabusItem
+      tags: [syllabus]
+      summary: Update topic status or confidence
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyllabusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyllabusItem"
+
+  /syllabus/seed:
+    post:
+      operationId: seedSyllabus
+      tags: [syllabus]
+      summary: Seed syllabus for the user's exam type
+      responses:
+        "200":
+          description: Seeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedResult"
+
+  /current-affairs:
+    get:
+      operationId: getCurrentAffairs
+      tags: [current-affairs]
+      summary: Get current affairs articles
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: days
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Articles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurrentAffairsArticle"
+
+  /quiz/questions:
+    get:
+      operationId: getQuizQuestions
+      tags: [quiz]
+      summary: Get quiz questions
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: topic
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: weakOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Questions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizQuestion"
+
+  /quiz/attempts:
+    post:
+      operationId: submitQuizAttempt
+      tags: [quiz]
+      summary: Submit a quiz answer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizAttemptInput"
+      responses:
+        "201":
+          description: Attempt recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAttempt"
+
+  /quiz/stats:
+    get:
+      operationId: getQuizStats
+      tags: [quiz]
+      summary: Get quiz statistics per subject
+      responses:
+        "200":
+          description: Quiz stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizSubjectStat"
+
+  /quiz/generate-mcq:
+    post:
+      operationId: generateMcqFromNews
+      tags: [quiz]
+      summary: Generate MCQs from a news item using Gemini
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McqGenerateInput"
+      responses:
+        "200":
+          description: Generated MCQs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeneratedMcq"
+
+  /progress/summary:
+    get:
+      operationId: getProgressSummary
+      tags: [progress]
+      summary: Get overall progress summary
+      responses:
+        "200":
+          description: Progress summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressSummary"
+
+  /progress/weak-areas:
+    get:
+      operationId: getWeakAreas
+      tags: [progress]
+      summary: Get list of weak topic areas (below 60% accuracy)
+      responses:
+        "200":
+          description: Weak areas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeakArea"
+
+  /progress/daily-hours:
+    get:
+      operationId: getDailyStudyHours
+      tags: [progress]
+      summary: Get daily study hours for last N days
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Daily hours data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyHoursEntry"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +385,285 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+        clerkUserId:
+          type: string
+        fullName:
+          type: ["string", "null"]
+        examType:
+          type: ["string", "null"]
+        examDate:
+          type: ["string", "null"]
+        dailyStudyHours:
+          type: integer
+        planType:
+          type: string
+        streakCount:
+          type: integer
+        lastActiveDate:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, clerkUserId, dailyStudyHours, planType, streakCount]
+
+    ProfileInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+        examType:
+          type: string
+        examDate:
+          type: string
+        dailyStudyHours:
+          type: integer
+
+    StudyPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        examType:
+          type: ["string", "null"]
+        planData:
+          type: object
+        weeksRemaining:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, userId]
+
+    DailyTask:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        date:
+          type: string
+        subject:
+          type: ["string", "null"]
+        topic:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        taskType:
+          type: ["string", "null"]
+        isCompleted:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+      required: [id, userId, date, isCompleted]
+
+    SyllabusItem:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        examType:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        topic:
+          type: ["string", "null"]
+        subtopic:
+          type: ["string", "null"]
+        status:
+          type: string
+        confidence:
+          type: ["string", "null"]
+        lastRevisedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, userId, status]
+
+    SyllabusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+        confidence:
+          type: string
+
+    SeedResult:
+      type: object
+      properties:
+        seeded:
+          type: integer
+        message:
+          type: string
+      required: [seeded, message]
+
+    CurrentAffairsArticle:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        examRelevance:
+          type: array
+          items:
+            type: string
+        publishedDate:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        isFeatured:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, title, isFeatured]
+
+    QuizQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: ["string", "null"]
+        topic:
+          type: ["string", "null"]
+        questionText:
+          type: string
+        options:
+          type: object
+        correctOption:
+          type: ["string", "null"]
+        explanation:
+          type: ["string", "null"]
+        difficulty:
+          type: ["string", "null"]
+        examType:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required: [id, questionText]
+
+    QuizAttemptInput:
+      type: object
+      properties:
+        questionId:
+          type: string
+        selectedOption:
+          type: string
+        timeTakenSeconds:
+          type: integer
+      required: [questionId, selectedOption]
+
+    QuizAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        questionId:
+          type: string
+        selectedOption:
+          type: ["string", "null"]
+        isCorrect:
+          type: ["boolean", "null"]
+        timeTakenSeconds:
+          type: ["integer", "null"]
+        attemptedAt:
+          type: string
+      required: [id, userId, questionId]
+
+    QuizSubjectStat:
+      type: object
+      properties:
+        subject:
+          type: string
+        totalQuestions:
+          type: integer
+        correct:
+          type: integer
+        accuracy:
+          type: number
+        lastPracticed:
+          type: ["string", "null"]
+      required: [subject, totalQuestions, correct, accuracy]
+
+    McqGenerateInput:
+      type: object
+      properties:
+        newsTitle:
+          type: string
+        newsSummary:
+          type: string
+      required: [newsTitle, newsSummary]
+
+    GeneratedMcq:
+      type: object
+      properties:
+        question:
+          type: string
+        options:
+          type: object
+        correct:
+          type: string
+        explanation:
+          type: string
+      required: [question, options, correct, explanation]
+
+    ProgressSummary:
+      type: object
+      properties:
+        streakCount:
+          type: integer
+        totalTasksCompleted:
+          type: integer
+        syllabusCompletionPercent:
+          type: number
+        avgQuizAccuracy:
+          type: number
+        studyHoursThisWeek:
+          type: number
+        topicsCompletedThisMonth:
+          type: integer
+      required: [streakCount, totalTasksCompleted, syllabusCompletionPercent, avgQuizAccuracy, studyHoursThisWeek, topicsCompletedThisMonth]
+
+    WeakArea:
+      type: object
+      properties:
+        topic:
+          type: string
+        subject:
+          type: string
+        accuracy:
+          type: number
+        attempts:
+          type: integer
+      required: [topic, subject, accuracy, attempts]
+
+    DailyHoursEntry:
+      type: object
+      properties:
+        date:
+          type: string
+        hours:
+          type: number
+      required: [date, hours]
