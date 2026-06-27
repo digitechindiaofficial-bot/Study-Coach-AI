@@ -120,7 +120,9 @@ function Router() {
     <Switch>
       <Route path="/" component={RootRedirect} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/login/:rest*" component={LoginPage} />
       <Route path="/signup" component={SignUpPage} />
+      <Route path="/signup/:rest*" component={SignUpPage} />
       
       <Route path="/onboarding">
         <ProtectedRoute component={OnboardingPage} />
