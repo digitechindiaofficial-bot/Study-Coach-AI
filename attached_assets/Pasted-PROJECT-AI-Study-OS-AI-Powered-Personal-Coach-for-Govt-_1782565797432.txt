@@ -1,0 +1,850 @@
+PROJECT: AI Study OS — AI-Powered Personal Coach for Govt Job Aspirants (India)
+
+ROLE & CONTEXT
+
+You are a senior full-stack engineer building a production-ready, monetizable SaaS product called "AI Study OS" — an AI-powered personal coaching platform for Indian government exam aspirants (SSC, Banking, Railway, State PSC).
+
+This is NOT a prototype. Build it as a real business product: clean code, real UX, working features, error handling, loading states, mobile-responsive, and production-grade.
+
+
+TECH STACK (STRICT — DO NOT DEVIATE)
+
+
+Frontend: Next.js 14 (App Router) + TypeScript
+Styling: Tailwind CSS + shadcn/ui components
+Auth + DB: Supabase (Auth, PostgreSQL, Row Level Security)
+AI: Google Gemini API (gemini-1.5-flash model)
+Payments: Razorpay (integration-ready, behind feature flag)
+Icons: Lucide React
+Charts: Recharts
+Deployment: Optimized for Replit (single repo, env vars via Replit Secrets)
+
+
+
+VISUAL DESIGN SYSTEM
+
+Brand Identity
+
+
+App Name: AI Study OS
+Tagline: "Your AI Coach for Govt Jobs"
+Feel: Serious, trustworthy, motivating — like a smart coaching institute, not a toy app
+
+
+Color Palette
+
+--primary:        #1E3A5F   (Deep Navy — authority, trust)
+--accent:         #F59E0B   (Amber Gold — energy, achievement)
+--success:        #10B981   (Emerald — progress, completion)
+--danger:         #EF4444   (Red — weak areas, alerts)
+--background:     #F8FAFC   (Off-white — clean, easy on eyes)
+--card:           #FFFFFF
+--text-primary:   #0F172A
+--text-secondary: #64748B
+--border:         #E2E8F0
+
+Typography
+
+
+Display/Headings: Inter (Bold 700/800) — for headlines, scores, big numbers
+Body: Inter (Regular 400, Medium 500)
+Hindi support: Ensure UTF-8 encoding supports Devanagari where needed
+
+
+Layout Rules
+
+
+Sidebar navigation (desktop) + bottom nav (mobile)
+Max content width: 1280px
+Card-based UI for all modules
+Consistent 16px/24px spacing grid
+Every page must have a loading skeleton state
+
+
+
+DATABASE SCHEMA (Supabase PostgreSQL)
+
+Create these tables with proper RLS policies:
+
+sql-- Users profile (extends Supabase auth.users)
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users PRIMARY KEY,
+  full_name TEXT,
+  exam_type TEXT CHECK (exam_type IN ('SSC_CGL','SSC_CHSL','IBPS_PO','IBPS_CLERK','SBI_PO','RRB_NTPC','UPPSC','BPSC','OTHER')),
+  exam_date DATE,
+  daily_study_hours INTEGER DEFAULT 4,
+  plan_type TEXT DEFAULT 'free' CHECK (plan_type IN ('free','pro')),
+  streak_count INTEGER DEFAULT 0,
+  last_active_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- AI-generated study plans
+CREATE TABLE study_plans (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  exam_type TEXT,
+  plan_data JSONB, -- Full AI-generated plan
+  weeks_remaining INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Daily tasks
+CREATE TABLE daily_tasks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  date DATE DEFAULT CURRENT_DATE,
+  subject TEXT,
+  topic TEXT,
+  duration_minutes INTEGER,
+  task_type TEXT CHECK (task_type IN ('study','revision','quiz','current_affairs')),
+  is_completed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMPTZ,
+  notes TEXT
+);
+
+-- Syllabus tracking per subject
+CREATE TABLE syllabus_progress (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  exam_type TEXT,
+  subject TEXT,
+  topic TEXT,
+  subtopic TEXT,
+  status TEXT DEFAULT 'not_started' CHECK (status IN ('not_started','in_progress','completed')),
+  confidence TEXT CHECK (confidence IN ('weak','medium','strong')),
+  last_revised_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Current affairs articles
+CREATE TABLE current_affairs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  summary TEXT,
+  category TEXT, -- Economy, Polity, Science, Sports, etc.
+  exam_relevance TEXT[], -- ['SSC_CGL','IBPS_PO']
+  published_date DATE DEFAULT CURRENT_DATE,
+  source TEXT,
+  is_featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Quiz questions
+CREATE TABLE quiz_questions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  subject TEXT,
+  topic TEXT,
+  question_text TEXT NOT NULL,
+  options JSONB, -- {a: "...", b: "...", c: "...", d: "..."}
+  correct_option TEXT,
+  explanation TEXT,
+  difficulty TEXT CHECK (difficulty IN ('easy','medium','hard')),
+  exam_type TEXT[],
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User quiz attempts
+CREATE TABLE quiz_attempts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  question_id UUID REFERENCES quiz_questions(id),
+  selected_option TEXT,
+  is_correct BOOLEAN,
+  time_taken_seconds INTEGER,
+  attempted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on all tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE study_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE syllabus_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_attempts ENABLE ROW LEVEL SECURITY;
+
+-- RLS: users can only see their own data
+CREATE POLICY "Users own data" ON profiles FOR ALL USING (auth.uid() = id);
+CREATE POLICY "Users own tasks" ON daily_tasks FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own plan" ON study_plans FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own progress" ON syllabus_progress FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own attempts" ON quiz_attempts FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Public current affairs" ON current_affairs FOR SELECT USING (true);
+CREATE POLICY "Public questions" ON quiz_questions FOR SELECT USING (true);
+
+
+ENVIRONMENT VARIABLES (Replit Secrets)
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+NEXT_PUBLIC_APP_URL=
+
+
+APPLICATION STRUCTURE
+
+/app
+  /(auth)
+    /login/page.tsx
+    /signup/page.tsx
+  /(onboarding)
+    /onboarding/page.tsx        ← exam select, date, hours
+  /(dashboard)
+    /dashboard/page.tsx          ← main home
+    /planner/page.tsx            ← AI study planner
+    /syllabus/page.tsx           ← subject tracker
+    /current-affairs/page.tsx    ← daily news feed
+    /quiz/page.tsx               ← quiz engine
+    /quiz/[subject]/page.tsx
+    /progress/page.tsx           ← analytics
+    /settings/page.tsx
+/components
+  /ui/                           ← shadcn components
+  /layout/
+    Sidebar.tsx
+    MobileNav.tsx
+    Header.tsx
+  /dashboard/
+    TodayTaskCard.tsx
+    StreakWidget.tsx
+    QuickStatsBar.tsx
+  /planner/
+    StudyPlanCard.tsx
+    TaskItem.tsx
+    AIGenerateButton.tsx
+  /quiz/
+    QuestionCard.tsx
+    ResultScreen.tsx
+  /current-affairs/
+    NewsCard.tsx
+    CategoryFilter.tsx
+  /progress/
+    ProgressChart.tsx
+    SubjectHeatmap.tsx
+/lib
+  supabase/
+    client.ts
+    server.ts
+  gemini/
+    client.ts
+    prompts.ts                   ← All AI prompts centralized here
+  hooks/
+    useUser.ts
+    useStudyPlan.ts
+    useTasks.ts
+    useStreak.ts
+/api
+  /generate-plan/route.ts
+  /daily-tasks/route.ts
+  /current-affairs/refresh/route.ts
+  /quiz/generate/route.ts
+
+
+FEATURE SPECIFICATIONS
+
+FEATURE 1: AUTH + ONBOARDING
+
+Pages: /login, /signup, /onboarding
+
+Signup Flow:
+
+
+Email + Password signup via Supabase Auth
+OR Google OAuth (configure in Supabase dashboard)
+After email verification → redirect to /onboarding
+
+
+Onboarding (multi-step, 3 steps):
+
+Step 1: "Which exam are you preparing for?"
+  → Card grid with exam options (SSC CGL, SSC CHSL, IBPS PO, IBPS Clerk, SBI PO, RRB NTPC, UPPSC, BPSC, Other)
+  → Each card has exam logo area, name, and vacancy count (hardcoded for now)
+
+Step 2: "When is your exam?"
+  → Date picker for target exam date
+  → Show "X weeks remaining" dynamically
+
+Step 3: "How many hours can you study daily?"
+  → Slider from 1–10 hours
+  → Show example: "At 4 hrs/day, you can cover 80% syllabus in 12 weeks"
+
+Submit → saves to profiles table → redirects to /dashboard
+
+Design note: Onboarding should feel like a premium coaching app, not a generic form. Use progress indicator, motivational copy, large cards.
+
+
+FEATURE 2: DASHBOARD (Home)
+
+Route: /dashboard
+
+Layout:
+
+
+Top: "Good morning, [Name]! 🎯 [X] days to [Exam Name]"
+Quick Stats Row: Today's Tasks | Streak | Topics Completed | Quiz Score
+Today's Study Plan (card with tasks for today)
+Current Affairs Preview (3 cards)
+Quick Quiz CTA
+Weak Areas Alert (if any)
+
+
+Components to build:
+
+tsx// QuickStatsBar — 4 stat tiles
+<StatTile icon={<Target/>} value="5" label="Today's Tasks" color="blue"/>
+<StatTile icon={<Flame/>} value="12" label="Day Streak" color="amber"/>
+<StatTile icon={<BookOpen/>} value="47%" label="Syllabus Done" color="green"/>
+<StatTile icon={<Trophy/>} value="68%" label="Avg Quiz Score" color="purple"/>
+
+// TodayTaskCard — shows tasks with checkboxes, time estimate
+// StreakCalendar — GitHub-style contribution grid for last 30 days
+
+Streak Logic:
+
+
+If user completes ≥1 task today → streak increments
+If user misses a day → streak resets to 0
+Store in profiles.streak_count and profiles.last_active_date
+
+
+
+FEATURE 3: AI STUDY PLANNER (CORE FEATURE)
+
+Route: /planner
+
+This is the most important feature. Build it properly.
+
+How it works:
+
+
+User clicks "Generate My Study Plan" button
+App calls /api/generate-plan
+API calls Gemini with detailed prompt
+Returns structured JSON study plan
+Plan saved to study_plans table
+Daily tasks auto-populated into daily_tasks table for next 7 days
+
+
+Gemini API Call — /api/generate-plan/route.ts:
+
+typescript// lib/gemini/prompts.ts
+
+export const STUDY_PLAN_PROMPT = (profile: UserProfile) => `
+You are an expert study planner for Indian government competitive examinations.
+
+Student Profile:
+- Exam: ${profile.exam_type}
+- Exam Date: ${profile.exam_date}
+- Weeks Remaining: ${profile.weeks_remaining}
+- Daily Study Hours: ${profile.daily_study_hours}
+
+Create a detailed, week-by-week study plan. Be specific about topics, not vague.
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "exam": "${profile.exam_type}",
+  "total_weeks": <number>,
+  "strategy": "<2-3 sentence overall strategy>",
+  "subjects": [
+    {
+      "name": "<subject>",
+      "weightage_percent": <number>,
+      "recommended_hours": <number>,
+      "topics": [
+        {
+          "name": "<topic name>",
+          "subtopics": ["<subtopic1>", "<subtopic2>"],
+          "estimated_hours": <number>,
+          "priority": "high|medium|low",
+          "week_number": <number>
+        }
+      ]
+    }
+  ],
+  "weekly_schedule": [
+    {
+      "week": 1,
+      "theme": "<focus area for week>",
+      "daily_tasks": {
+        "Monday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study|revision|quiz"}],
+        "Tuesday": [...],
+        "Wednesday": [...],
+        "Thursday": [...],
+        "Friday": [...],
+        "Saturday": [...],
+        "Sunday": [{"subject": "Revision + Rest", "topic": "Weekly revision", "duration_minutes": 120, "type": "revision"}]
+      }
+    }
+  ],
+  "revision_schedule": {
+    "strategy": "spaced repetition",
+    "week_before_exam": ["Full syllabus revision", "Mock test daily", "Current affairs review"]
+  }
+}
+
+SYLLABUS REFERENCE for ${profile.exam_type}:
+${getSyllabusForExam(profile.exam_type)}
+`;
+
+// Hardcode syllabus for each exam type in this function
+export const getSyllabusForExam = (examType: string): string => {
+  const syllabi: Record<string, string> = {
+    SSC_CGL: `
+      Quantitative Aptitude: Number System, Percentage, Profit/Loss, Ratio, Time&Work, Time&Distance, SI/CI, Geometry, Mensuration, Trigonometry, Statistics
+      English: Reading Comprehension, Fill in Blanks, Error Detection, Cloze Test, Para Jumbles, Idioms, One Word Substitution, Synonyms/Antonyms
+      General Intelligence: Analogy, Series, Coding-Decoding, Blood Relations, Direction, Syllogism, Matrix, Venn Diagrams, Puzzle
+      General Awareness: History, Geography, Polity, Economics, Science, Current Affairs, Static GK
+    `,
+    IBPS_PO: `
+      Quantitative Aptitude: Data Interpretation, Number Series, Quadratic Equations, Arithmetic (Percentage, Profit-Loss, SI/CI, Time-Work, Speed-Distance)
+      Reasoning: Puzzle, Seating Arrangement, Blood Relation, Coding-Decoding, Syllogism, Input-Output, Critical Reasoning
+      English: Reading Comprehension, Cloze Test, Para Jumbles, Error Detection, Word Usage, Sentence Improvement
+      General Awareness: Banking Awareness, Financial Awareness, Current Affairs, Static GK
+      Computer: Basics, MS Office, Internet, Networking fundamentals
+    `,
+    // Add more exams...
+  };
+  return syllabi[examType] || syllabi['SSC_CGL'];
+};
+
+UI for Planner Page:
+
+[Generate My AI Study Plan] ← big CTA button if no plan exists
+
+Once plan generated:
+- Week tabs (Week 1, Week 2... Week N)
+- Each week shows daily tasks
+- Task cards with: Subject chip, Topic, Duration badge, Type icon
+- Checkboxes to mark complete
+- "Regenerate Plan" option
+
+Sidebar/Panel:
+- Subject coverage pie chart
+- Weeks remaining countdown
+- Completion % per subject
+
+Plan Regeneration Trigger:
+
+
+If user hasn't studied for 3+ days → show "Your plan is outdated. Regenerate?" banner
+Manual regenerate button always available
+
+
+
+FEATURE 4: SUBJECT-WISE DASHBOARD
+
+Route: /syllabus
+
+Layout:
+
+
+Tabs for each subject (Quant | Reasoning | English | GK | etc.)
+Each subject shows list of topics
+Each topic row has:
+
+Topic name
+Status: Not Started / In Progress / Completed (toggle)
+Confidence: Weak / Medium / Strong (color-coded badge)
+Last revised date
+"Practice Quiz" quick action button
+
+
+
+
+
+Filtering:
+
+
+Filter by: All | Not Started | Weak Topics
+Sort by: Priority | Alphabetical | Last Revised
+
+
+Progress Bar: At top of each subject tab, show % completed
+
+Seed syllabus data into syllabus_progress table on first load for the user's selected exam type. Use the same syllabus reference from the planner.
+
+
+FEATURE 5: DAILY CURRENT AFFAIRS
+
+Route: /current-affairs
+
+Data Strategy:
+
+
+Store curated current affairs in current_affairs table
+For MVP: seed with last 30 days of real important news (manually curated, 10-15 per day)
+For Pro: use Gemini to generate AI-summarized current affairs daily
+
+
+UI:
+
+Top: Date filter bar (Today | Yesterday | This Week | By Category)
+Category filters: Economy | Polity | Science | Sports | International | Awards | Environment
+
+News Cards (grid, 2 cols desktop, 1 col mobile):
+┌─────────────────────────────┐
+│ [ECONOMY] • Jun 27, 2025    │
+│                             │
+│ RBI keeps repo rate at 6.5% │
+│                             │
+│ Short summary (2-3 lines)   │
+│                             │
+│ Exam Tags: [SSC] [IBPS]     │
+│ [Practice MCQ] [Save]       │
+└─────────────────────────────┘
+
+Below each news card:
+→ Optional: 2 MCQs generated by Gemini about that news item
+
+Gemini MCQ Generation — /api/quiz/generate/route.ts:
+
+typescriptconst MCQ_FROM_NEWS_PROMPT = (newsTitle: string, newsSummary: string) => `
+Based on this current affairs item:
+Title: ${newsTitle}
+Summary: ${newsSummary}
+
+Generate 2 MCQ questions as would appear in SSC/Banking exams.
+Return ONLY valid JSON array, no markdown:
+[
+  {
+    "question": "<question text>",
+    "options": {"a": "...", "b": "...", "c": "...", "d": "..."},
+    "correct": "a|b|c|d",
+    "explanation": "<why this answer is correct>"
+  }
+]
+`;
+
+Free vs Pro:
+
+
+Free: Last 7 days, no MCQs
+Pro: Last 30 days + MCQs + category filter + save feature
+
+
+
+FEATURE 6: QUIZ / PRACTICE ENGINE
+
+Route: /quiz and /quiz/[subject]
+
+Quiz Home (/quiz):
+
+Tabs: By Subject | By Topic | Mock Test | Weak Areas
+
+Subject cards:
+[Quantitative] [Reasoning] [English] [General Awareness] [Computer]
+Each showing: Total Questions | Avg Score | Last Practiced
+
+Quick Start options:
+- "20 Random Questions" 
+- "Only Weak Topics"
+- "Today's Topic Quiz"
+
+Quiz Session UI:
+
+Header: Progress bar (Q 5 of 20) | Timer | Subject chip
+
+Question Card:
+┌──────────────────────────────────────┐
+│  Q5. If the ratio of A:B is 3:4...   │
+│                                      │
+│  ○ A. 120                            │
+│  ○ B. 150                            │
+│  ○ C. 180    ← selected: turns blue  │
+│  ○ D. 200                            │
+│                                      │
+│  [Skip]              [Next →]        │
+└──────────────────────────────────────┘
+
+After answer selected:
+- Show correct/incorrect immediately
+- Green highlight correct option
+- Red highlight wrong selection
+- Show explanation text
+- "Next" button appears
+
+Result Screen:
+
+🎯 Quiz Complete!
+Score: 14/20 (70%)
+Time: 8m 32s
+Accuracy: 70%
+
+Subject Breakdown:
+Quant: 8/10 ✅
+Reasoning: 6/10 ⚠️
+
+[Review Answers] [Save Weak Topics] [Retake] [Back to Quiz Home]
+
+Weak Area Detection:
+
+
+Any topic with <60% accuracy → auto-tagged as "Weak"
+Show in dashboard widget
+Planner gives extra time to weak topics in next plan regeneration
+
+
+Seed Question Bank:
+Seed 200+ real MCQs across all subjects in quiz_questions table. Include:
+
+
+50 Quantitative Aptitude questions
+50 Reasoning questions
+40 English questions
+40 General Awareness (Static GK)
+20 Banking/Computer Awareness
+
+
+
+FEATURE 7: PROGRESS TRACKER
+
+Route: /progress
+
+Sections:
+
+Overview Cards:
+
+
+Total study hours this week
+Topics completed this month
+Current streak
+Quiz accuracy trend
+
+
+Charts (use Recharts):
+
+tsx// 1. Daily Study Hours — Bar chart (last 14 days)
+<BarChart data={dailyHoursData}>
+  <Bar dataKey="hours" fill="#F59E0B"/>
+</BarChart>
+
+// 2. Subject Coverage — Radial/Radar chart
+<RadarChart data={subjectCoverageData}>
+  <Radar name="Coverage" dataKey="percent" fill="#1E3A5F"/>
+</RadarChart>
+
+// 3. Quiz Performance Trend — Line chart (last 10 quizzes)
+<LineChart data={quizScores}>
+  <Line type="monotone" dataKey="score" stroke="#10B981"/>
+</LineChart>
+
+// 4. Study Streak Calendar — Custom grid component
+// GitHub-style contribution heatmap for last 90 days
+
+Weak Areas Panel:
+
+Your Weak Topics:
+⚠️ Profit & Loss — 45% accuracy (Quant)
+⚠️ Puzzle Seating — 50% accuracy (Reasoning)
+⚠️ Error Detection — 52% accuracy (English)
+[Go to Practice →]
+
+
+PLAN GATING (FREE vs PRO)
+
+Implement a usePlan() hook that checks profiles.plan_type.
+
+Gating rules:
+
+typescriptexport const PLAN_LIMITS = {
+  free: {
+    study_plan_weeks: 4,          // Only 4-week plan
+    current_affairs_days: 7,      // Last 7 days only
+    quiz_questions_per_day: 20,   // Max 20/day
+    ai_plan_regenerations: 1,     // 1 per week
+    mcqs_from_news: false,
+    weak_area_analytics: false,
+  },
+  pro: {
+    study_plan_weeks: 99,         // Full plan
+    current_affairs_days: 30,
+    quiz_questions_per_day: 999,
+    ai_plan_regenerations: 99,
+    mcqs_from_news: true,
+    weak_area_analytics: true,
+  }
+}
+
+Pro Upgrade CTA Component:
+
+tsx// Show this blur-overlay when free user hits a pro feature
+<ProGateOverlay
+  feature="Full AI Study Plan"
+  price="₹199/month"
+  ctaText="Upgrade to Pro"
+  benefits={["Full 16-week AI plan", "Daily MCQs", "Advanced analytics"]}
+/>
+
+
+NAVIGATION STRUCTURE
+
+Desktop Sidebar (fixed left, 240px wide):
+
+[AI Study OS logo]
+
+📊 Dashboard
+📅 Study Planner      ← AI badge
+📚 Syllabus
+📰 Current Affairs
+🧪 Quiz Practice
+📈 Progress
+
+---
+⚙️ Settings
+👑 Upgrade to Pro     ← amber highlight (only for free users)
+
+---
+[User avatar + name]
+
+Mobile Bottom Nav (5 icons):
+
+🏠 Home | 📅 Plan | 📰 News | 🧪 Quiz | 📊 Progress
+
+
+SETTINGS PAGE
+
+Route: /settings
+
+Sections:
+
+
+Profile Info (name, edit)
+Exam Settings (change exam, change date, change daily hours)
+Notifications (browser notification permission toggle)
+Plan & Billing (current plan, upgrade button, Razorpay integration)
+Account (logout, delete account)
+
+
+
+RAZORPAY INTEGRATION (Ready but feature-flagged)
+
+Create /api/payment/create-order/route.ts:
+
+typescript// Creates Razorpay order
+// Webhook at /api/payment/webhook updates profiles.plan_type to 'pro'
+// Show Razorpay checkout modal in frontend
+// Plans: ₹99/month, ₹249/3months, ₹799/year
+
+Make it toggleable via NEXT_PUBLIC_PAYMENTS_ENABLED=true env var.
+
+
+ERROR HANDLING & LOADING STATES
+
+Every page must have:
+
+
+Loading skeleton (use shadcn Skeleton component)
+Empty state with helpful CTA (not just "No data")
+Error boundary with retry button
+Toast notifications for all actions (success/error)
+
+
+Empty States:
+
+No study plan yet:
+"Your personalized study plan is 1 click away →"
+[Generate My Plan]
+
+No quiz attempts:
+"Test your knowledge! Start with an easy 10-question quiz"
+[Start Quiz]
+
+
+NOTIFICATIONS & REMINDERS
+
+Daily Study Reminder:
+
+
+Browser notification at user-set time (stored in profile)
+"Hey [Name]! Your study session starts now. Today: [Topic]"
+
+
+Streak Warning:
+
+
+If user hasn't completed a task by 8PM → "⚠️ Don't break your [12]-day streak!"
+
+
+
+SEED DATA REQUIREMENTS
+
+Seed the following on app initialization:
+
+
+Current Affairs (30 entries, last 30 days, realistic Indian exam-relevant news)
+Quiz Questions (200+ MCQs across all subjects, quality questions with explanations)
+Exam Syllabi (hardcoded in lib/syllabi.ts for all 8 exam types)
+
+
+
+PERFORMANCE REQUIREMENTS
+
+
+First load < 3 seconds
+Use React.lazy() and dynamic imports for heavy components
+Debounce API calls (especially AI generation — prevent double-clicks)
+Cache study plan in localStorage with 24hr TTL to reduce Gemini API calls
+Optimistic UI updates for task completion checkboxes
+
+
+
+PAGES CHECKLIST (BUILD ALL OF THESE)
+
+
+ /login — Auth page
+ /signup — Registration
+ /onboarding — 3-step exam setup
+ /dashboard — Main home
+ /planner — AI Study Planner
+ /syllabus — Subject tracker
+ /current-affairs — News feed
+ /quiz — Quiz home
+ /quiz/[subject] — Subject quiz
+ /progress — Analytics
+ /settings — User settings
+ /upgrade — Pricing/upgrade page
+
+
+
+FINAL QUALITY CHECKLIST
+
+Before considering any feature complete:
+
+
+ Works on mobile (375px viewport)
+ Works on desktop (1280px viewport)
+ Has loading state
+ Has empty state
+ Has error handling
+ Free/Pro gating works correctly
+ Data saves to Supabase correctly
+ RLS policies prevent unauthorized access
+ Gemini API errors are caught and shown gracefully
+
+
+
+START ORDER
+
+Build in this exact sequence:
+
+
+Project setup (Next.js + Supabase + Tailwind + shadcn)
+Supabase schema + RLS
+Auth pages (login/signup)
+Onboarding flow
+Layout (sidebar + mobile nav)
+Dashboard page
+AI Study Planner (Feature 3)
+Syllabus tracker (Feature 4)
+Current Affairs (Feature 5)
+Quiz engine (Feature 6)
+Progress tracker (Feature 7)
+Settings + Plan gating
+Seed data
+Polish + mobile responsive pass
+
+
+DO NOT stop after setup. Build all features. This is a complete product.
