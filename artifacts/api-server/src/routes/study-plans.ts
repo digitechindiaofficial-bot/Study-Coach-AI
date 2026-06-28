@@ -27,8 +27,8 @@ router.get("/study-plans/current", async (req, res) => {
     .orderBy(desc(studyPlansTable.createdAt))
     .limit(1);
 
-  if (!plans[0]) return res.status(404).json({ error: "No study plan found" });
-  res.json(plans[0]);
+  if (!plans[0]) return res.json({ plan: null });
+  res.json({ plan: plans[0] });
 });
 
 router.post("/study-plans/generate", async (req, res) => {
@@ -37,6 +37,18 @@ router.post("/study-plans/generate", async (req, res) => {
 
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+  const force = req.body?.force === true || req.query?.force === "true";
+
+  if (!force) {
+    const existing = await db.select().from(studyPlansTable)
+      .where(eq(studyPlansTable.userId, profile.id))
+      .orderBy(desc(studyPlansTable.createdAt))
+      .limit(1);
+    if (existing[0]) {
+      return res.json({ plan: existing[0], cached: true });
+    }
+  }
 
   const examType = profile.examType ?? "SSC_CGL";
   const examDate = profile.examDate;
@@ -117,8 +129,9 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
     const planData = JSON.parse(cleaned);
 
-    // Delete old plans
+    // Delete old plans and future daily tasks
     await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
+    await db.delete(dailyTasksTable).where(eq(dailyTasksTable.userId, profile.id));
 
     // Save new plan
     const [plan] = await db.insert(studyPlansTable).values({
@@ -166,7 +179,7 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
       await db.insert(dailyTasksTable).values(taskRows);
     }
 
-    res.json(plan);
+    res.json({ plan });
   } catch (err: any) {
     req.log.error({ err: err?.message ?? String(err) }, "study plan generation failed");
     res.status(500).json({ error: "Failed to generate study plan. Please try again.", detail: err?.message });

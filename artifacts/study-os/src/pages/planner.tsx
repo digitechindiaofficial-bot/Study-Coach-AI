@@ -1,10 +1,11 @@
-import { useGetCurrentStudyPlan, useGenerateStudyPlan, useGetMyProfile, getGetMyProfileQueryKey, getGetCurrentStudyPlanQueryKey } from "@workspace/api-client-react";
+import { useGetCurrentStudyPlan, useGetMyProfile, getGetMyProfileQueryKey, getGetCurrentStudyPlanQueryKey, getGetDailyTasksQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Sparkles, BookOpen, Clock, ChevronDown, ChevronUp, CalendarDays, AlertCircle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 interface Task { subject: string; topic: string; duration_minutes: number; type: string; }
 interface WeekSchedule { week: number; theme: string; daily_tasks: Record<string, Task[]>; }
@@ -18,22 +19,40 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [expandedWeek, setExpandedWeek] = useState(1);
-  const { data: profile } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
-  const { data: plan, isLoading } = useGetCurrentStudyPlan({ query: { queryKey: getGetCurrentStudyPlanQueryKey() } });
-  const generate = useGenerateStudyPlan();
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleGenerate = () => {
-    generate.mutate({}, {
-      onSuccess: () => { toast({ title: "Study plan generated!" }); qc.invalidateQueries({ queryKey: getGetCurrentStudyPlanQueryKey() }); },
-      onError: () => toast({ title: "Failed", description: "Try again.", variant: "destructive" })
-    });
+  const { data: profile } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
+  const { data: planResponse, isLoading } = useGetCurrentStudyPlan({ query: { queryKey: getGetCurrentStudyPlanQueryKey() } });
+
+  const currentPlan = (planResponse as any)?.plan ?? null;
+  const planData = currentPlan?.planData as PlanData | undefined;
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: getGetCurrentStudyPlanQueryKey() });
+    qc.invalidateQueries({ queryKey: getGetDailyTasksQueryKey({ date: format(new Date(), "yyyy-MM-dd") }) });
   };
 
-  const planData = plan?.planData as PlanData | undefined;
+  const callGenerate = async (force: boolean) => {
+    setIsGenerating(true);
+    try {
+      const url = force ? "/api/study-plans/generate?force=true" : "/api/study-plans/generate";
+      const resp = await fetch(url, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error((err as any).error ?? "Failed");
+      }
+      toast({ title: force ? "Study plan regenerated!" : "Study plan generated!" });
+      invalidateAll();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message ?? "Try again.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i=><div key={i} className="h-32 bg-muted rounded animate-pulse"/>)}</div>;
 
-  if (!plan || !planData) return (
+  if (!currentPlan || !planData) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
         <CalendarDays className="w-10 h-10 text-primary"/>
@@ -42,9 +61,9 @@ export default function PlannerPage() {
         <h1 className="text-3xl font-bold mb-3">No Study Plan Yet</h1>
         <p className="text-muted-foreground max-w-md text-lg">Let AI create a personalized plan for {profile?.examType?.replace(/_/g,' ')}.</p>
       </div>
-      <Button size="lg" onClick={handleGenerate} disabled={generate.isPending} className="px-8">
-        {generate.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5"/>}
-        {generate.isPending ? "Generating (~30s)..." : "Generate AI Study Plan"}
+      <Button size="lg" onClick={() => callGenerate(false)} disabled={isGenerating} className="px-8">
+        {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5"/>}
+        {isGenerating ? "Generating (~30s)..." : "Generate AI Study Plan"}
       </Button>
     </div>
   );
@@ -56,8 +75,8 @@ export default function PlannerPage() {
           <h1 className="text-3xl font-bold tracking-tight">Study Planner</h1>
           <p className="text-muted-foreground mt-1">AI-generated {planData.total_weeks}-week plan for {planData.exam?.replace(/_/g,' ')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generate.isPending}>
-          {generate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
+        <Button variant="outline" size="sm" onClick={() => callGenerate(true)} disabled={isGenerating}>
+          {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
           Regenerate
         </Button>
       </div>
