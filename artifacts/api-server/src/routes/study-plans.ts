@@ -121,7 +121,7 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
 
   try {
     const response = await genai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         maxOutputTokens: 8192,
