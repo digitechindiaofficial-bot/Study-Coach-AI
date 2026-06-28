@@ -15,6 +15,129 @@ async function getProfileByClerkId(clerkUserId: string) {
   return rows[0] ?? null;
 }
 
+const EXAM_SUBJECTS: Record<string, Array<{ name: string; weightage_percent: number; recommended_hours: number; topics: string[] }>> = {
+  SSC_CGL: [
+    { name: "Quantitative Aptitude", weightage_percent: 25, recommended_hours: 80, topics: ["Number System", "Percentage", "Ratio & Proportion", "Algebra", "Geometry", "Trigonometry", "Data Interpretation", "Time & Work", "Speed & Distance"] },
+    { name: "English Language", weightage_percent: 25, recommended_hours: 60, topics: ["Reading Comprehension", "Cloze Test", "Fill in the Blanks", "Error Spotting", "Sentence Improvement", "Synonyms & Antonyms", "Idioms & Phrases"] },
+    { name: "General Intelligence", weightage_percent: 25, recommended_hours: 50, topics: ["Analogies", "Series", "Coding-Decoding", "Blood Relations", "Direction Sense", "Matrix", "Venn Diagrams", "Syllogism"] },
+    { name: "General Awareness", weightage_percent: 25, recommended_hours: 60, topics: ["History", "Geography", "Polity", "Economics", "Science & Technology", "Current Affairs", "Sports", "Awards & Honours"] },
+  ],
+  BANKING: [
+    { name: "Quantitative Aptitude", weightage_percent: 30, recommended_hours: 90, topics: ["Number Series", "Simplification", "Data Interpretation", "Quadratic Equations", "Percentage", "Profit & Loss", "Time & Work", "Probability"] },
+    { name: "Reasoning Ability", weightage_percent: 30, recommended_hours: 70, topics: ["Puzzles & Seating Arrangement", "Syllogism", "Coding-Decoding", "Blood Relations", "Inequality", "Direction Sense", "Input-Output"] },
+    { name: "English Language", weightage_percent: 20, recommended_hours: 50, topics: ["Reading Comprehension", "Cloze Test", "Para Jumbles", "Error Detection", "Fill in the Blanks", "Sentence Correction"] },
+    { name: "General Awareness", weightage_percent: 20, recommended_hours: 40, topics: ["Banking Awareness", "Financial Awareness", "Current Affairs", "Static GK", "Government Schemes"] },
+  ],
+  RAILWAY: [
+    { name: "Mathematics", weightage_percent: 30, recommended_hours: 80, topics: ["Number System", "LCM & HCF", "Percentage", "Ratio", "Time & Work", "Speed & Distance", "Geometry", "Mensuration"] },
+    { name: "General Intelligence", weightage_percent: 25, recommended_hours: 55, topics: ["Analogies", "Alphabetical Series", "Coding-Decoding", "Mathematical Operations", "Conclusions", "Decision Making"] },
+    { name: "General Science", weightage_percent: 25, recommended_hours: 65, topics: ["Physics", "Chemistry", "Biology", "Computer Basics", "Environmental Science"] },
+    { name: "General Awareness", weightage_percent: 20, recommended_hours: 50, topics: ["History", "Geography", "Polity", "Economy", "Current Affairs", "Railways GK"] },
+  ],
+};
+
+function buildTemplatePlan(examType: string, weeksRemaining: number, dailyHours: number) {
+  const subjects = EXAM_SUBJECTS[examType] ?? EXAM_SUBJECTS["SSC_CGL"];
+  const totalWeeks = Math.min(weeksRemaining, 12);
+  const scheduleWeeks = Math.min(weeksRemaining, 4);
+
+  const subjectList = subjects.map(s => ({
+    name: s.name,
+    weightage_percent: s.weightage_percent,
+    recommended_hours: s.recommended_hours,
+    topics: s.topics.map((t, i) => ({
+      name: t,
+      estimated_hours: 4,
+      priority: i < 3 ? "high" : i < 6 ? "medium" : "low",
+      week_number: (i % totalWeeks) + 1,
+    })),
+  }));
+
+  const dayMinutes = dailyHours * 60;
+  const subjectNames = subjects.map(s => s.name);
+
+  const makeDay = (subjectIdx: number, topicIdx: number, type: string) => [{
+    subject: subjectNames[subjectIdx % subjectNames.length],
+    topic: subjects[subjectIdx % subjects.length].topics[topicIdx % subjects[subjectIdx % subjects.length].topics.length],
+    duration_minutes: Math.min(dayMinutes, 90),
+    type,
+  }];
+
+  const weeklySchedule = Array.from({ length: scheduleWeeks }, (_, w) => ({
+    week: w + 1,
+    theme: `${subjectNames[w % subjectNames.length]} Focus — Week ${w + 1}`,
+    daily_tasks: {
+      Monday:    makeDay(w,     w,     "study"),
+      Tuesday:   makeDay(w + 1, w + 1, "study"),
+      Wednesday: makeDay(w,     w + 2, "study"),
+      Thursday:  makeDay(w + 1, w + 2, "study"),
+      Friday:    makeDay(w + 2, w,     "study"),
+      Saturday:  makeDay(w,     w,     "revision"),
+      Sunday:    [{ subject: "Revision", topic: `Week ${w + 1} Full Revision`, duration_minutes: 120, type: "revision" }],
+    },
+  }));
+
+  const examLabel = examType.replace(/_/g, " ");
+  return {
+    exam: examType,
+    total_weeks: totalWeeks,
+    strategy: `Focus on high-weightage sections first with ${dailyHours}h daily study. Dedicate weekdays to new topics and weekends to revision and mock tests. Track accuracy weekly and revise weak areas before ${examLabel}.`,
+    subjects: subjectList,
+    weekly_schedule: weeklySchedule,
+  };
+}
+
+async function savePlanAndSeedTasks(
+  userId: string,
+  examType: string,
+  weeksRemaining: number,
+  planData: object
+) {
+  await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, userId));
+  await db.delete(dailyTasksTable).where(eq(dailyTasksTable.userId, userId));
+
+  const [plan] = await db.insert(studyPlansTable).values({
+    userId,
+    examType,
+    planData,
+    weeksRemaining,
+  }).returning();
+
+  const today = new Date();
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const taskRows: {
+    userId: string; date: string; subject: string; topic: string;
+    durationMinutes: number; taskType: string; isCompleted: boolean;
+  }[] = [];
+
+  const weekSchedule = (planData as any).weekly_schedule?.[0];
+  if (weekSchedule?.daily_tasks) {
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      const dayName = dayNames[date.getDay()];
+      const dateTasks = weekSchedule.daily_tasks[dayName] ?? [];
+      for (const t of dateTasks) {
+        taskRows.push({
+          userId,
+          date: date.toISOString().split("T")[0],
+          subject: t.subject ?? "General",
+          topic: t.topic ?? "Study",
+          durationMinutes: t.duration_minutes ?? 60,
+          taskType: t.type ?? "study",
+          isCompleted: false,
+        });
+      }
+    }
+  }
+
+  if (taskRows.length > 0) {
+    await db.insert(dailyTasksTable).values(taskRows);
+  }
+
+  return plan;
+}
+
 router.get("/study-plans/current", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -32,10 +155,6 @@ router.get("/study-plans/current", async (req, res) => {
 });
 
 router.post("/study-plans/generate", async (req, res) => {
-  console.log("ENV CHECK:", {
-    geminiKey: process.env.GEMINI_API_KEY ? "EXISTS" : "MISSING",
-    geminiKeyStart: process.env.GEMINI_API_KEY?.substring(0, 8)
-  });
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -119,74 +238,37 @@ ${syllabusText}
 
 Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 for brevity).`;
 
+  let planData: object;
+  let source = "ai";
+
   try {
     const response = await genai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
-      config: {
-        maxOutputTokens: 8192,
-        responseMimeType: "application/json",
-      },
+      config: { maxOutputTokens: 8192, responseMimeType: "application/json" },
     });
-
     const text = response.text ?? "{}";
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-    const planData = JSON.parse(cleaned);
-
-    // Delete old plans and future daily tasks
-    await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
-    await db.delete(dailyTasksTable).where(eq(dailyTasksTable.userId, profile.id));
-
-    // Save new plan
-    const [plan] = await db.insert(studyPlansTable).values({
-      userId: profile.id,
-      examType,
-      planData,
-      weeksRemaining,
-    }).returning();
-
-    // Seed daily tasks for next 7 days based on plan
-    const today = new Date();
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const taskRows: {
-      userId: string;
-      date: string;
-      subject: string;
-      topic: string;
-      durationMinutes: number;
-      taskType: string;
-      isCompleted: boolean;
-    }[] = [];
-
-    const weekSchedule = planData.weekly_schedule?.[0];
-    if (weekSchedule?.daily_tasks) {
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() + i);
-        const dayName = dayNames[date.getDay()];
-        const dateTasks = weekSchedule.daily_tasks[dayName] ?? [];
-        for (const t of dateTasks) {
-          taskRows.push({
-            userId: profile.id,
-            date: date.toISOString().split("T")[0],
-            subject: t.subject ?? "General",
-            topic: t.topic ?? "Study",
-            durationMinutes: t.duration_minutes ?? 60,
-            taskType: t.type ?? "study",
-            isCompleted: false,
-          });
-        }
-      }
-    }
-
-    if (taskRows.length > 0) {
-      await db.insert(dailyTasksTable).values(taskRows);
-    }
-
-    res.json({ plan });
+    planData = JSON.parse(cleaned);
   } catch (err: any) {
-    req.log.error({ err: err?.message ?? String(err) }, "study plan generation failed");
-    res.status(500).json({ error: "Failed to generate study plan. Please try again.", detail: err?.message });
+    const errStr = String(err?.message ?? err);
+    const isQuota = errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED") || errStr.includes("quota");
+    if (isQuota) {
+      req.log.warn("Gemini quota exhausted — using template plan");
+      planData = buildTemplatePlan(examType, weeksRemaining, dailyHours);
+      source = "template";
+    } else {
+      req.log.error({ err: errStr }, "study plan generation failed");
+      return res.status(500).json({ error: "Failed to generate study plan. Please try again.", detail: errStr });
+    }
+  }
+
+  try {
+    const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
+    res.json({ plan, source });
+  } catch (err: any) {
+    req.log.error({ err: err?.message ?? String(err) }, "failed to save study plan");
+    res.status(500).json({ error: "Failed to save study plan.", detail: err?.message });
   }
 });
 
