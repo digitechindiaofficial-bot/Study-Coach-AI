@@ -32,6 +32,10 @@ router.get("/study-plans/current", async (req, res) => {
 });
 
 router.post("/study-plans/generate", async (req, res) => {
+  console.log("ENV CHECK:", {
+    geminiKey: process.env.GEMINI_API_KEY ? "EXISTS" : "MISSING",
+    geminiKeyStart: process.env.GEMINI_API_KEY?.substring(0, 8)
+  });
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
