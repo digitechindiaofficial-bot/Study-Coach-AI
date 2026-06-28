@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 
 export default function DashboardPage() {
-  const today = new Date().toISOString();
+  const today = format(new Date(), "yyyy-MM-dd");
   
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({
     query: { queryKey: getGetMyProfileQueryKey() }

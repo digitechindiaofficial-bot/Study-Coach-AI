@@ -105,12 +105,15 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
 
   try {
     const response = await genai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 8192 },
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+      },
     });
 
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+    const text = response.text ?? "{}";
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
     const planData = JSON.parse(cleaned);
 
@@ -164,8 +167,9 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
     }
 
     res.json(plan);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to generate study plan. Please try again." });
+  } catch (err: any) {
+    req.log.error({ err: err?.message ?? String(err) }, "study plan generation failed");
+    res.status(500).json({ error: "Failed to generate study plan. Please try again.", detail: err?.message });
   }
 });
 
