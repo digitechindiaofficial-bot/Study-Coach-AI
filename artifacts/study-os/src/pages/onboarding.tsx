@@ -1,183 +1,253 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+import { useUpsertProfile, useSeedSyllabus, getGetMyProfileQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { useUpsertProfile, useSeedSyllabus, useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { Loader2, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, differenceInWeeks } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Loader2, ArrowLeft, CheckCircle2, Target, Calendar, Clock, Zap } from "lucide-react";
+import { format } from "date-fns";
 
 const EXAMS = [
-  "SSC_CGL", "SSC_CHSL", "IBPS_PO", "IBPS_CLERK", 
-  "SBI_PO", "RRB_NTPC", "UPPSC", "BPSC", "OTHER"
+  { label: "SSC CGL",    value: "SSC_CGL",    icon: "📋", desc: "Combined Graduate Level" },
+  { label: "SSC CHSL",   value: "SSC_CHSL",   icon: "📄", desc: "Higher Secondary Level" },
+  { label: "IBPS PO",    value: "IBPS_PO",    icon: "🏦", desc: "Probationary Officer" },
+  { label: "IBPS Clerk", value: "IBPS_CLERK", icon: "💼", desc: "Clerical Cadre" },
+  { label: "SBI PO",     value: "SBI_PO",     icon: "🏛️", desc: "State Bank of India" },
+  { label: "RRB NTPC",   value: "RRB_NTPC",   icon: "🚂", desc: "Railway Non-Technical" },
+  { label: "UPPSC",      value: "UPPSC",       icon: "⚖️", desc: "UP State PSC" },
+  { label: "Other",      value: "OTHER",       icon: "🎯", desc: "Other government exam" },
 ];
+
+const STEP_LABELS = ["Choose Exam", "Set Schedule", "You're All Set!"];
 
 export default function OnboardingPage() {
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState(1);
-  const [exam, setExam] = useState<string>("");
-  const [date, setDate] = useState<Date>();
-  const [hours, setHours] = useState<number[]>([4]);
-
-  const { data: profile, isLoading } = useGetMyProfile({
-    query: { queryKey: getGetMyProfileQueryKey() }
-  });
-
-  const upsertProfile = useUpsertProfile();
+  const qc = useQueryClient();
+  const upsert = useUpsertProfile();
   const seedSyllabus = useSeedSyllabus();
 
-  useEffect(() => {
-    if (profile?.examType) {
-      setLocation("/dashboard");
-    }
-  }, [profile, setLocation]);
+  const [step, setStep] = useState(1);
+  const [examType, setExamType] = useState("");
+  const [examDate, setExamDate] = useState("");
+  const [dailyHours, setDailyHours] = useState([4]);
 
-  const handleComplete = async () => {
-    if (!exam || !date) return;
-    
-    await upsertProfile.mutateAsync({
-      data: {
-        examType: exam,
-        examDate: date.toISOString(),
-        dailyStudyHours: hours[0]
+  const selectedExam = EXAMS.find(e => e.value === examType);
+
+  const handleFinish = () => {
+    upsert.mutate(
+      { data: { examType, examDate: examDate || undefined, dailyStudyHours: dailyHours[0] } },
+      {
+        onSuccess: () => {
+          seedSyllabus.mutate({});
+          qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+          setLocation("/dashboard");
+        },
       }
-    });
-
-    seedSyllabus.mutate({});
-    setLocation("/dashboard");
+    );
   };
 
-  if (isLoading || profile?.examType) {
-    return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
-  }
-
-  const weeksRemaining = date ? differenceInWeeks(date, new Date()) : 0;
-
   return (
-    <div className="max-w-3xl mx-auto py-12 px-4">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          {['Select Exam', 'Target Date', 'Commitment'].map((label, i) => (
-            <div key={label} className={cn("flex flex-col items-center gap-2", step >= i + 1 ? "text-primary" : "text-muted-foreground")}>
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm", step >= i + 1 ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                {i + 1}
-              </div>
-              <span className="text-xs font-medium hidden sm:block">{label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary transition-all" style={{ width: `${(step / 3) * 100}%` }} />
-        </div>
-      </div>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 py-10">
+      <div className="w-full max-w-md">
 
-      {step === 1 && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight mb-2">What's your target exam?</h2>
-            <p className="text-muted-foreground">Select the exam you're preparing for to customize your study plan.</p>
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-10">
+          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <span className="text-primary-foreground font-bold text-sm">OS</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {EXAMS.map(e => (
-              <Card 
-                key={e} 
-                className={cn("cursor-pointer hover:border-primary transition-colors", exam === e && "border-primary bg-primary/5")}
-                onClick={() => setExam(e)}
-              >
-                <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full min-h-[120px]">
-                  <span className="font-bold text-lg">{e.replace('_', ' ')}</span>
-                  {exam === e && <CheckCircle2 className="h-5 w-5 text-primary mt-2 absolute top-2 right-2" />}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <Button className="w-full" size="lg" disabled={!exam} onClick={() => setStep(2)}>
-            Continue
-          </Button>
+          <span className="font-bold text-lg">AI Study OS</span>
         </div>
-      )}
 
-      {step === 2 && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight mb-2">When is your exam?</h2>
-            <p className="text-muted-foreground">This helps us schedule your syllabus and revision effectively.</p>
+        {/* Progress bar */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-medium text-muted-foreground">Step {step} of 3</span>
+            <span className="text-xs font-semibold text-primary">{STEP_LABELS[step - 1]}</span>
           </div>
-          <div className="flex flex-col items-center justify-center py-8">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={"outline"} className={cn("w-[280px] justify-start text-left font-normal text-lg h-14", !date && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-5 w-5" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  disabled={(date) => date < new Date()}
-                />
-              </PopoverContent>
-            </Popover>
-            
-            {date && (
-              <div className="mt-8 p-6 bg-primary/10 rounded-xl text-center max-w-sm">
-                <div className="text-4xl font-bold text-primary mb-2">{weeksRemaining}</div>
-                <div className="font-medium text-foreground">Weeks Remaining</div>
-                <p className="text-sm text-muted-foreground mt-2">Perfect time to build a solid foundation and revise.</p>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-4">
-            <Button variant="outline" size="lg" onClick={() => setStep(1)}>Back</Button>
-            <Button className="flex-1" size="lg" disabled={!date} onClick={() => setStep(3)}>Continue</Button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight mb-2">Commit to your success</h2>
-            <p className="text-muted-foreground">How many hours can you realistically study every day?</p>
-          </div>
-          
-          <div className="py-12 px-6 bg-card border rounded-xl">
-            <div className="text-center mb-8">
-              <span className="text-6xl font-bold text-primary">{hours[0]}</span>
-              <span className="text-xl text-muted-foreground ml-2">hours/day</span>
-            </div>
-            
-            <Slider 
-              value={hours} 
-              onValueChange={setHours} 
-              max={12} 
-              min={1} 
-              step={1}
-              className="mb-8"
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${(step / 3) * 100}%` }}
             />
-            
-            <p className="text-center italic text-muted-foreground font-medium">
-              {hours[0] <= 3 ? "A steady start. Consistency is key." : 
-               hours[0] <= 6 ? "Solid commitment. You'll cover a lot of ground." : 
-               "Intense focus. Make sure to take breaks to avoid burnout."}
-            </p>
           </div>
+        </div>
 
-          <div className="flex gap-4">
-            <Button variant="outline" size="lg" onClick={() => setStep(2)}>Back</Button>
-            <Button className="flex-1" size="lg" disabled={upsertProfile.isPending} onClick={handleComplete}>
-              {upsertProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Complete Setup
+        {/* ── STEP 1: Choose Exam ── */}
+        {step === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
+                <Target className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">Which exam are you preparing for?</h1>
+              <p className="text-muted-foreground text-sm">We'll personalise your study plan accordingly.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {EXAMS.map(exam => (
+                <button
+                  key={exam.value}
+                  onClick={() => setExamType(exam.value)}
+                  className={`
+                    relative text-left p-4 rounded-xl border-2 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+                    ${examType === exam.value
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/40"}
+                  `}
+                >
+                  {examType === exam.value && (
+                    <CheckCircle2 className="w-4 h-4 text-primary absolute top-2.5 right-2.5" />
+                  )}
+                  <span className="text-xl block mb-1">{exam.icon}</span>
+                  <span className="font-semibold text-sm block leading-tight">{exam.label}</span>
+                  <span className="text-[11px] text-muted-foreground leading-tight mt-0.5 block">{exam.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            <Button className="w-full h-12 text-base" disabled={!examType} onClick={() => setStep(2)}>
+              Continue →
             </Button>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── STEP 2: Date + Hours ── */}
+        {step === 2 && (
+          <div className="space-y-7 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
+                <Calendar className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">When is your exam and how many hours daily?</h1>
+              <p className="text-muted-foreground text-sm">This shapes your entire study schedule.</p>
+            </div>
+
+            {/* Exam date */}
+            <div className="space-y-2">
+              <Label htmlFor="exam-date" className="text-sm font-semibold flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-primary" />
+                Exam Date
+                <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+              </Label>
+              <input
+                id="exam-date"
+                type="date"
+                value={examDate}
+                min={format(new Date(), "yyyy-MM-dd")}
+                onChange={e => setExamDate(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border border-input bg-background text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+
+            {/* Daily hours */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-primary" />
+                Daily Study Hours
+              </Label>
+              <div className="bg-muted/40 rounded-xl p-5 space-y-4 border">
+                <div className="text-center">
+                  <span className="text-5xl font-bold text-primary">{dailyHours[0]}</span>
+                  <span className="text-lg text-muted-foreground ml-1.5">hrs/day</span>
+                </div>
+                <Slider
+                  value={dailyHours}
+                  onValueChange={setDailyHours}
+                  min={1}
+                  max={10}
+                  step={1}
+                  className="my-2"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>1h</span>
+                  <span className="text-center italic">
+                    {dailyHours[0] <= 3 ? "Steady start 🌱" : dailyHours[0] <= 6 ? "Solid commitment 💪" : "Intense focus 🔥"}
+                  </span>
+                  <span>10h</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-12 px-5" onClick={() => setStep(1)}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+              </Button>
+              <Button className="flex-1 h-12 text-base" onClick={() => setStep(3)}>
+                Continue →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Summary ── */}
+        {step === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-500/10 mb-2">
+                <CheckCircle2 className="w-7 h-7 text-green-500" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">You're all set!</h1>
+              <p className="text-muted-foreground text-sm">Review your choices and generate your personalised plan.</p>
+            </div>
+
+            {/* Summary card */}
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="px-5 py-3 bg-muted/50 border-b">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Study Profile</p>
+              </div>
+              <div className="divide-y">
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <span className="text-2xl">{selectedExam?.icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Exam</p>
+                    <p className="font-bold text-base">{selectedExam?.label}</p>
+                    <p className="text-xs text-muted-foreground">{selectedExam?.desc}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="w-8 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Exam Date</p>
+                    <p className="font-semibold">
+                      {examDate
+                        ? format(new Date(examDate + "T00:00:00"), "d MMMM yyyy")
+                        : "Not specified — 12-week plan"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="w-8 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Daily Study</p>
+                    <p className="font-semibold">{dailyHours[0]} hours per day</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-12 px-5" onClick={() => setStep(2)} disabled={upsert.isPending}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+              </Button>
+              <Button
+                className="flex-1 h-12 text-base font-semibold"
+                onClick={handleFinish}
+                disabled={upsert.isPending}
+              >
+                {upsert.isPending
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                  : <><Zap className="mr-2 h-4 w-4" /> Generate My Study Plan</>}
+              </Button>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

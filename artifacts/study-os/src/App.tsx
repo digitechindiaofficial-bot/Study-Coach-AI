@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, SignIn, SignUp } from "@clerk/react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -29,9 +29,17 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, ...rest }: any) {
+function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: any) {
   const { isLoaded, isSignedIn } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  const { data: profile, isLoading: profileLoading } = useGetMyProfile({
+    query: {
+      queryKey: getGetMyProfileQueryKey(),
+      enabled: !!(isLoaded && isSignedIn),
+      retry: false,
+    },
+  });
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -39,7 +47,26 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
     }
   }, [isLoaded, isSignedIn, setLocation]);
 
+  useEffect(() => {
+    if (
+      isLoaded && isSignedIn && !profileLoading &&
+      !skipOnboardingCheck && location !== "/onboarding"
+    ) {
+      if (!profile?.examType) {
+        setLocation("/onboarding");
+      }
+    }
+  }, [isLoaded, isSignedIn, profile, profileLoading, skipOnboardingCheck, location, setLocation]);
+
   if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!skipOnboardingCheck && profileLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -125,7 +152,7 @@ function Router() {
       <Route path="/signup/:rest*" component={SignUpPage} />
       
       <Route path="/onboarding">
-        <ProtectedRoute component={OnboardingPage} />
+        <ProtectedRoute component={OnboardingPage} skipOnboardingCheck />
       </Route>
       <Route path="/dashboard">
         <ProtectedRoute component={DashboardPage} />
