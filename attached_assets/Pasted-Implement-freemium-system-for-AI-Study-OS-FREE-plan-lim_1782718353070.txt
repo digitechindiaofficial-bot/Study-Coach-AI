@@ -1,0 +1,60 @@
+Implement freemium system for AI Study OS:
+
+FREE plan limits:
+- Quiz: maximum 10 questions per day (across all subjects)
+- Study Plan: can generate only once, no regeneration allowed
+- Current Affairs: only last 3 days visible
+- Progress: only show streak and basic completion percentage
+- Syllabus tracker: view only, cannot mark topics
+
+PRO plan (Rs 199/month) - everything unlimited:
+- Quiz: unlimited questions per day
+- Study Plan: unlimited regeneration with AI
+- Current Affairs: full 30 days + MCQs on news
+- Progress: full analytics, graphs, weak area detection
+- Syllabus tracker: full tracking with confidence marking
+- Revision planner feature
+
+Implementation:
+
+1. Add to profiles table:
+   - plan_type: 'free' or 'pro' (default 'free')
+   - quiz_count_today: integer (default 0)
+   - quiz_count_date: date
+
+2. Create a hook usePlan() that returns:
+   - isPro: boolean
+   - canTakeQuiz: boolean  
+   - quizQuestionsLeft: number
+   - canRegeneratePlan: boolean
+   - canViewFullCurrentAffairs: boolean
+
+3. When free user hits quiz limit (10/day):
+   Show a beautiful upgrade modal with:
+   - "You've used your 10 free questions today!"
+   - Benefits of Pro plan
+   - Price: Rs 199/month
+   - "Upgrade to Pro" button (links to /upgrade page)
+   - "Come back tomorrow for 10 more free questions"
+
+4. When free user tries to regenerate study plan:
+   Show modal:
+   - "Study Plan Regeneration is a Pro feature"
+   - "Your current plan will work great!"
+   - "Upgrade to Pro" button
+
+5. Current affairs - free users see blurred cards after 3 days 
+   with "Upgrade to unlock" overlay
+
+6. Create /upgrade page with:
+   - Clean comparison table: Free vs Pro
+   - Pro price: Rs 199/month or Rs 999/year (save 58%)
+   - List of pro benefits with checkmarks
+   - "Coming Soon - Razorpay Integration" button for now
+   - Add trust elements: "Join 10,000+ aspirants" (placeholder)
+
+7. In sidebar show for free users:
+   - Gold "Upgrade to Pro" button at bottom
+   - Show "10 questions left today" counter near quiz section
+
+8. Reset quiz_count_today to 0 every day at midnight

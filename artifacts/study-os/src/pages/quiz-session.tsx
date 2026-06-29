@@ -2,11 +2,14 @@ import { getQuizQuestions } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, XCircle, ChevronRight, RotateCcw, Trophy } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ChevronRight, RotateCcw, Trophy, Lock } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { useSubmitQuizAttempt } from "@workspace/api-client-react";
+import { useSubmitQuizAttempt, getGetMyProfileQueryKey } from "@workspace/api-client-react";
+import { usePlan, FREE_DAILY_QUIZ_LIMIT } from "@/hooks/use-plan";
+import UpgradeModal from "@/components/upgrade-modal";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Question {
   id: string;
@@ -26,6 +29,8 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   const isAll = subject === "all";
   const decodedSubject = decodeURIComponent(subject);
 
+  const plan = usePlan();
+  const qc = useQueryClient();
   const seenIds = useRef<Set<string>>(new Set());
 
   const [pool, setPool] = useState<Question[]>([]);
@@ -38,7 +43,24 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   const [finished, setFinished] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
 
+  // Track questions answered in this session for limit enforcement
+  const [sessionAnswered, setSessionAnswered] = useState(0);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
   const submitAttempt = useSubmitQuizAttempt();
+
+  // Compute limit state (only meaningful for free users)
+  const initialLeft = useRef<number | null>(null);
+  useEffect(() => {
+    if (plan.isLoaded && initialLeft.current === null) {
+      initialLeft.current = plan.quizQuestionsLeft;
+      // Already at limit when arriving
+      if (!plan.canTakeQuiz) setShowLimitModal(true);
+    }
+  }, [plan.isLoaded, plan.canTakeQuiz, plan.quizQuestionsLeft]);
+
+  const questionsLeft = plan.isPro ? Infinity : Math.max(0, (initialLeft.current ?? plan.quizQuestionsLeft) - sessionAnswered);
+  const isAtLimit = !plan.isPro && questionsLeft <= 0;
 
   const buildParams = useCallback(() => {
     const base: Record<string, string> = { limit: String(POOL_SIZE) };
@@ -54,9 +76,11 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
       const params = buildParams();
       const data = (await getQuizQuestions(params as any)) as Question[];
       if (data.length === 0 && seenIds.current.size > 0) {
-        // All questions exhausted — reset seen IDs and fetch fresh
         seenIds.current.clear();
-        const freshData = (await getQuizQuestions({ limit: String(POOL_SIZE), ...(isWeak ? { weakOnly: "true" } : !isAll ? { subject: decodedSubject } : {}) } as any)) as Question[];
+        const freshData = (await getQuizQuestions({
+          limit: String(POOL_SIZE),
+          ...(isWeak ? { weakOnly: "true" } : !isAll ? { subject: decodedSubject } : {}),
+        } as any)) as Question[];
         setPool(freshData);
       } else {
         setPool(data);
@@ -68,15 +92,9 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     }
   }, [buildParams, isWeak, isAll, decodedSubject]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchPool();
-  }, []);
+  useEffect(() => { fetchPool(); }, []);
 
-  // Reset timer on question change
-  useEffect(() => {
-    setStartTime(Date.now());
-  }, [poolIndex, pool]);
+  useEffect(() => { setStartTime(Date.now()); }, [poolIndex, pool]);
 
   const current = pool[poolIndex] ?? null;
   const options = (current?.options ?? {}) as Record<string, string>;
@@ -85,19 +103,34 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
 
   const handleSelect = (key: string) => {
     if (!current || isAnswered) return;
+    if (isAtLimit) { setShowLimitModal(true); return; }
+
     setSelected(key);
     const timeTaken = Math.round((Date.now() - startTime) / 1000);
     const correct = key === current.correctOption;
     setAnswers(prev => [...prev, { qId: current.id, selected: key, correct, timeTaken }]);
     seenIds.current.add(current.id);
-    submitAttempt.mutate({ data: { questionId: current.id, selectedOption: key, timeTakenSeconds: timeTaken } });
+
+    submitAttempt.mutate(
+      { data: { questionId: current.id, selectedOption: key, timeTakenSeconds: timeTaken } },
+      {
+        onSuccess: () => {
+          setSessionAnswered(prev => prev + 1);
+          // Refresh profile so sidebar counter updates
+          qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+        },
+        onError: (err: any) => {
+          const status = err?.response?.status ?? err?.status;
+          if (status === 429) setShowLimitModal(true);
+        },
+      }
+    );
   };
 
   const handleNext = async () => {
+    if (isAtLimit) { setShowLimitModal(true); return; }
     const nextIndex = poolIndex + 1;
-
     if (nextIndex >= pool.length) {
-      // Pool exhausted — fetch more questions excluding all seen
       setSelected(null);
       await fetchPool();
     } else {
@@ -110,15 +143,18 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
 
   const handleRetry = () => {
     seenIds.current.clear();
+    initialLeft.current = null;
     setPool([]);
     setPoolIndex(0);
     setSelected(null);
     setAnswers([]);
+    setSessionAnswered(0);
     setFinished(false);
     setIsLoading(true);
     fetchPool();
   };
 
+  // ── Loading ──
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -136,6 +172,7 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     );
   }
 
+  // ── Results screen ──
   if (finished) {
     const correct = answers.filter(a => a.correct).length;
     const total = answers.length;
@@ -156,9 +193,7 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
         </div>
         <div className="flex gap-4">
           <Link href="/quiz"><Button variant="outline">Back to Quiz</Button></Link>
-          <Button onClick={handleRetry}>
-            <RotateCcw className="mr-2 w-4 h-4" /> Try Again
-          </Button>
+          <Button onClick={handleRetry}><RotateCcw className="mr-2 w-4 h-4" /> Try Again</Button>
         </div>
       </div>
     );
@@ -171,6 +206,8 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <UpgradeModal open={showLimitModal} onClose={() => setShowLimitModal(false)} variant="quiz_limit" />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">{sessionTitle}</h1>
@@ -179,6 +216,18 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Free plan quota indicator */}
+          {!plan.isPro && plan.isLoaded && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                questionsLeft <= 3 ? "border-red-300 text-red-700 bg-red-50" : "border-border text-muted-foreground"
+              )}
+            >
+              {questionsLeft === 0 ? "Limit hit" : `${questionsLeft} left today`}
+            </Badge>
+          )}
           {isFetching && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
           <Button variant="ghost" size="sm" onClick={handleFinish} disabled={answers.length === 0}>
             Finish
@@ -187,13 +236,28 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
         </div>
       </div>
 
-      {/* Progress within current pool */}
+      {/* Progress bar */}
       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-primary rounded-full transition-all duration-300"
           style={{ width: `${((poolIndex + 1) / pool.length) * 100}%` }}
         />
       </div>
+
+      {/* Free plan limit banner */}
+      {!plan.isPro && plan.isLoaded && questionsLeft <= 3 && questionsLeft > 0 && (
+        <div
+          className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer"
+          onClick={() => setShowLimitModal(true)}
+        >
+          <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800 font-medium">
+            {questionsLeft === 1 ? "Last free question today!" : `${questionsLeft} free questions remaining today`}
+            {" · "}
+            <span className="underline">Upgrade for unlimited</span>
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-6 space-y-4">

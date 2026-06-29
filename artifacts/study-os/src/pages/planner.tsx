@@ -1,11 +1,13 @@
 import { useGetCurrentStudyPlan, useGetMyProfile, getGetMyProfileQueryKey, getGetCurrentStudyPlanQueryKey, getGetDailyTasksQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Sparkles, BookOpen, Clock, ChevronDown, ChevronUp, CalendarDays, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, Sparkles, BookOpen, Clock, ChevronDown, ChevronUp, CalendarDays, AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { usePlan } from "@/hooks/use-plan";
+import UpgradeModal from "@/components/upgrade-modal";
 
 interface Task { subject: string; topic: string; duration_minutes: number; type: string; }
 interface WeekSchedule { week: number; theme: string; daily_tasks: Record<string, Task[]>; }
@@ -20,7 +22,9 @@ export default function PlannerPage() {
   const qc = useQueryClient();
   const [expandedWeek, setExpandedWeek] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  const plan = usePlan();
   const { data: profile } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
   const { data: planResponse, isLoading } = useGetCurrentStudyPlan({ query: { queryKey: getGetCurrentStudyPlanQueryKey() } });
 
@@ -33,6 +37,10 @@ export default function PlannerPage() {
   };
 
   const callGenerate = async (force: boolean) => {
+    if (force && !plan.canRegeneratePlan) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setIsGenerating(true);
     try {
       const url = force ? "/api/study-plans/generate?force=true" : "/api/study-plans/generate";
@@ -54,6 +62,7 @@ export default function PlannerPage() {
 
   if (!currentPlan || !planData) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} variant="study_plan" />
       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
         <CalendarDays className="w-10 h-10 text-primary"/>
       </div>
@@ -70,16 +79,41 @@ export default function PlannerPage() {
 
   return (
     <div className="space-y-8">
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} variant="study_plan" />
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Study Planner</h1>
           <p className="text-muted-foreground mt-1">AI-generated {planData.total_weeks}-week plan for {planData.exam?.replace(/_/g,' ')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => callGenerate(true)} disabled={isGenerating}>
-          {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
-          Regenerate
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => callGenerate(true)}
+          disabled={isGenerating}
+          className={!plan.canRegeneratePlan ? "opacity-75" : ""}
+        >
+          {isGenerating
+            ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+            : !plan.canRegeneratePlan
+              ? <Lock className="mr-2 h-4 w-4"/>
+              : <RefreshCw className="mr-2 h-4 w-4"/>}
+          {!plan.canRegeneratePlan ? "Regenerate (Pro)" : "Regenerate"}
         </Button>
       </div>
+
+      {!plan.canRegeneratePlan && (
+        <div
+          className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
+          onClick={() => setShowUpgradeModal(true)}
+        >
+          <Lock className="w-4 h-4 text-amber-600 shrink-0"/>
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Free plan:</span> Your plan is fixed. Upgrade to Pro to regenerate with fresh AI recommendations anytime.
+            {" "}<span className="underline font-medium">Upgrade for ₹199/month →</span>
+          </p>
+        </div>
+      )}
 
       {planData.strategy && (
         <Card className="border-primary/20 bg-primary/5">

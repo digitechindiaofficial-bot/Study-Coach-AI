@@ -2,13 +2,13 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { profilesTable, quizQuestionsTable, quizAttemptsTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { SubmitQuizAttemptBody, GenerateMcqFromNewsBody } from "@workspace/api-zod";
 import { GoogleGenAI } from "@google/genai";
 
 const router = Router();
-
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const FREE_DAILY_LIMIT = 10;
 
 async function getProfileByClerkId(clerkUserId: string) {
   const rows = await db.select().from(profilesTable).where(eq(profilesTable.clerkUserId, clerkUserId)).limit(1);
@@ -51,7 +51,7 @@ router.get("/quiz/questions", async (req, res) => {
     }
   }
 
-  // Fisher-Yates shuffle for true randomness
+  // Fisher-Yates shuffle
   for (let i = questions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [questions[i], questions[j]] = [questions[j], questions[i]];
@@ -70,6 +70,19 @@ router.post("/quiz/attempts", async (req, res) => {
   const parsed = SubmitQuizAttemptBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
 
+  // ── Daily limit check for free plan ──
+  const today = new Date().toISOString().split("T")[0];
+  const isCountFresh = profile.quizCountDate === today;
+  const currentCount = isCountFresh ? (profile.quizCountToday ?? 0) : 0;
+
+  if (profile.planType === "free" && currentCount >= FREE_DAILY_LIMIT) {
+    return res.status(429).json({
+      error: "daily_limit_reached",
+      questionsLeft: 0,
+      message: "You have reached your 10 free questions for today. Upgrade to Pro for unlimited access.",
+    });
+  }
+
   const question = await db.select().from(quizQuestionsTable)
     .where(eq(quizQuestionsTable.id, parsed.data.questionId)).limit(1);
   if (!question[0]) return res.status(404).json({ error: "Question not found" });
@@ -84,7 +97,15 @@ router.post("/quiz/attempts", async (req, res) => {
     timeTakenSeconds: parsed.data.timeTakenSeconds,
   }).returning();
 
-  res.status(201).json(attempt);
+  // Increment daily counter
+  await db.update(profilesTable)
+    .set({
+      quizCountToday: currentCount + 1,
+      quizCountDate: today,
+    })
+    .where(eq(profilesTable.clerkUserId, userId));
+
+  res.status(201).json({ ...attempt, questionsLeft: profile.planType === "free" ? FREE_DAILY_LIMIT - currentCount - 1 : null });
 });
 
 router.get("/quiz/stats", async (req, res) => {
@@ -129,6 +150,12 @@ router.post("/quiz/generate-mcq", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+  // MCQ generation from news is a Pro-only feature
+  const profile = await getProfileByClerkId(userId);
+  if (profile?.planType === "free") {
+    return res.status(403).json({ error: "pro_required", message: "MCQ generation from news is a Pro feature." });
+  }
+
   const parsed = GenerateMcqFromNewsBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
 
@@ -151,15 +178,14 @@ Return ONLY valid JSON array, no markdown:
 
   try {
     const response = await genai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
     });
-
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "[]";
+    const text = response.text ?? "[]";
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-    const mcqs = JSON.parse(cleaned);
-    res.json(mcqs);
-  } catch (err) {
+    res.json(JSON.parse(cleaned));
+  } catch {
     res.status(500).json({ error: "Failed to generate MCQs" });
   }
 });
