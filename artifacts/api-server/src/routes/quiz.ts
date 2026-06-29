@@ -19,19 +19,20 @@ router.get("/quiz/questions", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const { subject, topic, difficulty, limit: limitStr, weakOnly } = req.query as Record<string, string>;
-  const limit = parseInt(limitStr) || 20;
+  const { subject, topic, difficulty, limit: limitStr, weakOnly, exclude } = req.query as Record<string, string>;
+  const limit = Math.min(parseInt(limitStr) || 50, 200);
+  const excludeIds = new Set(exclude ? exclude.split(",").filter(Boolean) : []);
 
   let questions = await db.select().from(quizQuestionsTable);
 
   if (subject) questions = questions.filter(q => q.subject === subject);
   if (topic) questions = questions.filter(q => q.topic === topic);
   if (difficulty) questions = questions.filter(q => q.difficulty === difficulty);
+  if (excludeIds.size > 0) questions = questions.filter(q => !excludeIds.has(q.id));
 
   if (weakOnly === "true") {
     const profile = await getProfileByClerkId(userId);
     if (profile) {
-      // Get topics where accuracy < 60%
       const attempts = await db.select().from(quizAttemptsTable).where(eq(quizAttemptsTable.userId, profile.id));
       const topicAccuracy: Record<string, { correct: number; total: number }> = {};
       for (const attempt of attempts) {
@@ -50,9 +51,13 @@ router.get("/quiz/questions", async (req, res) => {
     }
   }
 
-  // Shuffle and limit
-  const shuffled = questions.sort(() => Math.random() - 0.5).slice(0, limit);
-  res.json(shuffled);
+  // Fisher-Yates shuffle for true randomness
+  for (let i = questions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+
+  res.json(questions.slice(0, limit));
 });
 
 router.post("/quiz/attempts", async (req, res) => {
