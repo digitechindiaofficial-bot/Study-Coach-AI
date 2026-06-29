@@ -2,39 +2,87 @@ import { useGetCurrentAffairs, useGenerateMcqFromNews, getGetCurrentAffairsQuery
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, ChevronDown, ChevronUp, Newspaper } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Zap, ChevronDown, ChevronUp, Newspaper, RefreshCw, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Economy: "bg-green-100 text-green-700 border-green-200",
-  Polity: "bg-blue-100 text-blue-700 border-blue-200",
-  Science: "bg-purple-100 text-purple-700 border-purple-200",
-  Sports: "bg-orange-100 text-orange-700 border-orange-200",
+  Economy:       "bg-green-100 text-green-700 border-green-200",
+  Polity:        "bg-blue-100 text-blue-700 border-blue-200",
+  Science:       "bg-purple-100 text-purple-700 border-purple-200",
+  Sports:        "bg-orange-100 text-orange-700 border-orange-200",
   International: "bg-red-100 text-red-700 border-red-200",
-  Environment: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Awards: "bg-amber-100 text-amber-700 border-amber-200",
+  Environment:   "bg-emerald-100 text-emerald-700 border-emerald-200",
+  Awards:        "bg-amber-100 text-amber-700 border-amber-200",
 };
 
-const DAYS_OPTIONS = [3, 7, 14, 30];
-const CATEGORIES = ["All","Economy","Polity","Science","Sports","International","Environment","Awards"];
+const CATEGORIES = ["All", "Economy", "Polity", "Science", "Sports", "International", "Awards"];
 
-interface MCQ { question: string; options: Record<string,string>; correct: string; explanation: string; }
+interface MCQ { question: string; options: Record<string, string>; correct: string; explanation: string; }
+
+async function generateToday(force = false): Promise<void> {
+  await fetch(`/api/current-affairs/today${force ? "?force=true" : ""}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
+}
 
 export default function CurrentAffairsPage() {
   const { toast } = useToast();
-  const [days, setDays] = useState(7);
+  const qc = useQueryClient();
+
   const [category, setCategory] = useState("All");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mcqs, setMcqs] = useState<Record<string, MCQ[]>>({});
   const [loadingMcq, setLoadingMcq] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, Record<number, string>>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const autoFetchedRef = useRef(false);
 
-  const queryParams = category !== "All" ? { days, category } : { days };
-  const { data: items = [], isLoading } = useGetCurrentAffairs(queryParams as any, {
-    query: { queryKey: getGetCurrentAffairsQueryKey({ days }) }
-  });
+  const queryKey = getGetCurrentAffairsQueryKey({ days: 7 });
+
+  const { data: allItems = [], isLoading } = useGetCurrentAffairs(
+    { days: 7 } as any,
+    { query: { queryKey } }
+  );
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayItems = (allItems as any[]).filter((i: any) => i.publishedDate === todayStr);
+  const hasToday = todayItems.length > 0;
+
+  const displayItems = category === "All"
+    ? (allItems as any[])
+    : (allItems as any[]).filter((i: any) => i.category === category);
+
+  // Auto-fetch today's news if none exist yet (runs once)
+  useEffect(() => {
+    if (!isLoading && !hasToday && !autoFetchedRef.current) {
+      autoFetchedRef.current = true;
+      setIsGenerating(true);
+      generateToday(false)
+        .then(() => qc.invalidateQueries({ queryKey }))
+        .catch(() => toast({ title: "Failed to fetch today's news", variant: "destructive" }))
+        .finally(() => setIsGenerating(false));
+    }
+  }, [isLoading, hasToday]);
+
+  const handleRefresh = async () => {
+    setIsGenerating(true);
+    try {
+      await generateToday(true);
+      await qc.invalidateQueries({ queryKey });
+      toast({ title: "Today's news refreshed!" });
+    } catch {
+      toast({ title: "Refresh failed", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const generateMcq = useGenerateMcqFromNews();
 
@@ -59,73 +107,162 @@ export default function CurrentAffairsPage() {
     setSelectedAnswers(prev => ({ ...prev, [articleId]: { ...(prev[articleId] ?? {}), [qIdx]: option } }));
   };
 
+  // ── Loading state (initial load or auto-generating) ──
+  if (isLoading || (isGenerating && !hasToday)) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <Newspaper className="w-8 h-8 text-primary" />
+              Current Affairs
+            </h1>
+            <p className="text-muted-foreground mt-1">Fetching today's news for you…</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+            </div>
+            <Loader2 className="w-5 h-5 text-primary animate-spin absolute -bottom-1 -right-1" />
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-lg">Generating Today's Current Affairs</p>
+            <p className="text-muted-foreground text-sm mt-1">AI is curating news relevant for your exam…</p>
+          </div>
+          <div className="space-y-3 w-full max-w-xl">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" style={{ opacity: 1 - i * 0.15 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Newspaper className="w-8 h-8 text-primary"/>
-          Current Affairs
-        </h1>
-        <p className="text-muted-foreground mt-1">Stay updated. Generate MCQs instantly from any article.</p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <Newspaper className="w-8 h-8 text-primary" />
+            Current Affairs
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Stay updated · {displayItems.length} article{displayItems.length !== 1 ? "s" : ""} ·{" "}
+            {todayItems.length > 0
+              ? <span className="text-green-600 font-medium">{todayItems.length} from today</span>
+              : <span className="text-amber-600 font-medium">No today's news yet</span>}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={handleRefresh}
+          disabled={isGenerating}
+        >
+          {isGenerating
+            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            : <RefreshCw className="mr-2 h-4 w-4" />}
+          Refresh Today's News
+        </Button>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex gap-2 flex-wrap">
-          {DAYS_OPTIONS.map(d => (
-            <Button key={d} variant={days === d ? "default" : "outline"} size="sm" onClick={() => setDays(d)}>
-              Last {d} days
-            </Button>
-          ))}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {CATEGORIES.map(c => (
-            <Button key={c} variant={category === c ? "default" : "outline"} size="sm" onClick={() => setCategory(c)}>
+      {/* Category filters */}
+      <div className="flex gap-2 flex-wrap">
+        {CATEGORIES.map(c => {
+          const count = c === "All"
+            ? (allItems as any[]).length
+            : (allItems as any[]).filter((i: any) => i.category === c).length;
+          return (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-medium border transition-all",
+                category === c
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              )}
+            >
               {c}
-            </Button>
-          ))}
-        </div>
+              {count > 0 && (
+                <span className={cn(
+                  "ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                  category === c ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {isLoading && (
-        <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="h-24 bg-muted rounded animate-pulse"/>)}
+      {/* Empty state after filter */}
+      {displayItems.length === 0 && !isGenerating && (
+        <div className="text-center py-16 space-y-3">
+          <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center">
+            <Newspaper className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <p className="font-medium">No articles in this category</p>
+          <p className="text-muted-foreground text-sm">Try selecting a different category or refresh today's news.</p>
+          <Button size="sm" onClick={handleRefresh} disabled={isGenerating}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh Today's News
+          </Button>
         </div>
       )}
 
-      {!isLoading && (items as any[]).length === 0 && (
-        <div className="text-center py-20 text-muted-foreground">No articles found for the selected filters.</div>
+      {/* Refreshing indicator (articles already visible) */}
+      {isGenerating && hasToday && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Generating fresh news…
+        </div>
       )}
 
-      <div className="space-y-4">
-        {(items as any[]).map((item: any) => {
+      {/* Articles */}
+      <div className="space-y-3">
+        {displayItems.map((item: any) => {
           const isExp = expanded.has(item.id);
           const catColor = CATEGORY_COLORS[item.category ?? ""] ?? "bg-gray-100 text-gray-700 border-gray-200";
           const itemMcqs = mcqs[item.id];
           const answers = selectedAnswers[item.id] ?? {};
+          const isToday = item.publishedDate === todayStr;
 
           return (
-            <Card key={item.id} className={item.isFeatured ? "border-primary/30" : ""}>
+            <Card
+              key={item.id}
+              className={cn(
+                "transition-shadow hover:shadow-md",
+                item.isFeatured && "border-primary/40 shadow-sm"
+              )}
+            >
               <CardHeader className="pb-3 cursor-pointer" onClick={() => toggle(item.id)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge className={`text-[10px] border ${catColor}`}>{item.category}</Badge>
                       {item.isFeatured && (
-                        <Badge className="text-[10px] bg-amber-500/20 text-amber-700 border-amber-300">Featured</Badge>
+                        <Badge className="text-[10px] bg-amber-500/20 text-amber-700 border-amber-300">⭐ Important</Badge>
+                      )}
+                      {isToday && (
+                        <Badge className="text-[10px] bg-primary/15 text-primary border-primary/30">Today</Badge>
                       )}
                       {item.publishedDate && (
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(item.publishedDate), "d MMM yyyy")}
+                          {format(new Date(item.publishedDate + "T00:00:00"), "d MMM yyyy")}
                         </span>
                       )}
-                      {item.source && <span className="text-xs text-muted-foreground">• {item.source}</span>}
                     </div>
-                    <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
+                    <CardTitle className="text-[15px] leading-snug">{item.title}</CardTitle>
                   </div>
                   {isExp
-                    ? <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0"/>
-                    : <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0"/>
-                  }
+                    ? <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                    : <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />}
                 </div>
               </CardHeader>
 
@@ -134,8 +271,8 @@ export default function CurrentAffairsPage() {
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.summary}</p>
 
                   {item.examRelevance && item.examRelevance.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground mr-1">Relevant for:</span>
+                    <div className="flex gap-1.5 flex-wrap items-center">
+                      <span className="text-xs text-muted-foreground">Relevant for:</span>
                       {item.examRelevance.map((e: string) => (
                         <Badge key={e} variant="outline" className="text-[10px]">{e.replace(/_/g, " ")}</Badge>
                       ))}
@@ -145,10 +282,9 @@ export default function CurrentAffairsPage() {
                   {!itemMcqs && (
                     <Button size="sm" variant="secondary" onClick={() => handleGenerateMcq(item)} disabled={loadingMcq === item.id}>
                       {loadingMcq === item.id
-                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-                        : <Zap className="mr-2 h-4 w-4"/>
-                      }
-                      Generate MCQ Practice
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <Zap className="mr-2 h-4 w-4" />}
+                      Generate Practice MCQs
                     </Button>
                   )}
 
@@ -165,7 +301,7 @@ export default function CurrentAffairsPage() {
                               {Object.entries(mcq.options).map(([key, val]) => {
                                 const isSelected = selectedOpt === key;
                                 const isRight = key === mcq.correct;
-                                let cls = "border text-xs p-2 rounded text-left transition-colors w-full ";
+                                let cls = "border text-xs p-2.5 rounded text-left transition-colors w-full ";
                                 if (selectedOpt) {
                                   if (isRight) cls += "bg-green-100 border-green-400 text-green-800 font-medium";
                                   else if (isSelected) cls += "bg-red-100 border-red-400 text-red-800";
@@ -181,7 +317,7 @@ export default function CurrentAffairsPage() {
                               })}
                             </div>
                             {selectedOpt && (
-                              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                              <p className="text-xs text-muted-foreground bg-muted p-2.5 rounded">
                                 <span className={isCorrect ? "text-green-700 font-semibold" : "text-red-700 font-semibold"}>
                                   {isCorrect ? "✓ Correct!" : "✗ Incorrect."}
                                 </span>{" "}
