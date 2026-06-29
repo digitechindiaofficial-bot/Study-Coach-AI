@@ -44,7 +44,7 @@ async function autoFetchToday(): Promise<void> {
 async function refreshToday(): Promise<{ refreshedAt: string }> {
   const resp = await fetch("/api/current-affairs/refresh", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
     credentials: "include",
     body: JSON.stringify({}),
   });
@@ -284,9 +284,10 @@ export default function CurrentAffairsPage() {
 
   const queryKey = getGetCurrentAffairsQueryKey({ days: 7 } as any);
 
+  // staleTime: 0 so refetchQueries always fetches fresh data from server
   const { data: allItems = [], isLoading } = useGetCurrentAffairs(
     { days: 7 } as any,
-    { query: { queryKey, staleTime: 5 * 60 * 1000 } }
+    { query: { queryKey, staleTime: 0 } }
   );
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -319,12 +320,19 @@ export default function CurrentAffairsPage() {
 
   // Pro refresh handler
   const handleRefresh = async () => {
+    // Clear the displayed articles immediately so user sees the refresh is happening
     setIsRefreshing(true);
     try {
+      // Step 1: tell the server to delete + regenerate today's news
       const result = await refreshToday();
+
+      // Step 2: force-refetch from DB — refetchQueries waits until the GET completes
+      // and updates the cache with the new data before resolving
+      await qc.refetchQueries({ queryKey, type: "active" });
+
+      // Step 3: show "just now" — use server's refreshedAt timestamp
       setLastRefreshedAt(new Date(result.refreshedAt));
-      await qc.invalidateQueries({ queryKey });
-      toast({ title: "News refreshed!", description: "15 fresh current affairs loaded." });
+      toast({ title: "✅ News refreshed!", description: "15 fresh current affairs loaded." });
     } catch (err: any) {
       toast({ title: "Refresh failed", description: err?.message, variant: "destructive" });
     } finally {
@@ -341,7 +349,8 @@ export default function CurrentAffairsPage() {
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
-  if (isLoading || (isGenerating && !hasToday)) {
+  // Also show full-screen skeleton while refreshing so old articles are cleared
+  if (isLoading || (isGenerating && !hasToday) || isRefreshing) {
     return <GeneratingScreen />;
   }
 

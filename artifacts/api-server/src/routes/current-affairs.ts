@@ -57,8 +57,10 @@ async function generateAndSave(today: string, logFn: (msg: string) => void) {
   let source: "ai" | "template" = "ai";
 
   // Always delete today's existing entries before inserting fresh ones
+  logFn(`Deleting today's (${today}) entries from DB`);
   await db.delete(currentAffairsTable).where(eq(currentAffairsTable.publishedDate, today));
 
+  logFn("Calling Gemini to generate fresh content");
   try {
     const response = await genai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -70,6 +72,7 @@ async function generateAndSave(today: string, logFn: (msg: string) => void) {
     const parsed = JSON.parse(cleaned);
     items = Array.isArray(parsed) ? parsed : TEMPLATE_15;
     if (items.length === 0) throw new Error("Empty response from Gemini");
+    logFn(`Gemini returned ${items.length} items`);
   } catch (err: any) {
     const msg = String(err?.message ?? err);
     const isQuota = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota");
@@ -82,6 +85,7 @@ async function generateAndSave(today: string, logFn: (msg: string) => void) {
     }
   }
 
+  logFn(`Saving ${items.length} items to DB`);
   const rows = items.map(item => ({
     title: String(item.title ?? ""),
     summary: item.summary ? String(item.summary) : null,
@@ -125,10 +129,11 @@ router.get("/current-affairs", async (req, res) => {
     const dateA = a.publishedDate ?? "";
     const dateB = b.publishedDate ?? "";
     if (dateB !== dateA) return dateB.localeCompare(dateA);
-    // Within same date, featured first
     return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
   });
 
+  // Prevent caching so fresh data is always served after a refresh
+  res.set("Cache-Control", "no-store");
   res.json(items);
 });
 
@@ -141,7 +146,6 @@ router.post("/current-affairs/today", async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   if (!force) {
-    // Return existing if already generated today
     const existing = await db
       .select()
       .from(currentAffairsTable)
@@ -152,7 +156,7 @@ router.post("/current-affairs/today", async (req, res) => {
   }
 
   try {
-    const { items, source } = await generateAndSave(today, (msg) => req.log.warn(msg));
+    const { items, source } = await generateAndSave(today, (msg) => req.log.info(msg));
     res.json({ items, cached: false, source });
   } catch (err: any) {
     req.log.error({ err: String(err?.message ?? err) }, "current-affairs/today failed");
@@ -164,6 +168,9 @@ router.post("/current-affairs/today", async (req, res) => {
 router.post("/current-affairs/refresh", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  req.log.info({ userId, time: new Date().toISOString() }, "Refresh called");
+  req.log.info({ hasKey: !!process.env.GEMINI_API_KEY }, "Gemini key check");
 
   // Pro plan check
   const profiles = await db
@@ -183,7 +190,9 @@ router.post("/current-affairs/refresh", async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   try {
-    const { items, source } = await generateAndSave(today, (msg) => req.log.warn(msg));
+    const { items, source } = await generateAndSave(today, (msg) => req.log.info(msg));
+    req.log.info({ count: items.length, source }, "Refresh complete — saved to DB");
+    res.set("Cache-Control", "no-store");
     res.json({ items, cached: false, source, refreshedAt: new Date().toISOString() });
   } catch (err: any) {
     req.log.error({ err: String(err?.message ?? err) }, "current-affairs/refresh failed");
