@@ -118,6 +118,9 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
           <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10">
             <Zap className="h-4 w-4 text-amber-600 shrink-0" />
             <span className="text-sm font-semibold text-amber-700">Pro Plan Active</span>
+            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
+              Test
+            </span>
           </div>
         )}
 

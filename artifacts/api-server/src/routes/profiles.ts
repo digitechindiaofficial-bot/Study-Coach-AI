@@ -50,6 +50,27 @@ router.put("/profiles/me", async (req, res) => {
   }
 });
 
+router.patch("/profiles/plan", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const { planType } = req.body ?? {};
+  if (planType !== "free" && planType !== "pro") {
+    return res.status(400).json({ error: "planType must be 'free' or 'pro'" });
+  }
+
+  const profile = await getOrCreateProfile(userId);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+  const [updated] = await db
+    .update(profilesTable)
+    .set({ planType })
+    .where(eq(profilesTable.clerkUserId, userId))
+    .returning();
+
+  res.json(updated);
+});
+
 router.post("/profiles/me/streak", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
