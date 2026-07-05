@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, SignIn, SignUp } from "@clerk/react";
 import { setAuthTokenGetter, useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import NotFound from "@/pages/not-found";
@@ -19,6 +19,11 @@ import ProgressPage from "@/pages/progress";
 import SettingsPage from "@/pages/settings";
 import UpgradePage from "@/pages/upgrade";
 import Layout from "@/components/layout";
+import AdminLayout from "@/components/admin-layout";
+import AdminDashboardPage from "@/pages/admin/dashboard";
+import AdminCurrentAffairsPage from "@/pages/admin/current-affairs";
+import AdminUsersPage from "@/pages/admin/users";
+import AdminQuizPage from "@/pages/admin/quiz";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +83,53 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
     <Layout>
       <Component {...rest} />
     </Layout>
+  );
+}
+
+function AdminRoute({ component: Component }: any) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [, setLocation] = useLocation();
+  const [status, setStatus] = useState<"checking" | "allowed" | "denied">("checking");
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setLocation("/login");
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/admin/check", { credentials: "include", headers: { "Cache-Control": "no-cache" } })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setStatus("allowed");
+        } else {
+          setStatus("denied");
+          setLocation("/dashboard");
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatus("denied");
+        setLocation("/dashboard");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, setLocation]);
+
+  if (status !== "allowed") {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <Component />
+    </AdminLayout>
   );
 }
 
@@ -180,6 +232,19 @@ function Router() {
       </Route>
       <Route path="/upgrade">
         <ProtectedRoute component={UpgradePage} />
+      </Route>
+
+      <Route path="/admin">
+        <AdminRoute component={AdminDashboardPage} />
+      </Route>
+      <Route path="/admin/current-affairs">
+        <AdminRoute component={AdminCurrentAffairsPage} />
+      </Route>
+      <Route path="/admin/users">
+        <AdminRoute component={AdminUsersPage} />
+      </Route>
+      <Route path="/admin/quiz">
+        <AdminRoute component={AdminQuizPage} />
       </Route>
 
       <Route component={NotFound} />

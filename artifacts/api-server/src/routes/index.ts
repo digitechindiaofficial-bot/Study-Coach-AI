@@ -7,6 +7,7 @@ import syllabusRouter from "./syllabus";
 import currentAffairsRouter from "./current-affairs";
 import quizRouter from "./quiz";
 import progressRouter from "./progress";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(syllabusRouter);
 router.use(currentAffairsRouter);
 router.use(quizRouter);
 router.use(progressRouter);
+router.use(adminRouter);
 
 export default router;
