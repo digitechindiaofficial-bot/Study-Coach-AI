@@ -1,0 +1,72 @@
+CRITICAL FIX: The refresh button is overwriting admin-added 
+current affairs with Gemini generated ones. Fix this completely.
+
+PROBLEM: /api/current-affairs/refresh is deleting ALL entries 
+and replacing with Gemini data. This destroys admin added content.
+
+FIX 1 - Remove auto-delete from refresh API:
+In /api/current-affairs/refresh route:
+
+REMOVE this line completely:
+await supabase.from('current_affairs').delete()... 
+(any delete query in this file - remove it)
+
+FIX 2 - Remove Gemini from current affairs completely:
+Current affairs should ONLY come from admin panel.
+No Gemini generation for current affairs at all.
+
+In /api/current-affairs/refresh route, replace entire 
+logic with:
+
+export async function POST(req: Request) {
+  return NextResponse.json({ 
+    message: "Current affairs are managed by admin panel",
+    success: true 
+  });
+}
+
+FIX 3 - Remove "Refresh News" button from user panel:
+Users should not be able to trigger any refresh.
+Delete the refresh button from current affairs page completely.
+
+FIX 4 - User panel should only READ from database:
+In current affairs page, simple fetch only:
+
+const { data, error } = await supabase
+  .from('current_affairs')
+  .select('*')
+  .order('published_date', { ascending: false })
+
+FREE users - show first 5 results
+PRO users - show all results
+
+No API calls. No Gemini. Just read from DB.
+
+FIX 5 - Admin panel is the only way to add/edit/delete:
+Make sure admin panel insert uses SERVICE ROLE KEY:
+
+const adminSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const { data, error } = await adminSupabase
+  .from('current_affairs')
+  .insert({...newsData})
+
+After insert console.log the error to verify it saved.
+
+FIX 6 - Add RLS policy in Supabase SQL editor:
+Run these commands:
+
+ALTER TABLE current_affairs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public current affairs" ON current_affairs;
+DROP POLICY IF EXISTS "Public read current affairs" ON current_affairs;
+DROP POLICY IF EXISTS "Service role can insert current affairs" ON current_affairs;
+
+CREATE POLICY "Anyone can read" ON current_affairs 
+FOR SELECT USING (true);
+
+CREATE POLICY "Service role full access" ON current_affairs 
+FOR ALL USING (true);

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { currentAffairsTable, profilesTable } from "@workspace/db";
-import { gte, eq } from "drizzle-orm";
+import { gte, eq, and, ne } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 
 const router = Router();
@@ -56,9 +56,12 @@ async function generateAndSave(today: string, logFn: (msg: string) => void) {
   let items: typeof TEMPLATE_15;
   let source: "ai" | "template" = "ai";
 
-  // Always delete today's existing entries before inserting fresh ones
-  logFn(`Deleting today's (${today}) entries from DB`);
-  await db.delete(currentAffairsTable).where(eq(currentAffairsTable.publishedDate, today));
+  // Delete today's existing AI/template entries before inserting fresh ones —
+  // but never touch admin-added entries, so refresh/auto-fetch can't wipe them out.
+  logFn(`Deleting today's (${today}) non-admin entries from DB`);
+  await db
+    .delete(currentAffairsTable)
+    .where(and(eq(currentAffairsTable.publishedDate, today), ne(currentAffairsTable.source, "Admin")));
 
   logFn("Calling Gemini to generate fresh content");
   try {
