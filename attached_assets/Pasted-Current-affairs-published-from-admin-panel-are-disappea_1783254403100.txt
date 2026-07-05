@@ -1,0 +1,83 @@
+Current affairs published from admin panel are disappearing 
+on refresh and not showing in user panel. Fix this completely.
+
+ROOT CAUSE TO CHECK AND FIX:
+
+1. First check the current_affairs table in Supabase:
+   - Go to /api/debug/current-affairs (create this temp route)
+   - It should do: SELECT * FROM current_affairs ORDER BY created_at DESC LIMIT 10
+   - Return the raw data so we can see what's actually in DB
+
+2. Fix Admin Panel publish:
+   When admin clicks "Add News", make sure it does:
+   
+   const { error } = await supabase
+     .from('current_affairs')
+     .insert({
+       title: formData.title,
+       summary: formData.summary,
+       category: formData.category,
+       exam_relevance: formData.examRelevance,
+       published_date: formData.date,
+       is_featured: formData.isFeatured,
+       created_at: new Date().toISOString()
+     })
+   
+   After insert, show success toast AND refresh the 
+   list below - do not clear the data.
+
+3. Fix the disappearing on refresh:
+   The problem is likely RLS (Row Level Security) policy.
+   
+   Run this in Supabase SQL editor:
+   
+   DROP POLICY IF EXISTS "Public current affairs" ON current_affairs;
+   
+   CREATE POLICY "Anyone can read current affairs" 
+   ON current_affairs FOR SELECT 
+   USING (true);
+   
+   CREATE POLICY "Service role can insert current affairs"
+   ON current_affairs FOR INSERT
+   WITH CHECK (true);
+   
+   CREATE POLICY "Service role can delete current affairs"
+   ON current_affairs FOR DELETE
+   USING (true);
+
+4. Fix user panel not showing data:
+   In the user-facing current affairs page, 
+   fetch data like this:
+   
+   FREE users:
+   const { data } = await supabase
+     .from('current_affairs')
+     .select('*')
+     .order('published_date', { ascending: false })
+     .limit(5)
+   
+   PRO users:
+   const { data } = await supabase
+     .from('current_affairs')
+     .select('*')
+     .order('published_date', { ascending: false })
+     .limit(50)
+   
+   Make sure NO filter on published_date is blocking data.
+   Remove any filter like .eq('published_date', today) 
+   that might be hiding older entries.
+
+5. In admin panel current affairs list:
+   Always fetch with service role key (not anon key)
+   so RLS doesn't block admin from seeing all data.
+   
+   Use supabase admin client:
+   import { createClient } from '@supabase/supabase-js'
+   const adminSupabase = createClient(
+     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+     process.env.SUPABASE_SERVICE_ROLE_KEY!
+   )
+
+6. Add a simple test:
+   After admin adds news, immediately show an alert with 
+   the inserted record ID to confirm it was saved.
