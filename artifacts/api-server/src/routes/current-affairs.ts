@@ -67,6 +67,12 @@ async function generateAndSave(today: string, logFn: (msg: string) => void) {
   } catch (err: any) {
     const msg = String(err?.message ?? err);
     logFn(`Gemini generation failed: ${msg}`);
+    const isQuota = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota");
+    if (isQuota) {
+      throw new Error(
+        "AI generation is temporarily unavailable (daily quota reached). Please add articles from the admin panel, or try again after the quota resets.",
+      );
+    }
     throw new Error(`Current affairs generation failed: ${msg}`);
   }
 
@@ -180,8 +186,9 @@ router.post("/current-affairs/refresh", async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ items, cached: false, source, refreshedAt: new Date().toISOString() });
   } catch (err: any) {
-    req.log.error({ err: String(err?.message ?? err) }, "current-affairs/refresh failed");
-    res.status(500).json({ error: "Failed to refresh current affairs." });
+    const message = String(err?.message ?? err);
+    req.log.error({ err: message }, "current-affairs/refresh failed");
+    res.status(500).json({ error: "refresh_failed", message });
   }
 });
 
