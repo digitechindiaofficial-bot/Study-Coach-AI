@@ -1,4 +1,5 @@
 - [Freemium plan enforcement](freemium-plan.md) — quiz daily limit (10/day free) enforced server-side in POST /quiz/attempts; frontend tracks locally via usePlan hook
 - [Gemini API usage pattern](gemini-usage.md) — @google/genai v2.x: contents is plain string, response is response.text, use responseMimeType:"application/json"; quota 429 must be caught and handled with template fallback
-- [Quiz question pool approach](quiz-pool.md) — frontend manages 50-question pool in state; seenIds tracked with useRef; bulk generation script at scripts/src/generate-questions.ts (1800 questions, 180 topics)
+- [Quiz question pool approach](quiz-pool.md) — batched (20/fetch) growing pool with background prefetch + exhaustion reset; bulk generation script at scripts/src/generate-questions.ts (1800 questions, 180 topics)
 - [Testing hardcoded admin-email gating](admin-email-testing.md) — can't verify the admin-authorized path via runTest since the ADMIN_EMAIL secret is never readable; test only the deny path, ask the user to confirm the allow path
+- [Clerk programmatic auth flakiness](clerk-testing-flakiness.md) — runTest's Clerk sign-in override intermittently fails ("Couldn't find your account" / falls back to blocked Google OAuth) in this environment; don't retry repeatedly, verify via static/manual review instead

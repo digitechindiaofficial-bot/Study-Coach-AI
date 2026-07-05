@@ -10,6 +10,7 @@ import { useSubmitQuizAttempt, getGetMyProfileQueryKey } from "@workspace/api-cl
 import { usePlan, FREE_DAILY_QUIZ_LIMIT } from "@/hooks/use-plan";
 import UpgradeModal from "@/components/upgrade-modal";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface Question {
   id: string;
@@ -22,7 +23,11 @@ interface Question {
   difficulty: string | null;
 }
 
-const POOL_SIZE = 50;
+// How many questions to fetch per batch, and how many questions before the
+// end of the current batch we silently prefetch the next one so the user
+// never sees a loading state between questions.
+const BATCH_SIZE = 20;
+const PREFETCH_THRESHOLD = 5;
 
 export default function QuizSessionPage({ subject }: { subject: string }) {
   const isWeak = subject === "weak";
@@ -31,7 +36,15 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
 
   const plan = usePlan();
   const qc = useQueryClient();
-  const seenIds = useRef<Set<string>>(new Set());
+  const { toast } = useToast();
+
+  // Session-only tracking (never persisted to the DB). Cleared automatically
+  // whenever this component mounts fresh (e.g. re-entering the quiz), which
+  // is what gives every new session a fresh, full pool of questions again.
+  const seenIds = useRef<Set<string>>(new Set()); // answered this session (for the "seen" counter)
+  const loadedIds = useRef<Set<string>>(new Set()); // every question ever fetched into `pool` this session
+  const isFetchingMoreRef = useRef(false); // guards against overlapping prefetch calls
+  const noMoreQuestionsRef = useRef(false); // true once a subject/filter combo is confirmed to have zero questions
 
   const [pool, setPool] = useState<Question[]>([]);
   const [poolIndex, setPoolIndex] = useState(0);
@@ -62,37 +75,66 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   const questionsLeft = plan.isPro ? Infinity : Math.max(0, (initialLeft.current ?? plan.quizQuestionsLeft) - sessionAnswered);
   const isAtLimit = !plan.isPro && questionsLeft <= 0;
 
-  const buildParams = useCallback(() => {
-    const base: Record<string, string> = { limit: String(POOL_SIZE) };
+  const buildParams = useCallback((excludeIds: Set<string>) => {
+    const base: Record<string, string> = { limit: String(BATCH_SIZE) };
     if (isWeak) base.weakOnly = "true";
     else if (!isAll) base.subject = decodedSubject;
-    if (seenIds.current.size > 0) base.exclude = Array.from(seenIds.current).join(",");
+    if (excludeIds.size > 0) base.exclude = Array.from(excludeIds).join(",");
     return base;
   }, [isWeak, isAll, decodedSubject]);
 
-  const fetchPool = useCallback(async () => {
+  // Fetches the next batch of non-repeating questions and appends it to the
+  // pool. If every question for this subject/filter has already been seen
+  // this session, the session's "seen" tracking is reset and a fresh batch
+  // (from the full question bank) is fetched instead — giving truly
+  // unlimited practice instead of running out after the DB pool is exhausted.
+  const fetchMore = useCallback(async (initial: boolean): Promise<Question[]> => {
+    if (isFetchingMoreRef.current || noMoreQuestionsRef.current) return [];
+    isFetchingMoreRef.current = true;
     setIsFetching(true);
     try {
-      const params = buildParams();
-      const data = (await getQuizQuestions(params as any)) as Question[];
-      if (data.length === 0 && seenIds.current.size > 0) {
+      let data = (await getQuizQuestions(buildParams(loadedIds.current) as any)) as Question[];
+
+      if (data.length === 0 && loadedIds.current.size > 0) {
+        // Exhausted every question for this subject/filter this session — cycle back to the start.
+        loadedIds.current.clear();
         seenIds.current.clear();
-        const freshData = (await getQuizQuestions({
-          limit: String(POOL_SIZE),
-          ...(isWeak ? { weakOnly: "true" } : !isAll ? { subject: decodedSubject } : {}),
-        } as any)) as Question[];
-        setPool(freshData);
-      } else {
-        setPool(data);
+        data = (await getQuizQuestions(buildParams(new Set()) as any)) as Question[];
+        if (data.length > 0) {
+          toast({ title: "🎉 Great job!", description: "You've been through every question — starting fresh with the full set again." });
+        }
       }
-      setPoolIndex(0);
+
+      if (data.length === 0) {
+        // Truly no questions exist for this subject/filter combo — stop trying.
+        noMoreQuestionsRef.current = true;
+      } else {
+        data.forEach(q => loadedIds.current.add(q.id));
+        setPool(prev => (initial ? data : [...prev, ...data]));
+      }
+
+      if (initial) setPoolIndex(0);
+      return data;
     } finally {
       setIsLoading(false);
       setIsFetching(false);
+      isFetchingMoreRef.current = false;
     }
-  }, [buildParams, isWeak, isAll, decodedSubject]);
+  }, [buildParams, toast]);
 
-  useEffect(() => { fetchPool(); }, []);
+  // Initial load
+  useEffect(() => { fetchMore(true); }, []);
+
+  // Silent background prefetch: once the user is within PREFETCH_THRESHOLD
+  // questions of the end of the loaded pool, fetch the next batch so they
+  // never hit a loading state between questions.
+  useEffect(() => {
+    if (isLoading || isAtLimit) return;
+    const remaining = pool.length - poolIndex;
+    if (remaining <= PREFETCH_THRESHOLD && !isFetchingMoreRef.current && !noMoreQuestionsRef.current) {
+      fetchMore(false);
+    }
+  }, [poolIndex, pool.length, isLoading, isAtLimit, fetchMore]);
 
   useEffect(() => { setStartTime(Date.now()); }, [poolIndex, pool]);
 
@@ -131,8 +173,11 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     if (isAtLimit) { setShowLimitModal(true); return; }
     const nextIndex = poolIndex + 1;
     if (nextIndex >= pool.length) {
+      // Background prefetch should normally have already loaded more by now;
+      // this is just a fallback in case it hasn't finished yet.
       setSelected(null);
-      await fetchPool();
+      const fetched = await fetchMore(false);
+      if (fetched.length > 0) setPoolIndex(nextIndex);
     } else {
       setPoolIndex(nextIndex);
       setSelected(null);
@@ -143,6 +188,8 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
 
   const handleRetry = () => {
     seenIds.current.clear();
+    loadedIds.current.clear();
+    noMoreQuestionsRef.current = false;
     initialLeft.current = null;
     setPool([]);
     setPoolIndex(0);
@@ -151,7 +198,7 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     setSessionAnswered(0);
     setFinished(false);
     setIsLoading(true);
-    fetchPool();
+    fetchMore(true);
   };
 
   // ── Loading ──
