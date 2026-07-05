@@ -41,20 +41,6 @@ async function autoFetchToday(): Promise<void> {
   });
 }
 
-async function refreshToday(): Promise<{ refreshedAt: string }> {
-  const resp = await fetch("/api/current-affairs/refresh", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
-    credentials: "include",
-    body: JSON.stringify({}),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error((err as any).message ?? "Refresh failed");
-  }
-  return resp.json();
-}
-
 async function generateMcqForArticle(title: string, summary: string): Promise<MCQ> {
   const resp = await fetch("/api/quiz/generate-mcq", {
     method: "POST",
@@ -278,7 +264,6 @@ export default function CurrentAffairsPage() {
   const [category, setCategory] = useState("All");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const autoFetchedRef = useRef(false);
 
@@ -318,28 +303,6 @@ export default function CurrentAffairsPage() {
     }
   }, [isLoading, hasToday]);
 
-  // Pro refresh handler
-  const handleRefresh = async () => {
-    // Clear the displayed articles immediately so user sees the refresh is happening
-    setIsRefreshing(true);
-    try {
-      // Step 1: tell the server to delete + regenerate today's news
-      const result = await refreshToday();
-
-      // Step 2: force-refetch from DB — refetchQueries waits until the GET completes
-      // and updates the cache with the new data before resolving
-      await qc.refetchQueries({ queryKey, type: "active" });
-
-      // Step 3: show "just now" — use server's refreshedAt timestamp
-      setLastRefreshedAt(new Date(result.refreshedAt));
-      toast({ title: "✅ News refreshed!", description: "15 fresh current affairs loaded." });
-    } catch (err: any) {
-      toast({ title: "Refresh failed", description: err?.message, variant: "destructive" });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
       const n = new Set(prev);
@@ -349,8 +312,7 @@ export default function CurrentAffairsPage() {
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
-  // Also show full-screen skeleton while refreshing so old articles are cleared
-  if (isLoading || (isGenerating && !hasToday) || isRefreshing) {
+  if (isLoading || (isGenerating && !hasToday)) {
     return <GeneratingScreen />;
   }
 
@@ -395,23 +357,13 @@ export default function CurrentAffairsPage() {
             )}
           </div>
         </div>
-
-        {/* Refresh button — Pro only */}
-        {plan.isPro && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            {isRefreshing
-              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              : <RefreshCw className="mr-2 h-4 w-4" />}
-            {isRefreshing ? "Refreshing…" : "Refresh News"}
-          </Button>
-        )}
       </div>
+
+      {/* Note: refresh happens by reloading the page, no manual refresh button */}
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        <RefreshCw className="w-3 h-3" />
+        For the latest current affairs, refresh the page.
+      </p>
 
       {/* FREE plan: upgrade banner showing locked count */}
       {!plan.isPro && plan.isLoaded && (
@@ -466,7 +418,7 @@ export default function CurrentAffairsPage() {
       )}
 
       {/* No articles */}
-      {displayItems.length === 0 && !isGenerating && !isRefreshing && (
+      {displayItems.length === 0 && !isGenerating && (
         <div className="text-center py-16 space-y-3">
           <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center">
             <Newspaper className="w-6 h-6 text-muted-foreground" />
@@ -477,14 +429,6 @@ export default function CurrentAffairsPage() {
           <p className="text-muted-foreground text-sm">
             {plan.isPro && category !== "All" ? "Try a different category." : "Auto-fetch is running…"}
           </p>
-        </div>
-      )}
-
-      {/* Refreshing inline indicator */}
-      {isRefreshing && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2.5">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Fetching 15 fresh articles from Gemini AI…
         </div>
       )}
 
