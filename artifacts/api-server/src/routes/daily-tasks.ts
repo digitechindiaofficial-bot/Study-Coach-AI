@@ -3,6 +3,8 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { profilesTable, dailyTasksTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { getISTDateString } from "../lib/date";
+import { recordActivityForStreak } from "../lib/streak";
 
 const router = Router();
 
@@ -18,7 +20,7 @@ router.get("/daily-tasks", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
 
-  const date = (req.query.date as string) ?? new Date().toISOString().split("T")[0];
+  const date = (req.query.date as string) ?? getISTDateString();
 
   const tasks = await db
     .select()
@@ -42,6 +44,9 @@ router.post("/daily-tasks/:id/complete", async (req, res) => {
     .returning();
 
   if (!updated) return res.status(404).json({ error: "Task not found" });
+
+  await recordActivityForStreak(profile);
+
   res.json(updated);
 });
 

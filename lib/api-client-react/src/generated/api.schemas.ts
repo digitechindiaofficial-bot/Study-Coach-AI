@@ -21,6 +21,7 @@ export interface Profile {
   dailyStudyHours: number;
   planType: string;
   streakCount: number;
+  longestStreak: number;
   /** @nullable */
   lastActiveDate?: string | null;
   createdAt?: string;
@@ -175,11 +176,18 @@ export interface GeneratedMcq {
 
 export interface ProgressSummary {
   streakCount: number;
+  longestStreak: number;
   totalTasksCompleted: number;
   syllabusCompletionPercent: number;
   avgQuizAccuracy: number;
   studyHoursThisWeek: number;
   topicsCompletedThisMonth: number;
+}
+
+export interface HeatmapDay {
+  date: string;
+  studied: boolean;
+  tasksCompleted: number;
 }
 
 export interface WeakArea {

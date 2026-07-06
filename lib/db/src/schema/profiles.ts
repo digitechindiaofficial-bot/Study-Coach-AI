@@ -11,6 +11,7 @@ export const profilesTable = pgTable("profiles", {
   dailyStudyHours: integer("daily_study_hours").default(4).notNull(),
   planType: text("plan_type").default("free").notNull(),
   streakCount: integer("streak_count").default(0).notNull(),
+  longestStreak: integer("longest_streak").default(0).notNull(),
   lastActiveDate: date("last_active_date"),
   quizCountToday: integer("quiz_count_today").default(0).notNull(),
   quizCountDate: date("quiz_count_date"),

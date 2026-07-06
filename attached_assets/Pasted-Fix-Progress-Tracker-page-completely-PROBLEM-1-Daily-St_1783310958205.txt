@@ -1,0 +1,116 @@
+Fix Progress Tracker page completely.
+
+PROBLEM 1 - Daily Study Hours chart showing no/wrong data:
+
+Fix this:
+1. When user completes a task (marks checkbox in study planner),
+   record study time in a new table called study_logs:
+   
+   CREATE TABLE IF NOT EXISTS study_logs (
+     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     user_id UUID REFERENCES profiles(id),
+     date DATE DEFAULT CURRENT_DATE,
+     hours_studied DECIMAL,
+     tasks_completed INTEGER DEFAULT 0,
+     created_at TIMESTAMPTZ DEFAULT NOW()
+   );
+
+2. Every time user completes a daily task:
+   - Add or update study_logs for today
+   - Increment tasks_completed by 1
+   - Add task duration to hours_studied
+
+3. In progress page, fetch last 14 days data:
+   
+   const { data } = await supabase
+     .from('study_logs')
+     .select('*')
+     .eq('user_id', userId)
+     .gte('date', fourteenDaysAgo)
+     .order('date', { ascending: true })
+   
+   For days with no data, show 0 hours in chart.
+   Never show empty chart - always show 14 days 
+   even if all zeros.
+
+4. Chart should show:
+   - X axis: last 14 days (Mon 23, Tue 24, etc.)
+   - Y axis: hours studied (0-10)
+   - Bar chart with amber/gold color
+   - Today highlighted differently
+
+PROBLEM 2 - Day Streak not working:
+
+Fix streak logic completely:
+
+1. Streak increases when:
+   - User completes at least 1 task today
+   - AND studied yesterday too (consecutive days)
+
+2. Streak resets to 0 when:
+   - User misses a complete day (no tasks completed)
+
+3. Streak logic in a function:
+
+   const updateStreak = async (userId: string) => {
+     const today = new Date().toDateString()
+     const yesterday = new Date(
+       Date.now() - 86400000
+     ).toDateString()
+     
+     const { data: profile } = await supabase
+       .from('profiles')
+       .select('streak_count, last_active_date')
+       .eq('id', userId)
+       .single()
+     
+     const lastActive = new Date(
+       profile.last_active_date
+     ).toDateString()
+     
+     let newStreak = profile.streak_count
+     
+     if (lastActive === today) {
+       // Already updated today, do nothing
+       return
+     } else if (lastActive === yesterday) {
+       // Consecutive day - increment streak
+       newStreak = profile.streak_count + 1
+     } else {
+       // Missed a day - reset streak
+       newStreak = 1
+     }
+     
+     await supabase
+       .from('profiles')
+       .update({ 
+         streak_count: newStreak,
+         last_active_date: new Date().toISOString()
+       })
+       .eq('id', userId)
+   }
+
+4. Call updateStreak() every time user completes a task.
+
+5. In dashboard show:
+   - Current streak number (big and bold)
+   - Fire emoji 🔥 next to streak
+   - "Best streak: X days" below current streak
+
+6. In progress page show:
+   - Current streak
+   - A 30-day calendar heatmap showing which days 
+     user studied (green = studied, gray = missed)
+   - GitHub contribution style grid
+
+PROBLEM 3 - Progress page overall fix:
+Make sure these stats are all real data from DB:
+- Total tasks completed (count from daily_tasks where is_completed = true)
+- Total study hours (sum from study_logs)
+- Current streak (from profiles.streak_count)  
+- Quiz accuracy (correct attempts / total attempts * 100)
+- Syllabus completion % (completed topics / total topics * 100)
+
+Show loading skeleton while data is being fetched.
+Show "No data yet - start studying!" empty state 
+if user has no activity.

@@ -8,6 +8,7 @@
 
 export interface ProgressSummary {
   streakCount: number;
+  longestStreak: number;
   totalTasksCompleted: number;
   syllabusCompletionPercent: number;
   avgQuizAccuracy: number;

@@ -18,6 +18,7 @@ export interface Profile {
   dailyStudyHours: number;
   planType: string;
   streakCount: number;
+  longestStreak: number;
   /** @nullable */
   lastActiveDate?: string | null;
   createdAt?: string;

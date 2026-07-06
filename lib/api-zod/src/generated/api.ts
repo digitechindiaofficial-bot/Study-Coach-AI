@@ -28,6 +28,7 @@ export const GetMyProfileResponse = zod.object({
   "dailyStudyHours": zod.number(),
   "planType": zod.string(),
   "streakCount": zod.number(),
+  "longestStreak": zod.number(),
   "lastActiveDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -52,6 +53,7 @@ export const UpsertProfileResponse = zod.object({
   "dailyStudyHours": zod.number(),
   "planType": zod.string(),
   "streakCount": zod.number(),
+  "longestStreak": zod.number(),
   "lastActiveDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -69,6 +71,7 @@ export const UpdateStreakResponse = zod.object({
   "dailyStudyHours": zod.number(),
   "planType": zod.string(),
   "streakCount": zod.number(),
+  "longestStreak": zod.number(),
   "lastActiveDate": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -314,6 +317,7 @@ export const GenerateMcqFromNewsResponse = zod.array(GenerateMcqFromNewsResponse
  */
 export const GetProgressSummaryResponse = zod.object({
   "streakCount": zod.number(),
+  "longestStreak": zod.number(),
   "totalTasksCompleted": zod.number(),
   "syllabusCompletionPercent": zod.number(),
   "avgQuizAccuracy": zod.number(),
@@ -346,5 +350,16 @@ export const GetDailyStudyHoursResponseItem = zod.object({
   "hours": zod.number()
 })
 export const GetDailyStudyHoursResponse = zod.array(GetDailyStudyHoursResponseItem)
+
+
+/**
+ * @summary Get last 30 days of study activity for a calendar heatmap
+ */
+export const GetStudyHeatmapResponseItem = zod.object({
+  "date": zod.string(),
+  "studied": zod.boolean(),
+  "tasksCompleted": zod.number()
+})
+export const GetStudyHeatmapResponse = zod.array(GetStudyHeatmapResponseItem)
 
 

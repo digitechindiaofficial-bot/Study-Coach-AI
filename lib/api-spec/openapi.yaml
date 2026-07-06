@@ -378,6 +378,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/DailyHoursEntry"
 
+  /progress/heatmap:
+    get:
+      operationId: getStudyHeatmap
+      tags: [progress]
+      summary: Get last 30 days of study activity for a calendar heatmap
+      responses:
+        "200":
+          description: Heatmap data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HeatmapDay"
+
 components:
   schemas:
     HealthStatus:
@@ -406,11 +421,13 @@ components:
           type: string
         streakCount:
           type: integer
+        longestStreak:
+          type: integer
         lastActiveDate:
           type: ["string", "null"]
         createdAt:
           type: string
-      required: [id, clerkUserId, dailyStudyHours, planType, streakCount]
+      required: [id, clerkUserId, dailyStudyHours, planType, streakCount, longestStreak]
 
     ProfileInput:
       type: object
@@ -634,6 +651,8 @@ components:
       properties:
         streakCount:
           type: integer
+        longestStreak:
+          type: integer
         totalTasksCompleted:
           type: integer
         syllabusCompletionPercent:
@@ -644,7 +663,18 @@ components:
           type: number
         topicsCompletedThisMonth:
           type: integer
-      required: [streakCount, totalTasksCompleted, syllabusCompletionPercent, avgQuizAccuracy, studyHoursThisWeek, topicsCompletedThisMonth]
+      required: [streakCount, longestStreak, totalTasksCompleted, syllabusCompletionPercent, avgQuizAccuracy, studyHoursThisWeek, topicsCompletedThisMonth]
+
+    HeatmapDay:
+      type: object
+      properties:
+        date:
+          type: string
+        studied:
+          type: boolean
+        tasksCompleted:
+          type: integer
+      required: [date, studied, tasksCompleted]
 
     WeakArea:
       type: object

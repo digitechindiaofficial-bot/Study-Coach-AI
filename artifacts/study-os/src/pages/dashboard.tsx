@@ -1,5 +1,6 @@
 import { useGetMyProfile, useGetProgressSummary, useGetDailyTasks, useGetCurrentAffairs, useGetWeakAreas, getGetMyProfileQueryKey, getGetProgressSummaryQueryKey, getGetDailyTasksQueryKey, getGetCurrentAffairsQueryKey, getGetWeakAreasQueryKey, useCompleteTask, useGenerateStudyPlan } from "@workspace/api-client-react";
 import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Link } from "wouter";
 
 export default function DashboardPage() {
   const today = format(new Date(), "yyyy-MM-dd");
+  const queryClient = useQueryClient();
   
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({
     query: { queryKey: getGetMyProfileQueryKey() }
@@ -35,7 +37,13 @@ export default function DashboardPage() {
   const generatePlan = useGenerateStudyPlan();
 
   const handleTaskComplete = (id: string) => {
-    completeTask.mutate({ id });
+    completeTask.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetProgressSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDailyTasksQueryKey({ date: today }) });
+      },
+    });
   };
 
   const getGreeting = () => {
@@ -80,7 +88,8 @@ export default function DashboardPage() {
               <Flame className="w-4 h-4 mr-2" />
               <span className="text-sm font-medium">Day Streak</span>
             </div>
-            <div className="text-3xl font-bold text-accent">{profile?.streakCount || 0}</div>
+            <div className="text-3xl font-bold text-accent">{profile?.streakCount || 0} 🔥</div>
+            <div className="text-xs text-muted-foreground mt-1">Best streak: {profile?.longestStreak || 0} days</div>
           </CardContent>
         </Card>
         <Card>

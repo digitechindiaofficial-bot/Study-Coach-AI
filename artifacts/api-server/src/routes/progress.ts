@@ -3,6 +3,8 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { profilesTable, dailyTasksTable, syllabusProgressTable, quizAttemptsTable, quizQuestionsTable } from "@workspace/db";
 import { eq, and, gte } from "drizzle-orm";
+import { getISTDateString } from "../lib/date";
+import { resetStreakIfBroken } from "../lib/streak";
 
 const router = Router();
 
@@ -17,25 +19,23 @@ router.get("/progress/summary", async (req, res) => {
 
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json({
-    streakCount: 0, totalTasksCompleted: 0, syllabusCompletionPercent: 0,
+    streakCount: 0, longestStreak: 0, totalTasksCompleted: 0, syllabusCompletionPercent: 0,
     avgQuizAccuracy: 0, studyHoursThisWeek: 0, topicsCompletedThisMonth: 0,
   });
+
+  const healedProfile = await resetStreakIfBroken(profile);
 
   // Tasks completed
   const tasks = await db.select().from(dailyTasksTable).where(eq(dailyTasksTable.userId, profile.id));
   const completedTasks = tasks.filter(t => t.isCompleted);
 
   // This week study hours
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekAgoStr = weekAgo.toISOString().split("T")[0];
+  const weekAgoStr = getISTDateString(-7);
   const thisWeekTasks = completedTasks.filter(t => t.date >= weekAgoStr);
   const studyHoursThisWeek = thisWeekTasks.reduce((sum, t) => sum + (t.durationMinutes ?? 60), 0) / 60;
 
   // This month completions
-  const monthAgo = new Date();
-  monthAgo.setDate(monthAgo.getDate() - 30);
-  const monthAgoStr = monthAgo.toISOString().split("T")[0];
+  const monthAgoStr = getISTDateString(-30);
   const thisMonthTopics = completedTasks.filter(t => t.date >= monthAgoStr).length;
 
   // Syllabus completion
@@ -51,7 +51,8 @@ router.get("/progress/summary", async (req, res) => {
     : 0;
 
   res.json({
-    streakCount: profile.streakCount,
+    streakCount: healedProfile.streakCount,
+    longestStreak: healedProfile.longestStreak,
     totalTasksCompleted: completedTasks.length,
     syllabusCompletionPercent,
     avgQuizAccuracy,
@@ -106,9 +107,7 @@ router.get("/progress/daily-hours", async (req, res) => {
   if (!profile) return res.json([]);
 
   const days = parseInt(req.query.days as string) || 14;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutoffStr = cutoff.toISOString().split("T")[0];
+  const cutoffStr = getISTDateString(-days);
 
   const tasks = await db.select().from(dailyTasksTable)
     .where(and(
@@ -126,10 +125,40 @@ router.get("/progress/daily-hours", async (req, res) => {
   // Fill all days
   const result = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
+    const dateStr = getISTDateString(-i);
     result.push({ date: dateStr, hours: Math.round(((byDate[dateStr] ?? 0) / 60) * 10) / 10 });
+  }
+
+  res.json(result);
+});
+
+router.get("/progress/heatmap", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const profile = await getProfileByClerkId(userId);
+  if (!profile) return res.json([]);
+
+  const days = 30;
+  const cutoffStr = getISTDateString(-(days - 1));
+
+  const tasks = await db.select().from(dailyTasksTable)
+    .where(and(
+      eq(dailyTasksTable.userId, profile.id),
+      eq(dailyTasksTable.isCompleted, true),
+      gte(dailyTasksTable.date, cutoffStr),
+    ));
+
+  const countByDate: Record<string, number> = {};
+  for (const task of tasks) {
+    countByDate[task.date] = (countByDate[task.date] ?? 0) + 1;
+  }
+
+  const result = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const dateStr = getISTDateString(-i);
+    const tasksCompleted = countByDate[dateStr] ?? 0;
+    result.push({ date: dateStr, studied: tasksCompleted > 0, tasksCompleted });
   }
 
   res.json(result);

@@ -3,3 +3,4 @@
 - [Quiz question pool approach](quiz-pool.md) — batched (20/fetch) growing pool with background prefetch + exhaustion reset; bulk generation script at scripts/src/generate-questions.ts (1800 questions, 180 topics)
 - [Testing hardcoded admin-email gating](admin-email-testing.md) — can't verify the admin-authorized path via runTest since the ADMIN_EMAIL secret is never readable; test only the deny path, ask the user to confirm the allow path
 - [Clerk programmatic auth flakiness](clerk-testing-flakiness.md) — runTest's Clerk sign-in override intermittently fails ("Couldn't find your account" / falls back to blocked Google OAuth) in this environment; don't retry repeatedly, verify via static/manual review instead
+- [IST date handling for streaks/activity](ist-date-handling.md) — server date/streak logic must use Asia/Kolkata, not UTC, or activity near midnight misattributes to the wrong day

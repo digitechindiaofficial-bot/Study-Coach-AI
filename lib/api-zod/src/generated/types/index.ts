@@ -17,6 +17,7 @@ export * from './getDailyTasksParams';
 export * from './getQuizQuestionsParams';
 export * from './getSyllabusParams';
 export * from './healthStatus';
+export * from './heatmapDay';
 export * from './mcqGenerateInput';
 export * from './profile';
 export * from './profileInput';
