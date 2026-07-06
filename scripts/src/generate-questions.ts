@@ -397,7 +397,7 @@ async function main() {
   const remaining = allTasks.filter(t => !progress.completed.includes(`${t.subject}::${t.topic}`));
 
   console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  AI Study OS — Bulk Question Generator");
+  console.log("  GovtGuru — Bulk Question Generator");
   console.log("═══════════════════════════════════════════════════════════════");
   console.log(`  Total topics  : ${total}`);
   console.log(`  Already done  : ${done}`);

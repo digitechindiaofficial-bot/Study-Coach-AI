@@ -69,9 +69,9 @@ export default function OnboardingPage() {
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-10">
           <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">OS</span>
+            <span className="text-primary-foreground font-bold text-sm">GG</span>
           </div>
-          <span className="font-bold text-lg">AI Study OS</span>
+          <span className="font-bold text-lg">GovtGuru</span>
         </div>
 
         {/* Progress bar */}

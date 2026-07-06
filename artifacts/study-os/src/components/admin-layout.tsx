@@ -34,7 +34,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
           </div>
           <div>
             <span className="font-bold text-lg text-foreground tracking-tight block leading-tight">Admin Panel</span>
-            <span className="text-[11px] text-muted-foreground">AI Study OS</span>
+            <span className="text-[11px] text-muted-foreground">GovtGuru</span>
           </div>
         </Link>
       </div>

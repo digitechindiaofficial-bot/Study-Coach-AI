@@ -156,10 +156,10 @@ function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xl">OS</span>
+            <span className="text-primary-foreground font-bold text-xl">GG</span>
           </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Welcome to AI Study OS</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Your premium coaching institute in your pocket.</p>
+          <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Welcome to GovtGuru</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Your AI Guru for Govt Exams</p>
         </div>
         <div className="mt-8 flex justify-center">
           <SignIn routing="path" path="/login" signUpUrl="/signup" />
@@ -175,7 +175,7 @@ function SignUpPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xl">OS</span>
+            <span className="text-primary-foreground font-bold text-xl">GG</span>
           </div>
           <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Start Your Journey</h2>
           <p className="mt-2 text-sm text-muted-foreground">Create an account to build your study plan.</p>

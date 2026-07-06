@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-red-700">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of AI Study OS platform activity.</p>
+        <p className="text-muted-foreground mt-1">Overview of GovtGuru platform activity.</p>
       </div>
 
       {isLoading && (

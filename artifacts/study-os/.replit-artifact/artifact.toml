@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "AI Study OS"
+title = "GovtGuru"
 version = "1.0.0"
 id = "artifacts/study-os"
 router = "path"

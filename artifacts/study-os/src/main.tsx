@@ -12,7 +12,24 @@ if (!clerkPubKey) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      afterSignOutUrl="/"
+      localization={{
+        signIn: {
+          start: {
+            title: "Sign in to GovtGuru",
+            subtitle: "Welcome back! Please sign in to continue",
+          },
+        },
+        signUp: {
+          start: {
+            title: "Create your GovtGuru account",
+            subtitle: "Start your exam prep journey today",
+          },
+        },
+      }}
+    >
       <App />
     </ClerkProvider>
   </StrictMode>

@@ -98,7 +98,7 @@ export default function UpgradePage() {
         </Badge>
         <h1 className="text-4xl font-bold tracking-tight">Supercharge Your Exam Prep</h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Join serious aspirants who use AI Study OS to crack SSC, Banking, and Railway exams faster.
+          Join serious aspirants who use GovtGuru to crack SSC, Banking, and Railway exams faster.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
           {TRUST.map(({ icon: Icon, stat, label }) => (
