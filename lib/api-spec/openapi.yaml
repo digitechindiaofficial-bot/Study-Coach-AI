@@ -411,6 +411,8 @@ components:
           type: string
         fullName:
           type: ["string", "null"]
+        phoneNumber:
+          type: ["string", "null"]
         examType:
           type: ["string", "null"]
         examDate:
@@ -433,6 +435,8 @@ components:
       type: object
       properties:
         fullName:
+          type: string
+        phoneNumber:
           type: string
         examType:
           type: string

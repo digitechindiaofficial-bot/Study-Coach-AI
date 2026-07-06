@@ -48,19 +48,33 @@ export default function SettingsPage() {
   const [examDate, setExamDate] = useState<Date|undefined>();
   const [hours, setHours] = useState([4]);
   const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [isTogglingPlan, setIsTogglingPlan] = useState(false);
+
+  const isPhoneValid = /^\d{10}$/.test(phoneNumber);
+
+  const handlePhoneChange = (value: string) => {
+    setPhoneNumber(value.replace(/\D/g, "").slice(0, 10));
+  };
 
   useEffect(() => {
     if (profile) {
       setExamType((profile as any).examType??"");
       setHours([(profile as any).dailyStudyHours??4]);
       setFullName((profile as any).fullName??"");
+      setPhoneNumber(((profile as any).phoneNumber??"").replace(/^\+91/, ""));
       if ((profile as any).examDate) setExamDate(new Date((profile as any).examDate));
     }
   }, [profile]);
 
   const handleSave = () => {
-    upsert.mutate({ data: { fullName, examType, examDate: examDate?.toISOString(), dailyStudyHours: hours[0] } as any }, {
+    if (!isPhoneValid) {
+      setPhoneTouched(true);
+      toast({ title: "Enter a valid 10-digit mobile number", variant: "destructive" });
+      return;
+    }
+    upsert.mutate({ data: { fullName, phoneNumber: `+91${phoneNumber}`, examType, examDate: examDate?.toISOString(), dailyStudyHours: hours[0] } as any }, {
       onSuccess: () => {
         toast({ title: "Settings saved!" });
         qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
@@ -187,6 +201,25 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <Label>Display Name</Label>
             <Input value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Your name"/>
+          </div>
+          <div className="space-y-2">
+            <Label>Mobile Number</Label>
+            <div className="flex items-center gap-2">
+              <span className="h-10 px-3 flex items-center rounded-md border border-input bg-muted text-sm font-medium shrink-0">
+                +91
+              </span>
+              <Input
+                type="tel"
+                inputMode="numeric"
+                value={phoneNumber}
+                onChange={e=>handlePhoneChange(e.target.value)}
+                onBlur={() => setPhoneTouched(true)}
+                placeholder="98765 43210"
+              />
+            </div>
+            {phoneTouched && !isPhoneValid && (
+              <p className="text-xs text-destructive">Enter a valid 10-digit mobile number.</p>
+            )}
           </div>
         </CardContent>
       </Card>

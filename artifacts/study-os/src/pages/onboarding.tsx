@@ -5,8 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, ArrowLeft, CheckCircle2, Target, Calendar, Clock, Zap } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, Target, Calendar, Clock, Zap, Phone } from "lucide-react";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
 
 const EXAMS = [
   { label: "SSC CGL",    value: "SSC_CGL",    icon: "📋", desc: "Combined Graduate Level" },
@@ -31,12 +32,26 @@ export default function OnboardingPage() {
   const [examType, setExamType] = useState("");
   const [examDate, setExamDate] = useState("");
   const [dailyHours, setDailyHours] = useState([4]);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
   const selectedExam = EXAMS.find(e => e.value === examType);
+  const isPhoneValid = /^\d{10}$/.test(phoneNumber);
+
+  const handlePhoneChange = (value: string) => {
+    setPhoneNumber(value.replace(/\D/g, "").slice(0, 10));
+  };
 
   const handleFinish = () => {
     upsert.mutate(
-      { data: { examType, examDate: examDate || undefined, dailyStudyHours: dailyHours[0] } },
+      {
+        data: {
+          examType,
+          examDate: examDate || undefined,
+          dailyStudyHours: dailyHours[0],
+          phoneNumber: `+91${phoneNumber}`,
+        },
+      },
       {
         onSuccess: () => {
           seedSyllabus.mutate({});
@@ -106,7 +121,36 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-            <Button className="w-full h-12 text-base" disabled={!examType} onClick={() => setStep(2)}>
+            <div className="space-y-2">
+              <Label htmlFor="phone-number" className="text-sm font-semibold flex items-center gap-1.5">
+                <Phone className="w-4 h-4 text-primary" />
+                What's your mobile number?
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="h-12 px-4 flex items-center rounded-lg border border-input bg-muted text-base font-medium shrink-0">
+                  +91
+                </span>
+                <Input
+                  id="phone-number"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phoneNumber}
+                  onChange={e => handlePhoneChange(e.target.value)}
+                  onBlur={() => setPhoneTouched(true)}
+                  placeholder="98765 43210"
+                  className="h-12 text-base"
+                />
+              </div>
+              {phoneTouched && !isPhoneValid && (
+                <p className="text-xs text-destructive">Enter a valid 10-digit mobile number.</p>
+              )}
+            </div>
+
+            <Button
+              className="w-full h-12 text-base"
+              disabled={!examType || !isPhoneValid}
+              onClick={() => setStep(2)}
+            >
               Continue →
             </Button>
           </div>
@@ -203,6 +247,15 @@ export default function OnboardingPage() {
                     <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Exam</p>
                     <p className="font-bold text-base">{selectedExam?.label}</p>
                     <p className="text-xs text-muted-foreground">{selectedExam?.desc}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="w-8 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Mobile Number</p>
+                    <p className="font-bold text-base">+91 {phoneNumber}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 px-5 py-4">

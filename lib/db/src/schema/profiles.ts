@@ -6,6 +6,7 @@ export const profilesTable = pgTable("profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
   clerkUserId: text("clerk_user_id").notNull().unique(),
   fullName: text("full_name"),
+  phoneNumber: text("phone_number"),
   examType: text("exam_type"),
   examDate: date("exam_date"),
   dailyStudyHours: integer("daily_study_hours").default(4).notNull(),

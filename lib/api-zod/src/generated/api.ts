@@ -23,6 +23,7 @@ export const GetMyProfileResponse = zod.object({
   "id": zod.string(),
   "clerkUserId": zod.string(),
   "fullName": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
   "examType": zod.string().nullish(),
   "examDate": zod.string().nullish(),
   "dailyStudyHours": zod.number(),
@@ -39,6 +40,7 @@ export const GetMyProfileResponse = zod.object({
  */
 export const UpsertProfileBody = zod.object({
   "fullName": zod.string().optional(),
+  "phoneNumber": zod.string().optional(),
   "examType": zod.string().optional(),
   "examDate": zod.string().optional(),
   "dailyStudyHours": zod.number().optional()
@@ -48,6 +50,7 @@ export const UpsertProfileResponse = zod.object({
   "id": zod.string(),
   "clerkUserId": zod.string(),
   "fullName": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
   "examType": zod.string().nullish(),
   "examDate": zod.string().nullish(),
   "dailyStudyHours": zod.number(),
@@ -66,6 +69,7 @@ export const UpdateStreakResponse = zod.object({
   "id": zod.string(),
   "clerkUserId": zod.string(),
   "fullName": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
   "examType": zod.string().nullish(),
   "examDate": zod.string().nullish(),
   "dailyStudyHours": zod.number(),

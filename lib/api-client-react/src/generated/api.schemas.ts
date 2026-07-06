@@ -15,6 +15,8 @@ export interface Profile {
   /** @nullable */
   fullName?: string | null;
   /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
   examType?: string | null;
   /** @nullable */
   examDate?: string | null;
@@ -29,6 +31,7 @@ export interface Profile {
 
 export interface ProfileInput {
   fullName?: string;
+  phoneNumber?: string;
   examType?: string;
   examDate?: string;
   dailyStudyHours?: number;

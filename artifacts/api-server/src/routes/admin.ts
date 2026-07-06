@@ -174,6 +174,7 @@ router.get("/admin/users", async (req, res) => {
     clerkUserId: p.clerkUserId,
     fullName: p.fullName || nameMap.get(p.clerkUserId) || "—",
     email: emailMap.get(p.clerkUserId) ?? "—",
+    phoneNumber: p.phoneNumber,
     examType: p.examType,
     planType: p.planType,
     streakCount: p.streakCount,

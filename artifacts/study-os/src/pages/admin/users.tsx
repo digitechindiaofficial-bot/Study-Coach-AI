@@ -14,6 +14,7 @@ interface AdminUser {
   clerkUserId: string;
   fullName: string;
   email: string;
+  phoneNumber: string | null;
   examType: string | null;
   planType: string | null;
   streakCount: number | null;
@@ -111,6 +112,7 @@ export default function AdminUsersPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
                   <TableHead>Exam</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Streak</TableHead>
@@ -123,6 +125,7 @@ export default function AdminUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.fullName}</TableCell>
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.phoneNumber || "—"}</TableCell>
                     <TableCell>{user.examType ? <Badge variant="secondary">{user.examType.replace(/_/g, " ")}</Badge> : "—"}</TableCell>
                     <TableCell>
                       <Badge className={cn(

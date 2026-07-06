@@ -8,6 +8,7 @@
 
 export interface ProfileInput {
   fullName?: string;
+  phoneNumber?: string;
   examType?: string;
   examDate?: string;
   dailyStudyHours?: number;

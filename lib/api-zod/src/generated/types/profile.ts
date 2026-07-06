@@ -12,6 +12,8 @@ export interface Profile {
   /** @nullable */
   fullName?: string | null;
   /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
   examType?: string | null;
   /** @nullable */
   examDate?: string | null;
