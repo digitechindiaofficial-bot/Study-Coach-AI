@@ -72,6 +72,8 @@ export interface DailyTask {
 
 export interface SyllabusTopicWithProgress {
   id: string;
+  /** @nullable */
+  topicCode?: string | null;
   name: string;
   status: string;
   /** @nullable */
@@ -81,6 +83,8 @@ export interface SyllabusTopicWithProgress {
 export interface SyllabusSubjectWithTopics {
   id: string;
   name: string;
+  /** @nullable */
+  subjectCode?: string | null;
   topics: SyllabusTopicWithProgress[];
 }
 

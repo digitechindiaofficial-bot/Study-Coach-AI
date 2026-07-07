@@ -472,6 +472,8 @@ components:
       properties:
         id:
           type: string
+        topicCode:
+          type: ["string", "null"]
         name:
           type: string
         status:
@@ -487,6 +489,8 @@ components:
           type: string
         name:
           type: string
+        subjectCode:
+          type: ["string", "null"]
         topics:
           type: array
           items:

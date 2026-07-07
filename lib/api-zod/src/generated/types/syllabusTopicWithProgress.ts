@@ -8,6 +8,8 @@
 
 export interface SyllabusTopicWithProgress {
   id: string;
+  /** @nullable */
+  topicCode?: string | null;
   name: string;
   status: string;
   /** @nullable */

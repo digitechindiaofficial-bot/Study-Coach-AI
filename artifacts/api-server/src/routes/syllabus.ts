@@ -66,12 +66,14 @@ router.get("/syllabus", async (req, res) => {
       .map((subject) => ({
         id: subject.id,
         name: subject.name,
+        subjectCode: subject.subjectCode ?? null,
         topics: topics
           .filter((t) => t.subjectId === subject.id)
           .map((topic) => {
             const prog = progressMap.get(topic.id);
             return {
               id: topic.id,
+              topicCode: topic.topicCode ?? null,
               name: topic.name,
               status: prog?.status ?? "not_started",
               lastRevisedAt: prog?.lastRevisedAt ?? null,

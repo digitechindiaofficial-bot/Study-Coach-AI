@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { eq, desc, inArray, count } from "drizzle-orm";
 import { z } from "zod";
+import { deriveSubjectCode, buildTopicCode } from "../lib/syllabus-codes.js";
 
 const router = Router();
 
@@ -355,7 +356,6 @@ router.post("/admin/syllabus/import", async (req, res) => {
     }
 
     const inputs = Array.isArray(body) ? body : [body];
-
     const results: { exam: string; topics: number }[] = [];
 
     for (const raw of inputs) {
@@ -372,11 +372,38 @@ router.post("/admin/syllabus/import", async (req, res) => {
         .limit(1);
 
       let examId: string;
+
+      // Maps that preserve topic_code / subject_code across re-imports.
+      // key: "SubjectName::TopicName" → existing topicCode
+      const preservedTopicCodes = new Map<string, string>();
+      // key: "SubjectName" → existing subjectCode
+      const preservedSubjectCodes = new Map<string, string>();
+
       if (existing.length > 0) {
         examId = existing[0].id;
-        const existingSubjects = await db.select({ id: syllabusSubjectsTable.id })
+
+        // ── Capture existing codes before deletion ──
+        const existingSubjects = await db
+          .select({ id: syllabusSubjectsTable.id, name: syllabusSubjectsTable.name, subjectCode: syllabusSubjectsTable.subjectCode })
           .from(syllabusSubjectsTable)
           .where(eq(syllabusSubjectsTable.examId, examId));
+
+        for (const subj of existingSubjects) {
+          if (subj.subjectCode) preservedSubjectCodes.set(subj.name, subj.subjectCode);
+
+          const existingTopics = await db
+            .select({ name: syllabusTopicsTable.name, topicCode: syllabusTopicsTable.topicCode })
+            .from(syllabusTopicsTable)
+            .where(eq(syllabusTopicsTable.subjectId, subj.id));
+
+          for (const topic of existingTopics) {
+            if (topic.topicCode) {
+              preservedTopicCodes.set(`${subj.name}::${topic.name}`, topic.topicCode);
+            }
+          }
+        }
+
+        // ── Delete old data ──
         if (existingSubjects.length > 0) {
           await db.delete(syllabusTopicsTable)
             .where(inArray(syllabusTopicsTable.subjectId, existingSubjects.map((s) => s.id)));
@@ -392,18 +419,26 @@ router.post("/admin/syllabus/import", async (req, res) => {
         examId = created.id;
       }
 
+      // ── Re-insert with codes ──
       let totalTopics = 0;
       for (let si = 0; si < subjects.length; si++) {
         const subj = subjects[si];
+        const subjectCode =
+          preservedSubjectCodes.get(subj.name) ?? deriveSubjectCode(subj.name);
+
         const [createdSubject] = await db.insert(syllabusSubjectsTable)
-          .values({ examId, name: subj.name, displayOrder: si })
+          .values({ examId, name: subj.name, subjectCode, displayOrder: si })
           .returning();
 
-        const topicRows = subj.topics.map((t, ti) => ({
+        const topicRows = subj.topics.map((topicName, ti) => ({
           subjectId: createdSubject.id,
-          name: t,
+          name: topicName,
+          topicCode:
+            preservedTopicCodes.get(`${subj.name}::${topicName}`) ??
+            buildTopicCode(code, subjectCode, ti),
           displayOrder: ti,
         }));
+
         if (topicRows.length > 0) {
           await db.insert(syllabusTopicsTable).values(topicRows);
           totalTopics += topicRows.length;

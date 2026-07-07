@@ -167,8 +167,10 @@ export const GetSyllabusResponseItem = zod.object({
   "subjects": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "subjectCode": zod.string().nullish(),
   "topics": zod.array(zod.object({
   "id": zod.string(),
+  "topicCode": zod.string().nullish(),
   "name": zod.string(),
   "status": zod.string(),
   "lastRevisedAt": zod.string().nullish()

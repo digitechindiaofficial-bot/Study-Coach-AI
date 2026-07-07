@@ -10,5 +10,7 @@ import type { SyllabusTopicWithProgress } from './syllabusTopicWithProgress';
 export interface SyllabusSubjectWithTopics {
   id: string;
   name: string;
+  /** @nullable */
+  subjectCode?: string | null;
   topics: SyllabusTopicWithProgress[];
 }

@@ -15,6 +15,7 @@ export const syllabusSubjectsTable = pgTable("syllabus_subjects", {
   id: uuid("id").defaultRandom().primaryKey(),
   examId: uuid("exam_id").notNull().references(() => syllabusExamsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  subjectCode: text("subject_code"),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -23,6 +24,7 @@ export const syllabusTopicsTable = pgTable("syllabus_topics", {
   id: uuid("id").defaultRandom().primaryKey(),
   subjectId: uuid("subject_id").notNull().references(() => syllabusSubjectsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  topicCode: text("topic_code").unique(),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

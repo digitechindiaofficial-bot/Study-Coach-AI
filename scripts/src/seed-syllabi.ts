@@ -13,6 +13,7 @@ import {
   syllabusTopicsTable,
 } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
+import { deriveSubjectCode, buildTopicCode } from "./syllabus-codes.js";
 
 interface SubjectDef { name: string; topics: string[] }
 interface ExamDef    { exam: string; code: string; description: string; subjects: SubjectDef[] }
@@ -454,9 +455,10 @@ async function upsertExam(examDef: ExamDef) {
   let topicTotal = 0;
   for (let si = 0; si < subjects.length; si++) {
     const subj = subjects[si];
+    const subjectCode = deriveSubjectCode(subj.name);
     const [createdSubject] = await db
       .insert(syllabusSubjectsTable)
-      .values({ examId, name: subj.name, displayOrder: si })
+      .values({ examId, name: subj.name, subjectCode, displayOrder: si })
       .returning();
 
     if (subj.topics.length > 0) {
@@ -464,6 +466,7 @@ async function upsertExam(examDef: ExamDef) {
         subj.topics.map((t, ti) => ({
           subjectId: createdSubject.id,
           name: t,
+          topicCode: buildTopicCode(code, subjectCode, ti),
           displayOrder: ti,
         })),
       );
