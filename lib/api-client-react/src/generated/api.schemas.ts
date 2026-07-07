@@ -228,6 +228,127 @@ export interface DailyHoursEntry {
   hours: number;
 }
 
+export interface QuestionBankItem {
+  id: string;
+  examCode: string;
+  subjectCode: string;
+  topicCode: string;
+  difficulty: string;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  /** @nullable */
+  explanation?: string | null;
+  source: string;
+  /** @nullable */
+  examYear?: number | null;
+  language: string;
+  tags?: string[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type QuestionBankCreateInputDifficulty = typeof QuestionBankCreateInputDifficulty[keyof typeof QuestionBankCreateInputDifficulty];
+
+
+export const QuestionBankCreateInputDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+} as const;
+
+export type QuestionBankCreateInputCorrectAnswer = typeof QuestionBankCreateInputCorrectAnswer[keyof typeof QuestionBankCreateInputCorrectAnswer];
+
+
+export const QuestionBankCreateInputCorrectAnswer = {
+  a: 'a',
+  b: 'b',
+  c: 'c',
+  d: 'd',
+} as const;
+
+export type QuestionBankCreateInputSource = typeof QuestionBankCreateInputSource[keyof typeof QuestionBankCreateInputSource];
+
+
+export const QuestionBankCreateInputSource = {
+  pyq: 'pyq',
+  original: 'original',
+  ai_generated: 'ai_generated',
+} as const;
+
+export type QuestionBankCreateInputLanguage = typeof QuestionBankCreateInputLanguage[keyof typeof QuestionBankCreateInputLanguage];
+
+
+export const QuestionBankCreateInputLanguage = {
+  english: 'english',
+  hindi: 'hindi',
+} as const;
+
+export interface QuestionBankCreateInput {
+  examCode: string;
+  subjectCode: string;
+  topicCode: string;
+  difficulty?: QuestionBankCreateInputDifficulty;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: QuestionBankCreateInputCorrectAnswer;
+  explanation?: string;
+  source?: QuestionBankCreateInputSource;
+  examYear?: number;
+  language?: QuestionBankCreateInputLanguage;
+  tags?: string[];
+}
+
+export type QuestionBankListResponsePagination = {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+};
+
+export interface QuestionBankListResponse {
+  data: QuestionBankItem[];
+  pagination: QuestionBankListResponsePagination;
+}
+
+export type QuestionBankImportResultErrorsItem = {
+  index?: number;
+  error?: string;
+};
+
+export interface QuestionBankImportResult {
+  inserted: number;
+  skipped: number;
+  errors: QuestionBankImportResultErrorsItem[];
+  dryRun: boolean;
+}
+
+export interface QuestionBankJsonImportInput {
+  questions: QuestionBankCreateInput[];
+}
+
+export interface QuestionBankCsvImportInput {
+  /** Raw CSV text with header row */
+  csv: string;
+}
+
+export type QuestionBankBulkImportInputOptions = {
+  skipErrors?: boolean;
+  dryRun?: boolean;
+};
+
+export interface QuestionBankBulkImportInput {
+  questions: QuestionBankCreateInput[];
+  options?: QuestionBankBulkImportInputOptions;
+}
+
 export type GetDailyTasksParams = {
 /**
  * ISO date string (defaults to today)
@@ -259,4 +380,18 @@ examCode?: string;
 export type GetDailyStudyHoursParams = {
 days?: number;
 };
+
+export type AdminListQuestionBankParams = {
+examCode?: string;
+subjectCode?: string;
+topicCode?: string;
+source?: string;
+language?: string;
+difficulty?: string;
+active?: boolean;
+page?: number;
+limit?: number;
+};
+
+export type AdminQuestionBankStats200Item = { [key: string]: unknown };
 

@@ -10,6 +10,7 @@
     "migrate-syllabus-codes": "tsx ./src/migrate-syllabus-codes.ts",
     "finalize-syllabi": "tsx ./src/finalize-syllabi.ts",
     "migrate-quiz-codes": "tsx ./src/migrate-quiz-codes.ts",
+    "migrate-to-question-bank": "tsx ./src/migrate-to-question-bank.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

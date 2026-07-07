@@ -392,6 +392,172 @@ paths:
                 items:
                   $ref: "#/components/schemas/HeatmapDay"
 
+  /admin/question-bank:
+    get:
+      operationId: adminListQuestionBank
+      tags: [admin]
+      summary: List question bank (paginated, filterable)
+      parameters:
+        - name: examCode
+          in: query
+          schema: { type: string }
+        - name: subjectCode
+          in: query
+          schema: { type: string }
+        - name: topicCode
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: language
+          in: query
+          schema: { type: string }
+        - name: difficulty
+          in: query
+          schema: { type: string }
+        - name: active
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Paginated question list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankListResponse"
+    post:
+      operationId: adminCreateQuestion
+      tags: [admin]
+      summary: Create a single question in the bank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionBankCreateInput"
+      responses:
+        "201":
+          description: Created question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankItem"
+
+  /admin/question-bank/stats:
+    get:
+      operationId: adminQuestionBankStats
+      tags: [admin]
+      summary: Question counts grouped by exam, subject, topic, source, language
+      responses:
+        "200":
+          description: Stats breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /admin/question-bank/import/json:
+    post:
+      operationId: adminImportQuestionsJson
+      tags: [admin]
+      summary: Bulk import questions from a JSON array
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionBankJsonImportInput"
+      responses:
+        "201":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankImportResult"
+
+  /admin/question-bank/import/csv:
+    post:
+      operationId: adminImportQuestionsCsv
+      tags: [admin]
+      summary: Bulk import questions from CSV (text/plain body or JSON { csv })
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionBankCsvImportInput"
+      responses:
+        "201":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankImportResult"
+
+  /admin/question-bank/import/bulk:
+    post:
+      operationId: adminImportQuestionsBulk
+      tags: [admin]
+      summary: Bulk import with options (skipErrors, dryRun)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionBankBulkImportInput"
+      responses:
+        "201":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankImportResult"
+
+  /admin/question-bank/{id}:
+    put:
+      operationId: adminUpdateQuestion
+      tags: [admin]
+      summary: Update a question (partial update supported)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionBankCreateInput"
+      responses:
+        "200":
+          description: Updated question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionBankItem"
+    delete:
+      operationId: adminDeleteQuestion
+      tags: [admin]
+      summary: Soft-delete a question (sets is_active = false)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -743,3 +909,163 @@ components:
         hours:
           type: number
       required: [date, hours]
+
+    QuestionBankItem:
+      type: object
+      properties:
+        id:
+          type: string
+        examCode:
+          type: string
+        subjectCode:
+          type: string
+        topicCode:
+          type: string
+        difficulty:
+          type: string
+        question:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        correctAnswer:
+          type: string
+        explanation:
+          type: ["string", "null"]
+        source:
+          type: string
+        examYear:
+          type: ["integer", "null"]
+        language:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, examCode, subjectCode, topicCode, difficulty, question, optionA, optionB, optionC, optionD, correctAnswer, source, language, isActive]
+
+    QuestionBankCreateInput:
+      type: object
+      properties:
+        examCode:
+          type: string
+        subjectCode:
+          type: string
+        topicCode:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        question:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        correctAnswer:
+          type: string
+          enum: [a, b, c, d]
+        explanation:
+          type: string
+        source:
+          type: string
+          enum: [pyq, original, ai_generated]
+        examYear:
+          type: integer
+        language:
+          type: string
+          enum: [english, hindi]
+        tags:
+          type: array
+          items:
+            type: string
+      required: [examCode, subjectCode, topicCode, question, optionA, optionB, optionC, optionD, correctAnswer]
+
+    QuestionBankListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionBankItem"
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            pages:
+              type: integer
+          required: [page, limit, total, pages]
+      required: [data, pagination]
+
+    QuestionBankImportResult:
+      type: object
+      properties:
+        inserted:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              error:
+                type: string
+        dryRun:
+          type: boolean
+      required: [inserted, skipped, errors, dryRun]
+
+    QuestionBankJsonImportInput:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionBankCreateInput"
+      required: [questions]
+
+    QuestionBankCsvImportInput:
+      type: object
+      properties:
+        csv:
+          type: string
+          description: Raw CSV text with header row
+      required: [csv]
+
+    QuestionBankBulkImportInput:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionBankCreateInput"
+        options:
+          type: object
+          properties:
+            skipErrors:
+              type: boolean
+            dryRun:
+              type: boolean
+      required: [questions]

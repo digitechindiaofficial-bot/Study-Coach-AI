@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminListQuestionBankParams';
+export * from './adminQuestionBankStats200Item';
 export * from './currentAffairsArticle';
 export * from './dailyHoursEntry';
 export * from './dailyTask';
@@ -22,6 +24,20 @@ export * from './mcqGenerateInput';
 export * from './profile';
 export * from './profileInput';
 export * from './progressSummary';
+export * from './questionBankBulkImportInput';
+export * from './questionBankBulkImportInputOptions';
+export * from './questionBankCreateInput';
+export * from './questionBankCreateInputCorrectAnswer';
+export * from './questionBankCreateInputDifficulty';
+export * from './questionBankCreateInputLanguage';
+export * from './questionBankCreateInputSource';
+export * from './questionBankCsvImportInput';
+export * from './questionBankImportResult';
+export * from './questionBankImportResultErrorsItem';
+export * from './questionBankItem';
+export * from './questionBankJsonImportInput';
+export * from './questionBankListResponse';
+export * from './questionBankListResponsePagination';
 export * from './quizAttempt';
 export * from './quizAttemptInput';
 export * from './quizQuestion';

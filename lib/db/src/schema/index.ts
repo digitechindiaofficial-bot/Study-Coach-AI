@@ -5,3 +5,4 @@ export * from "./syllabus-progress";
 export * from "./syllabus";
 export * from "./current-affairs";
 export * from "./quiz";
+export * from "./question-bank";

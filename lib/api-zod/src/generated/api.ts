@@ -369,3 +369,250 @@ export const GetStudyHeatmapResponseItem = zod.object({
 export const GetStudyHeatmapResponse = zod.array(GetStudyHeatmapResponseItem)
 
 
+/**
+ * @summary List question bank (paginated, filterable)
+ */
+export const AdminListQuestionBankQueryParams = zod.object({
+  "examCode": zod.coerce.string().optional(),
+  "subjectCode": zod.coerce.string().optional(),
+  "topicCode": zod.coerce.string().optional(),
+  "source": zod.coerce.string().optional(),
+  "language": zod.coerce.string().optional(),
+  "difficulty": zod.coerce.string().optional(),
+  "active": zod.coerce.boolean().optional(),
+  "page": zod.coerce.number().optional(),
+  "limit": zod.coerce.number().optional()
+})
+
+export const AdminListQuestionBankResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string(),
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.string(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.string(),
+  "explanation": zod.string().nullish(),
+  "source": zod.string(),
+  "examYear": zod.number().nullish(),
+  "language": zod.string(),
+  "tags": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})),
+  "pagination": zod.object({
+  "page": zod.number(),
+  "limit": zod.number(),
+  "total": zod.number(),
+  "pages": zod.number()
+})
+})
+
+
+/**
+ * @summary Create a single question in the bank
+ */
+export const AdminCreateQuestionBody = zod.object({
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']).optional(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.enum(['a', 'b', 'c', 'd']),
+  "explanation": zod.string().optional(),
+  "source": zod.enum(['pyq', 'original', 'ai_generated']).optional(),
+  "examYear": zod.number().optional(),
+  "language": zod.enum(['english', 'hindi']).optional(),
+  "tags": zod.array(zod.string()).optional()
+})
+
+export const AdminCreateQuestionResponse = zod.object({
+  "id": zod.string(),
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.string(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.string(),
+  "explanation": zod.string().nullish(),
+  "source": zod.string(),
+  "examYear": zod.number().nullish(),
+  "language": zod.string(),
+  "tags": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Question counts grouped by exam, subject, topic, source, language
+ */
+export const AdminQuestionBankStatsResponseItem = zod.object({
+
+}).passthrough()
+export const AdminQuestionBankStatsResponse = zod.array(AdminQuestionBankStatsResponseItem)
+
+
+/**
+ * @summary Bulk import questions from a JSON array
+ */
+export const AdminImportQuestionsJsonBody = zod.object({
+  "questions": zod.array(zod.object({
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']).optional(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.enum(['a', 'b', 'c', 'd']),
+  "explanation": zod.string().optional(),
+  "source": zod.enum(['pyq', 'original', 'ai_generated']).optional(),
+  "examYear": zod.number().optional(),
+  "language": zod.enum(['english', 'hindi']).optional(),
+  "tags": zod.array(zod.string()).optional()
+}))
+})
+
+export const AdminImportQuestionsJsonResponse = zod.object({
+  "inserted": zod.number(),
+  "skipped": zod.number(),
+  "errors": zod.array(zod.object({
+  "index": zod.number().optional(),
+  "error": zod.string().optional()
+})),
+  "dryRun": zod.boolean()
+})
+
+
+/**
+ * @summary Bulk import questions from CSV (text/plain body or JSON { csv })
+ */
+export const AdminImportQuestionsCsvBody = zod.object({
+  "csv": zod.string().describe('Raw CSV text with header row')
+})
+
+export const AdminImportQuestionsCsvResponse = zod.object({
+  "inserted": zod.number(),
+  "skipped": zod.number(),
+  "errors": zod.array(zod.object({
+  "index": zod.number().optional(),
+  "error": zod.string().optional()
+})),
+  "dryRun": zod.boolean()
+})
+
+
+/**
+ * @summary Bulk import with options (skipErrors, dryRun)
+ */
+export const AdminImportQuestionsBulkBody = zod.object({
+  "questions": zod.array(zod.object({
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']).optional(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.enum(['a', 'b', 'c', 'd']),
+  "explanation": zod.string().optional(),
+  "source": zod.enum(['pyq', 'original', 'ai_generated']).optional(),
+  "examYear": zod.number().optional(),
+  "language": zod.enum(['english', 'hindi']).optional(),
+  "tags": zod.array(zod.string()).optional()
+})),
+  "options": zod.object({
+  "skipErrors": zod.boolean().optional(),
+  "dryRun": zod.boolean().optional()
+}).optional()
+})
+
+export const AdminImportQuestionsBulkResponse = zod.object({
+  "inserted": zod.number(),
+  "skipped": zod.number(),
+  "errors": zod.array(zod.object({
+  "index": zod.number().optional(),
+  "error": zod.string().optional()
+})),
+  "dryRun": zod.boolean()
+})
+
+
+/**
+ * @summary Update a question (partial update supported)
+ */
+export const AdminUpdateQuestionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminUpdateQuestionBody = zod.object({
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']).optional(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.enum(['a', 'b', 'c', 'd']),
+  "explanation": zod.string().optional(),
+  "source": zod.enum(['pyq', 'original', 'ai_generated']).optional(),
+  "examYear": zod.number().optional(),
+  "language": zod.enum(['english', 'hindi']).optional(),
+  "tags": zod.array(zod.string()).optional()
+})
+
+export const AdminUpdateQuestionResponse = zod.object({
+  "id": zod.string(),
+  "examCode": zod.string(),
+  "subjectCode": zod.string(),
+  "topicCode": zod.string(),
+  "difficulty": zod.string(),
+  "question": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string(),
+  "optionC": zod.string(),
+  "optionD": zod.string(),
+  "correctAnswer": zod.string(),
+  "explanation": zod.string().nullish(),
+  "source": zod.string(),
+  "examYear": zod.number().nullish(),
+  "language": zod.string(),
+  "tags": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Soft-delete a question (sets is_active = false)
+ */
+export const AdminDeleteQuestionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteQuestionResponse = zod.void()
+
+

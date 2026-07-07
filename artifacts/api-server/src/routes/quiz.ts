@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { profilesTable, quizQuestionsTable, quizAttemptsTable } from "@workspace/db";
+import {
+  profilesTable,
+  quizQuestionsTable,
+  quizAttemptsTable,
+  questionBankTable,
+  questionAttemptsTable,
+} from "@workspace/db";
 import { eq, sql, SQL } from "drizzle-orm";
 import { SubmitQuizAttemptBody, GenerateMcqFromNewsBody } from "@workspace/api-zod";
 import { GoogleGenAI } from "@google/genai";
@@ -15,11 +21,48 @@ async function getProfileByClerkId(clerkUserId: string) {
   return rows[0] ?? null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Transform a question_bank row → backward-compat shape the frontend expects.
+// The frontend was built against quiz_questions: questionText, options jsonb,
+// correctOption, subject, topic. We shim those fields here so no UI changes
+// are needed.
+// ─────────────────────────────────────────────────────────────────────────────
+function transformQuestion(row: Record<string, unknown>) {
+  return {
+    id: row.id,
+    examCode: row.exam_code,
+    subjectCode: row.subject_code,
+    topicCode: row.topic_code,
+    difficulty: row.difficulty,
+    questionText: row.question,
+    options: {
+      a: row.option_a,
+      b: row.option_b,
+      c: row.option_c,
+      d: row.option_d,
+    },
+    correctOption: row.correct_answer,
+    explanation: row.explanation,
+    source: row.source,
+    examYear: row.exam_year,
+    language: row.language,
+    tags: row.tags,
+    subject: null,
+    topic: null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/quiz/questions
-// Filters: examCode, subjectCode, topicCode (code-based, preferred)
-//          subject, topic (legacy text-based, fallback)
-//          difficulty, limit, weakOnly, exclude
-// Ordering: unseen questions (never attempted by this user) first, then RANDOM()
+// Primary table: question_bank
+// Fallback: quiz_questions (legacy, for any questions not yet migrated)
+//
+// Filters: examCode, subjectCode, topicCode, difficulty, limit, weakOnly, exclude
+// Ordering: unseen-first (union of question_attempts + quiz_attempts), then RANDOM()
+// Never repeats in session via `exclude` param.
+// ─────────────────────────────────────────────────────────────────────────────
 router.get("/quiz/questions", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -35,78 +78,55 @@ router.get("/quiz/questions", async (req, res) => {
 
   const profile = await getProfileByClerkId(userId);
   const profileId = profile?.id ?? null;
-
-  // Resolve active exam: explicit param → profile's selected exam
   const activeExamCode = examCode || profile?.examType || null;
 
-  // Build SQL WHERE fragments
-  const whereParts: SQL[] = [];
+  // ── Build WHERE fragments ────────────────────────────────────────────────
+  const whereParts: SQL[] = [sql`q.is_active = true`];
 
   if (activeExamCode) {
     whereParts.push(sql`q.exam_code = ${activeExamCode}`);
   }
-
-  // Prefer code-based filtering; fall back to legacy text for old questions
   if (subjectCode) {
     whereParts.push(sql`q.subject_code = ${subjectCode}`);
-  } else if (subject) {
-    whereParts.push(sql`q.subject = ${subject}`);
   }
-
   if (topicCode) {
     whereParts.push(sql`q.topic_code = ${topicCode}`);
-  } else if (topic) {
-    whereParts.push(sql`q.topic = ${topic}`);
   }
-
   if (difficulty) {
     whereParts.push(sql`q.difficulty = ${difficulty}`);
   }
-
   if (excludeIds.length > 0) {
     whereParts.push(sql`q.id != ALL(${excludeIds}::uuid[])`);
   }
 
-  // Weak area: find topics where user accuracy < 60% within this exam
+  // ── Weak area prioritisation ─────────────────────────────────────────────
   if (weakOnly === "true" && profileId) {
     const weakResult = await db.execute(sql`
-      SELECT q.topic_code, q.topic
-      FROM quiz_attempts qa
-      JOIN quiz_questions q ON q.id = qa.question_id
+      SELECT qa.topic_code
+      FROM question_attempts qa
       WHERE qa.user_id = ${profileId}
-        ${activeExamCode ? sql`AND q.exam_code = ${activeExamCode}` : sql``}
-      GROUP BY q.topic_code, q.topic
+        ${activeExamCode ? sql`AND qa.exam_code = ${activeExamCode}` : sql``}
+      GROUP BY qa.topic_code
       HAVING COUNT(*) > 0
          AND COUNT(CASE WHEN qa.is_correct THEN 1 END)::float / COUNT(*) < 0.6
     `);
+    const weakCodes = (weakResult.rows as Array<{ topic_code: string | null }>)
+      .map((r) => r.topic_code)
+      .filter(Boolean) as string[];
 
-    const rows = weakResult.rows as Array<{ topic_code: string | null; topic: string | null }>;
-    const weakCodes = rows.map(r => r.topic_code).filter(Boolean) as string[];
-    const weakNames = rows.map(r => r.topic).filter(Boolean) as string[];
-
-    if (weakCodes.length === 0 && weakNames.length === 0) {
-      return res.json([]);
-    }
-
-    const codePart = weakCodes.length > 0 ? sql`q.topic_code = ANY(${weakCodes}::text[])` : null;
-    const namePart = weakNames.length > 0 ? sql`q.topic = ANY(${weakNames}::text[])` : null;
-
-    if (codePart && namePart) {
-      whereParts.push(sql`(${codePart} OR ${namePart})`);
-    } else if (codePart) {
-      whereParts.push(codePart);
-    } else if (namePart) {
-      whereParts.push(namePart);
-    }
+    if (weakCodes.length === 0) return res.json([]);
+    whereParts.push(sql`q.topic_code = ANY(${weakCodes}::text[])`);
   }
 
-  const whereClause = whereParts.length > 0
-    ? sql`WHERE ${sql.join(whereParts, sql` AND `)}`
-    : sql``;
+  const whereClause = sql`WHERE ${sql.join(whereParts, sql` AND `)}`;
 
-  // Prioritise questions this user has never attempted (unseen-first ordering)
+  // ── Unseen-first JOIN ────────────────────────────────────────────────────
+  // Union question_attempts (new) + quiz_attempts (legacy) so historical
+  // attempt data is respected.
   const unseenJoin = profileId
     ? sql`LEFT JOIN (
+        SELECT DISTINCT question_id FROM question_attempts WHERE user_id = ${profileId}
+        UNION
         SELECT DISTINCT question_id FROM quiz_attempts WHERE user_id = ${profileId}
       ) _seen ON _seen.question_id = q.id`
     : sql``;
@@ -117,20 +137,20 @@ router.get("/quiz/questions", async (req, res) => {
 
   const result = await db.execute(sql`
     SELECT q.*
-    FROM quiz_questions q
+    FROM question_bank q
     ${unseenJoin}
     ${whereClause}
     ORDER BY ${orderClause}
     LIMIT ${limit}
   `);
 
-  const questions = result.rows as Record<string, unknown>[];
+  const questions = (result.rows as Record<string, unknown>[]).map(transformQuestion);
 
-  // Warn admin when pool is running low for this filter combination
   if (questions.length < limit) {
     req.log.warn(
       {
         event: "quiz_question_shortage",
+        table: "question_bank",
         examCode: activeExamCode,
         subjectCode: subjectCode ?? null,
         topicCode: topicCode ?? null,
@@ -138,14 +158,18 @@ router.get("/quiz/questions", async (req, res) => {
         found: questions.length,
         requested: limit,
       },
-      `Quiz pool low: ${questions.length}/${limit} for exam=${activeExamCode} sub=${subjectCode ?? subject ?? "*"} topic=${topicCode ?? topic ?? "*"}`,
+      `Quiz pool low: ${questions.length}/${limit} for exam=${activeExamCode} sub=${subjectCode ?? "*"} topic=${topicCode ?? "*"}`,
     );
   }
 
   res.json(questions);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/quiz/attempts
+// Verifies the question against question_bank; records in question_attempts.
+// Also writes to quiz_attempts for backward compat (stats, streak, etc.).
+// ─────────────────────────────────────────────────────────────────────────────
 router.post("/quiz/attempts", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -169,20 +193,60 @@ router.post("/quiz/attempts", async (req, res) => {
     });
   }
 
-  const question = await db.select().from(quizQuestionsTable)
-    .where(eq(quizQuestionsTable.id, parsed.data.questionId)).limit(1);
-  if (!question[0]) return res.status(404).json({ error: "Question not found" });
+  // Look up in question_bank first, then fall back to quiz_questions
+  let isCorrect = false;
+  let examCode: string | null = null;
+  let subjectCode: string | null = null;
+  let topicCode: string | null = null;
 
-  const isCorrect = question[0].correctOption === parsed.data.selectedOption;
+  const bankRows = await db
+    .select()
+    .from(questionBankTable)
+    .where(eq(questionBankTable.id, parsed.data.questionId))
+    .limit(1);
 
-  const [attempt] = await db.insert(quizAttemptsTable).values({
+  if (bankRows[0]) {
+    const q = bankRows[0];
+    isCorrect = q.correctAnswer === parsed.data.selectedOption;
+    examCode = q.examCode;
+    subjectCode = q.subjectCode;
+    topicCode = q.topicCode;
+  } else {
+    // Fallback: legacy quiz_questions table
+    const legacyRows = await db
+      .select()
+      .from(quizQuestionsTable)
+      .where(eq(quizQuestionsTable.id, parsed.data.questionId))
+      .limit(1);
+    if (!legacyRows[0]) return res.status(404).json({ error: "Question not found" });
+    isCorrect = legacyRows[0].correctOption === parsed.data.selectedOption;
+    examCode = legacyRows[0].examCode;
+    subjectCode = legacyRows[0].subjectCode;
+    topicCode = legacyRows[0].topicCode;
+  }
+
+  // Write to question_attempts (new, canonical)
+  const [attempt] = await db.insert(questionAttemptsTable).values({
+    userId: profile.id,
+    questionId: parsed.data.questionId,
+    examCode,
+    subjectCode,
+    topicCode,
+    selectedAnswer: parsed.data.selectedOption,
+    isCorrect,
+    timeTakenSeconds: parsed.data.timeTakenSeconds,
+  }).returning();
+
+  // Also write to quiz_attempts (legacy) — keeps streak/plan-limit logic intact
+  await db.insert(quizAttemptsTable).values({
     userId: profile.id,
     questionId: parsed.data.questionId,
     selectedOption: parsed.data.selectedOption,
     isCorrect,
     timeTakenSeconds: parsed.data.timeTakenSeconds,
-  }).returning();
+  });
 
+  // Increment daily count
   await db.update(profilesTable)
     .set({ quizCountToday: currentCount + 1, quizCountDate: today })
     .where(eq(profilesTable.clerkUserId, userId));
@@ -193,46 +257,60 @@ router.post("/quiz/attempts", async (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/quiz/stats
-// Returns per-subject stats for the user, scoped to their exam.
-// Includes questionsAvailable for ALL subjects with questions (not just attempted ones).
+// Per-subject stats for the user scoped to their exam.
+// Uses question_bank for available counts + question_attempts for accuracy.
+// Falls back to quiz_attempts (legacy) for historical attempt data.
+// ─────────────────────────────────────────────────────────────────────────────
 router.get("/quiz/stats", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const { examCode } = req.query as Record<string, string>;
-
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json([]);
 
   const activeExamCode = examCode || profile.examType || null;
 
-  // All subjects with available question counts for this exam
+  // Count available questions per subject from question_bank
   const countsResult = await db.execute(sql`
-    SELECT subject, subject_code, COUNT(*)::int AS questions_available
-    FROM quiz_questions
-    ${activeExamCode ? sql`WHERE exam_code = ${activeExamCode}` : sql``}
-    GROUP BY subject, subject_code
+    SELECT subject_code, COUNT(*)::int AS questions_available
+    FROM question_bank
+    WHERE is_active = true
+      ${activeExamCode ? sql`AND exam_code = ${activeExamCode}` : sql``}
+    GROUP BY subject_code
   `);
 
-  // Attempt stats per subject for this user + exam
-  const attemptsResult = await db.execute(sql`
+  // Attempt stats from question_attempts (new table)
+  const newAttemptsResult = await db.execute(sql`
     SELECT
-      q.subject,
+      subject_code,
+      COUNT(id)::int                                              AS total,
+      COUNT(CASE WHEN is_correct THEN 1 END)::int                AS correct,
+      MAX(attempted_at)::text                                     AS last_practiced
+    FROM question_attempts
+    WHERE user_id = ${profile.id}
+      ${activeExamCode ? sql`AND exam_code = ${activeExamCode}` : sql``}
+    GROUP BY subject_code
+  `);
+
+  // Legacy attempt stats from quiz_attempts (for historical data pre-migration)
+  const legacyAttemptsResult = await db.execute(sql`
+    SELECT
       q.subject_code,
-      COUNT(qa.id)::int                                                   AS total,
-      COUNT(CASE WHEN qa.is_correct THEN 1 END)::int                      AS correct,
-      MAX(qa.attempted_at)::text                                          AS last_practiced
+      COUNT(qa.id)::int                                           AS total,
+      COUNT(CASE WHEN qa.is_correct THEN 1 END)::int             AS correct,
+      MAX(qa.attempted_at)::text                                  AS last_practiced
     FROM quiz_attempts qa
     JOIN quiz_questions q ON q.id = qa.question_id
     WHERE qa.user_id = ${profile.id}
       ${activeExamCode ? sql`AND q.exam_code = ${activeExamCode}` : sql``}
-    GROUP BY q.subject, q.subject_code
+    GROUP BY q.subject_code
   `);
 
   type StatEntry = {
-    subject: string;
-    subjectCode: string | null;
+    subjectCode: string;
     totalQuestions: number;
     correct: number;
     accuracy: number;
@@ -242,11 +320,11 @@ router.get("/quiz/stats", async (req, res) => {
 
   const statMap = new Map<string, StatEntry>();
 
+  // Seed from counts
   for (const row of countsResult.rows as any[]) {
-    const key = row.subject_code ?? row.subject ?? "Unknown";
+    const key = row.subject_code ?? "Unknown";
     statMap.set(key, {
-      subject: row.subject ?? "Unknown",
-      subjectCode: row.subject_code ?? null,
+      subjectCode: key,
       totalQuestions: 0,
       correct: 0,
       accuracy: 0,
@@ -255,26 +333,43 @@ router.get("/quiz/stats", async (req, res) => {
     });
   }
 
-  for (const row of attemptsResult.rows as any[]) {
-    const key = row.subject_code ?? row.subject ?? "Unknown";
-    const existing = statMap.get(key);
-    const total = row.total ?? 0;
-    const correct = row.correct ?? 0;
+  // Apply new attempt stats
+  for (const row of newAttemptsResult.rows as any[]) {
+    const key = row.subject_code ?? "Unknown";
+    const existing = statMap.get(key) ?? { subjectCode: key, totalQuestions: 0, correct: 0, accuracy: 0, lastPracticed: null, questionsAvailable: 0 };
     statMap.set(key, {
-      ...(existing ?? { questionsAvailable: 0 }),
-      subject: row.subject ?? "Unknown",
-      subjectCode: row.subject_code ?? null,
-      totalQuestions: total,
-      correct,
-      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
-      lastPracticed: row.last_practiced ?? null,
+      ...existing,
+      totalQuestions: existing.totalQuestions + (row.total ?? 0),
+      correct: existing.correct + (row.correct ?? 0),
+      lastPracticed: row.last_practiced ?? existing.lastPracticed,
     });
   }
 
-  res.json([...statMap.values()]);
+  // Merge legacy attempt stats (add to totals without double-counting subjects already counted above)
+  for (const row of legacyAttemptsResult.rows as any[]) {
+    const key = row.subject_code ?? "Unknown";
+    const existing = statMap.get(key) ?? { subjectCode: key, totalQuestions: 0, correct: 0, accuracy: 0, lastPracticed: null, questionsAvailable: 0 };
+    statMap.set(key, {
+      ...existing,
+      totalQuestions: existing.totalQuestions + (row.total ?? 0),
+      correct: existing.correct + (row.correct ?? 0),
+      lastPracticed: row.last_practiced ?? existing.lastPracticed,
+    });
+  }
+
+  // Compute accuracy
+  const stats = [...statMap.values()].map((s) => ({
+    ...s,
+    accuracy: s.totalQuestions > 0 ? Math.round((s.correct / s.totalQuestions) * 100) : 0,
+  }));
+
+  res.json(stats);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/quiz/generate-mcq  (Pro-only, AI-powered)
+// Generates on-the-fly MCQs from news; does NOT store to question_bank.
+// ─────────────────────────────────────────────────────────────────────────────
 router.post("/quiz/generate-mcq", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });

@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminListQuestionBankParams,
+  AdminQuestionBankStats200Item,
   CurrentAffairsArticle,
   DailyHoursEntry,
   DailyTask,
@@ -35,6 +37,13 @@ import type {
   Profile,
   ProfileInput,
   ProgressSummary,
+  QuestionBankBulkImportInput,
+  QuestionBankCreateInput,
+  QuestionBankCsvImportInput,
+  QuestionBankImportResult,
+  QuestionBankItem,
+  QuestionBankJsonImportInput,
+  QuestionBankListResponse,
   QuizAttempt,
   QuizAttemptInput,
   QuizQuestion,
@@ -1522,4 +1531,586 @@ export function useGetStudyHeatmap<TData = Awaited<ReturnType<typeof getStudyHea
 
 
 
+
+export const getAdminListQuestionBankUrl = (params?: AdminListQuestionBankParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/question-bank?${stringifiedParams}` : `/api/admin/question-bank`
+}
+
+/**
+ * @summary List question bank (paginated, filterable)
+ */
+export const adminListQuestionBank = async (params?: AdminListQuestionBankParams, options?: RequestInit): Promise<QuestionBankListResponse> => {
+
+  return customFetch<QuestionBankListResponse>(getAdminListQuestionBankUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminListQuestionBankQueryKey = (params?: AdminListQuestionBankParams,) => {
+    return [
+    `/api/admin/question-bank`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAdminListQuestionBankQueryOptions = <TData = Awaited<ReturnType<typeof adminListQuestionBank>>, TError = ErrorType<unknown>>(params?: AdminListQuestionBankParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListQuestionBank>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminListQuestionBankQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListQuestionBank>>> = ({ signal }) => adminListQuestionBank(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminListQuestionBank>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminListQuestionBankQueryResult = NonNullable<Awaited<ReturnType<typeof adminListQuestionBank>>>
+export type AdminListQuestionBankQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List question bank (paginated, filterable)
+ */
+
+export function useAdminListQuestionBank<TData = Awaited<ReturnType<typeof adminListQuestionBank>>, TError = ErrorType<unknown>>(
+ params?: AdminListQuestionBankParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListQuestionBank>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminListQuestionBankQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdminCreateQuestionUrl = () => {
+
+
+
+
+  return `/api/admin/question-bank`
+}
+
+/**
+ * @summary Create a single question in the bank
+ */
+export const adminCreateQuestion = async (questionBankCreateInput: QuestionBankCreateInput, options?: RequestInit): Promise<QuestionBankItem> => {
+
+  return customFetch<QuestionBankItem>(getAdminCreateQuestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(questionBankCreateInput)
+  }
+);}
+
+
+
+
+export const getAdminCreateQuestionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateQuestion>>, TError,{data: BodyType<QuestionBankCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminCreateQuestion>>, TError,{data: BodyType<QuestionBankCreateInput>}, TContext> => {
+
+const mutationKey = ['adminCreateQuestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminCreateQuestion>>, {data: BodyType<QuestionBankCreateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminCreateQuestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminCreateQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof adminCreateQuestion>>>
+    export type AdminCreateQuestionMutationBody = BodyType<QuestionBankCreateInput>
+    export type AdminCreateQuestionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a single question in the bank
+ */
+export const useAdminCreateQuestion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateQuestion>>, TError,{data: BodyType<QuestionBankCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminCreateQuestion>>,
+        TError,
+        {data: BodyType<QuestionBankCreateInput>},
+        TContext
+      > => {
+      return useMutation(getAdminCreateQuestionMutationOptions(options));
+    }
+
+export const getAdminQuestionBankStatsUrl = () => {
+
+
+
+
+  return `/api/admin/question-bank/stats`
+}
+
+/**
+ * @summary Question counts grouped by exam, subject, topic, source, language
+ */
+export const adminQuestionBankStats = async ( options?: RequestInit): Promise<AdminQuestionBankStats200Item[]> => {
+
+  return customFetch<AdminQuestionBankStats200Item[]>(getAdminQuestionBankStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminQuestionBankStatsQueryKey = () => {
+    return [
+    `/api/admin/question-bank/stats`
+    ] as const;
+    }
+
+
+export const getAdminQuestionBankStatsQueryOptions = <TData = Awaited<ReturnType<typeof adminQuestionBankStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminQuestionBankStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminQuestionBankStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminQuestionBankStats>>> = ({ signal }) => adminQuestionBankStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminQuestionBankStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminQuestionBankStatsQueryResult = NonNullable<Awaited<ReturnType<typeof adminQuestionBankStats>>>
+export type AdminQuestionBankStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Question counts grouped by exam, subject, topic, source, language
+ */
+
+export function useAdminQuestionBankStats<TData = Awaited<ReturnType<typeof adminQuestionBankStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminQuestionBankStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminQuestionBankStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdminImportQuestionsJsonUrl = () => {
+
+
+
+
+  return `/api/admin/question-bank/import/json`
+}
+
+/**
+ * @summary Bulk import questions from a JSON array
+ */
+export const adminImportQuestionsJson = async (questionBankJsonImportInput: QuestionBankJsonImportInput, options?: RequestInit): Promise<QuestionBankImportResult> => {
+
+  return customFetch<QuestionBankImportResult>(getAdminImportQuestionsJsonUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(questionBankJsonImportInput)
+  }
+);}
+
+
+
+
+export const getAdminImportQuestionsJsonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsJson>>, TError,{data: BodyType<QuestionBankJsonImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsJson>>, TError,{data: BodyType<QuestionBankJsonImportInput>}, TContext> => {
+
+const mutationKey = ['adminImportQuestionsJson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminImportQuestionsJson>>, {data: BodyType<QuestionBankJsonImportInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminImportQuestionsJson(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminImportQuestionsJsonMutationResult = NonNullable<Awaited<ReturnType<typeof adminImportQuestionsJson>>>
+    export type AdminImportQuestionsJsonMutationBody = BodyType<QuestionBankJsonImportInput>
+    export type AdminImportQuestionsJsonMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Bulk import questions from a JSON array
+ */
+export const useAdminImportQuestionsJson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsJson>>, TError,{data: BodyType<QuestionBankJsonImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminImportQuestionsJson>>,
+        TError,
+        {data: BodyType<QuestionBankJsonImportInput>},
+        TContext
+      > => {
+      return useMutation(getAdminImportQuestionsJsonMutationOptions(options));
+    }
+
+export const getAdminImportQuestionsCsvUrl = () => {
+
+
+
+
+  return `/api/admin/question-bank/import/csv`
+}
+
+/**
+ * @summary Bulk import questions from CSV (text/plain body or JSON { csv })
+ */
+export const adminImportQuestionsCsv = async (questionBankCsvImportInput: QuestionBankCsvImportInput, options?: RequestInit): Promise<QuestionBankImportResult> => {
+
+  return customFetch<QuestionBankImportResult>(getAdminImportQuestionsCsvUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(questionBankCsvImportInput)
+  }
+);}
+
+
+
+
+export const getAdminImportQuestionsCsvMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsCsv>>, TError,{data: BodyType<QuestionBankCsvImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsCsv>>, TError,{data: BodyType<QuestionBankCsvImportInput>}, TContext> => {
+
+const mutationKey = ['adminImportQuestionsCsv'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminImportQuestionsCsv>>, {data: BodyType<QuestionBankCsvImportInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminImportQuestionsCsv(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminImportQuestionsCsvMutationResult = NonNullable<Awaited<ReturnType<typeof adminImportQuestionsCsv>>>
+    export type AdminImportQuestionsCsvMutationBody = BodyType<QuestionBankCsvImportInput>
+    export type AdminImportQuestionsCsvMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Bulk import questions from CSV (text/plain body or JSON { csv })
+ */
+export const useAdminImportQuestionsCsv = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsCsv>>, TError,{data: BodyType<QuestionBankCsvImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminImportQuestionsCsv>>,
+        TError,
+        {data: BodyType<QuestionBankCsvImportInput>},
+        TContext
+      > => {
+      return useMutation(getAdminImportQuestionsCsvMutationOptions(options));
+    }
+
+export const getAdminImportQuestionsBulkUrl = () => {
+
+
+
+
+  return `/api/admin/question-bank/import/bulk`
+}
+
+/**
+ * @summary Bulk import with options (skipErrors, dryRun)
+ */
+export const adminImportQuestionsBulk = async (questionBankBulkImportInput: QuestionBankBulkImportInput, options?: RequestInit): Promise<QuestionBankImportResult> => {
+
+  return customFetch<QuestionBankImportResult>(getAdminImportQuestionsBulkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(questionBankBulkImportInput)
+  }
+);}
+
+
+
+
+export const getAdminImportQuestionsBulkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsBulk>>, TError,{data: BodyType<QuestionBankBulkImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsBulk>>, TError,{data: BodyType<QuestionBankBulkImportInput>}, TContext> => {
+
+const mutationKey = ['adminImportQuestionsBulk'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminImportQuestionsBulk>>, {data: BodyType<QuestionBankBulkImportInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminImportQuestionsBulk(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminImportQuestionsBulkMutationResult = NonNullable<Awaited<ReturnType<typeof adminImportQuestionsBulk>>>
+    export type AdminImportQuestionsBulkMutationBody = BodyType<QuestionBankBulkImportInput>
+    export type AdminImportQuestionsBulkMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Bulk import with options (skipErrors, dryRun)
+ */
+export const useAdminImportQuestionsBulk = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminImportQuestionsBulk>>, TError,{data: BodyType<QuestionBankBulkImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminImportQuestionsBulk>>,
+        TError,
+        {data: BodyType<QuestionBankBulkImportInput>},
+        TContext
+      > => {
+      return useMutation(getAdminImportQuestionsBulkMutationOptions(options));
+    }
+
+export const getAdminUpdateQuestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/question-bank/${id}`
+}
+
+/**
+ * @summary Update a question (partial update supported)
+ */
+export const adminUpdateQuestion = async (id: string,
+    questionBankCreateInput: QuestionBankCreateInput, options?: RequestInit): Promise<QuestionBankItem> => {
+
+  return customFetch<QuestionBankItem>(getAdminUpdateQuestionUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(questionBankCreateInput)
+  }
+);}
+
+
+
+
+export const getAdminUpdateQuestionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpdateQuestion>>, TError,{id: string;data: BodyType<QuestionBankCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminUpdateQuestion>>, TError,{id: string;data: BodyType<QuestionBankCreateInput>}, TContext> => {
+
+const mutationKey = ['adminUpdateQuestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminUpdateQuestion>>, {id: string;data: BodyType<QuestionBankCreateInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  adminUpdateQuestion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminUpdateQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof adminUpdateQuestion>>>
+    export type AdminUpdateQuestionMutationBody = BodyType<QuestionBankCreateInput>
+    export type AdminUpdateQuestionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a question (partial update supported)
+ */
+export const useAdminUpdateQuestion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpdateQuestion>>, TError,{id: string;data: BodyType<QuestionBankCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminUpdateQuestion>>,
+        TError,
+        {id: string;data: BodyType<QuestionBankCreateInput>},
+        TContext
+      > => {
+      return useMutation(getAdminUpdateQuestionMutationOptions(options));
+    }
+
+export const getAdminDeleteQuestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/question-bank/${id}`
+}
+
+/**
+ * @summary Soft-delete a question (sets is_active = false)
+ */
+export const adminDeleteQuestion = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getAdminDeleteQuestionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteQuestionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteQuestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteQuestion>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteQuestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteQuestion>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteQuestion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteQuestion>>>
+
+    export type AdminDeleteQuestionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Soft-delete a question (sets is_active = false)
+ */
+export const useAdminDeleteQuestion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteQuestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteQuestion>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteQuestionMutationOptions(options));
+    }
 
