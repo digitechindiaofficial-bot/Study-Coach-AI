@@ -28,7 +28,6 @@ import type {
   GetDailyStudyHoursParams,
   GetDailyTasksParams,
   GetQuizQuestionsParams,
-  GetSyllabusParams,
   HealthStatus,
   HeatmapDay,
   McqGenerateInput,
@@ -39,10 +38,10 @@ import type {
   QuizAttemptInput,
   QuizQuestion,
   QuizSubjectStat,
-  SeedResult,
   StudyPlan,
-  SyllabusItem,
-  SyllabusUpdate,
+  SyllabusExamWithProgress,
+  TopicProgressResult,
+  TopicProgressUpdate,
   WeakArea
 } from './api.schemas';
 
@@ -668,27 +667,20 @@ export const useCompleteTask = <TError = ErrorType<unknown>,
       return useMutation(getCompleteTaskMutationOptions(options));
     }
 
-export const getGetSyllabusUrl = (params?: GetSyllabusParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getGetSyllabusUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/syllabus?${stringifiedParams}` : `/api/syllabus`
+  return `/api/syllabus`
 }
 
 /**
- * @summary Get syllabus progress for the user's exam
+ * @summary Get all exams with subjects, topics, and user progress
  */
-export const getSyllabus = async (params?: GetSyllabusParams, options?: RequestInit): Promise<SyllabusItem[]> => {
+export const getSyllabus = async ( options?: RequestInit): Promise<SyllabusExamWithProgress[]> => {
 
-  return customFetch<SyllabusItem[]>(getGetSyllabusUrl(params),
+  return customFetch<SyllabusExamWithProgress[]>(getGetSyllabusUrl(),
   {
     ...options,
     method: 'GET'
@@ -701,23 +693,23 @@ export const getSyllabus = async (params?: GetSyllabusParams, options?: RequestI
 
 
 
-export const getGetSyllabusQueryKey = (params?: GetSyllabusParams,) => {
+export const getGetSyllabusQueryKey = () => {
     return [
-    `/api/syllabus`, ...(params ? [params] : [])
+    `/api/syllabus`
     ] as const;
     }
 
 
-export const getGetSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSyllabus>>, TError = ErrorType<unknown>>(params?: GetSyllabusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSyllabus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSyllabusQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getGetSyllabusQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSyllabus>>> = ({ signal }) => getSyllabus(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSyllabus>>> = ({ signal }) => getSyllabus({ signal, ...requestOptions });
 
 
 
@@ -731,15 +723,15 @@ export type GetSyllabusQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get syllabus progress for the user's exam
+ * @summary Get all exams with subjects, topics, and user progress
  */
 
 export function useGetSyllabus<TData = Awaited<ReturnType<typeof getSyllabus>>, TError = ErrorType<unknown>>(
- params?: GetSyllabusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetSyllabusQueryOptions(params,options)
+  const queryOptions = getGetSyllabusQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -752,37 +744,37 @@ export function useGetSyllabus<TData = Awaited<ReturnType<typeof getSyllabus>>, 
 
 
 
-export const getUpdateSyllabusItemUrl = (id: string,) => {
+export const getUpdateTopicProgressUrl = (topicId: string,) => {
 
 
 
 
-  return `/api/syllabus/${id}`
+  return `/api/syllabus/topics/${topicId}`
 }
 
 /**
- * @summary Update topic status or confidence
+ * @summary Update user progress for a topic
  */
-export const updateSyllabusItem = async (id: string,
-    syllabusUpdate: SyllabusUpdate, options?: RequestInit): Promise<SyllabusItem> => {
+export const updateTopicProgress = async (topicId: string,
+    topicProgressUpdate: TopicProgressUpdate, options?: RequestInit): Promise<TopicProgressResult> => {
 
-  return customFetch<SyllabusItem>(getUpdateSyllabusItemUrl(id),
+  return customFetch<TopicProgressResult>(getUpdateTopicProgressUrl(topicId),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(syllabusUpdate)
+    body: JSON.stringify(topicProgressUpdate)
   }
 );}
 
 
 
 
-export const getUpdateSyllabusItemMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusItem>>, TError,{id: string;data: BodyType<SyllabusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusItem>>, TError,{id: string;data: BodyType<SyllabusUpdate>}, TContext> => {
+export const getUpdateTopicProgressMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicProgress>>, TError,{topicId: string;data: BodyType<TopicProgressUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTopicProgress>>, TError,{topicId: string;data: BodyType<TopicProgressUpdate>}, TContext> => {
 
-const mutationKey = ['updateSyllabusItem'];
+const mutationKey = ['updateTopicProgress'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -792,10 +784,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSyllabusItem>>, {id: string;data: BodyType<SyllabusUpdate>}> = (props) => {
-          const {id,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTopicProgress>>, {topicId: string;data: BodyType<TopicProgressUpdate>}> = (props) => {
+          const {topicId,data} = props ?? {};
 
-          return  updateSyllabusItem(id,data,requestOptions)
+          return  updateTopicProgress(topicId,data,requestOptions)
         }
 
 
@@ -805,92 +797,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UpdateSyllabusItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateSyllabusItem>>>
-    export type UpdateSyllabusItemMutationBody = BodyType<SyllabusUpdate>
-    export type UpdateSyllabusItemMutationError = ErrorType<unknown>
+    export type UpdateTopicProgressMutationResult = NonNullable<Awaited<ReturnType<typeof updateTopicProgress>>>
+    export type UpdateTopicProgressMutationBody = BodyType<TopicProgressUpdate>
+    export type UpdateTopicProgressMutationError = ErrorType<unknown>
 
     /**
- * @summary Update topic status or confidence
+ * @summary Update user progress for a topic
  */
-export const useUpdateSyllabusItem = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusItem>>, TError,{id: string;data: BodyType<SyllabusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useUpdateTopicProgress = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicProgress>>, TError,{topicId: string;data: BodyType<TopicProgressUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof updateSyllabusItem>>,
+        Awaited<ReturnType<typeof updateTopicProgress>>,
         TError,
-        {id: string;data: BodyType<SyllabusUpdate>},
+        {topicId: string;data: BodyType<TopicProgressUpdate>},
         TContext
       > => {
-      return useMutation(getUpdateSyllabusItemMutationOptions(options));
-    }
-
-export const getSeedSyllabusUrl = () => {
-
-
-
-
-  return `/api/syllabus/seed`
-}
-
-/**
- * @summary Seed syllabus for the user's exam type
- */
-export const seedSyllabus = async ( options?: RequestInit): Promise<SeedResult> => {
-
-  return customFetch<SeedResult>(getSeedSyllabusUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-export const getSeedSyllabusMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof seedSyllabus>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof seedSyllabus>>, TError,void, TContext> => {
-
-const mutationKey = ['seedSyllabus'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof seedSyllabus>>, void> = () => {
-
-
-          return  seedSyllabus(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SeedSyllabusMutationResult = NonNullable<Awaited<ReturnType<typeof seedSyllabus>>>
-
-    export type SeedSyllabusMutationError = ErrorType<unknown>
-
-    /**
- * @summary Seed syllabus for the user's exam type
- */
-export const useSeedSyllabus = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof seedSyllabus>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof seedSyllabus>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getSeedSyllabusMutationOptions(options));
+      return useMutation(getUpdateTopicProgressMutationOptions(options));
     }
 
 export const getGetCurrentAffairsUrl = (params?: GetCurrentAffairsParams,) => {

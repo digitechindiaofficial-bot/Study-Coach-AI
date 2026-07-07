@@ -70,33 +70,40 @@ export interface DailyTask {
   notes?: string | null;
 }
 
-export interface SyllabusItem {
+export interface SyllabusTopicWithProgress {
   id: string;
-  userId: string;
-  /** @nullable */
-  examType?: string | null;
-  /** @nullable */
-  subject?: string | null;
-  /** @nullable */
-  topic?: string | null;
-  /** @nullable */
-  subtopic?: string | null;
+  name: string;
   status: string;
   /** @nullable */
-  confidence?: string | null;
+  lastRevisedAt?: string | null;
+}
+
+export interface SyllabusSubjectWithTopics {
+  id: string;
+  name: string;
+  topics: SyllabusTopicWithProgress[];
+}
+
+export interface SyllabusExamWithProgress {
+  id: string;
+  name: string;
+  code: string;
+  /** @nullable */
+  description?: string | null;
+  subjects: SyllabusSubjectWithTopics[];
+}
+
+export interface TopicProgressUpdate {
+  status: string;
+}
+
+export interface TopicProgressResult {
+  id: string;
+  userId: string;
+  topicId: string;
+  status: string;
   /** @nullable */
   lastRevisedAt?: string | null;
-  createdAt?: string;
-}
-
-export interface SyllabusUpdate {
-  status?: string;
-  confidence?: string;
-}
-
-export interface SeedResult {
-  seeded: number;
-  message: string;
 }
 
 export interface CurrentAffairsArticle {
@@ -213,11 +220,6 @@ export type GetDailyTasksParams = {
  * ISO date string (defaults to today)
  */
 date?: string;
-};
-
-export type GetSyllabusParams = {
-subject?: string;
-status?: string;
 };
 
 export type GetCurrentAffairsParams = {

@@ -157,33 +157,24 @@ paths:
     get:
       operationId: getSyllabus
       tags: [syllabus]
-      summary: Get syllabus progress for the user's exam
-      parameters:
-        - name: subject
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
+      summary: Get all exams with subjects, topics, and user progress
       responses:
         "200":
-          description: Syllabus topics
+          description: Exams with progress
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SyllabusItem"
+                  $ref: "#/components/schemas/SyllabusExamWithProgress"
 
-  /syllabus/{id}:
+  /syllabus/topics/{topicId}:
     patch:
-      operationId: updateSyllabusItem
+      operationId: updateTopicProgress
       tags: [syllabus]
-      summary: Update topic status or confidence
+      summary: Update user progress for a topic
       parameters:
-        - name: id
+        - name: topicId
           in: path
           required: true
           schema:
@@ -193,27 +184,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SyllabusUpdate"
+              $ref: "#/components/schemas/TopicProgressUpdate"
       responses:
         "200":
-          description: Updated
+          description: Progress updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SyllabusItem"
-
-  /syllabus/seed:
-    post:
-      operationId: seedSyllabus
-      tags: [syllabus]
-      summary: Seed syllabus for the user's exam type
-      responses:
-        "200":
-          description: Seeded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SeedResult"
+                $ref: "#/components/schemas/TopicProgressResult"
 
   /current-affairs:
     get:
@@ -489,47 +467,70 @@ components:
           type: ["string", "null"]
       required: [id, userId, date, isCompleted]
 
-    SyllabusItem:
+    SyllabusTopicWithProgress:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        lastRevisedAt:
+          type: ["string", "null"]
+      required: [id, name, status]
+
+    SyllabusSubjectWithTopics:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyllabusTopicWithProgress"
+      required: [id, name, topics]
+
+    SyllabusExamWithProgress:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: ["string", "null"]
+        subjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyllabusSubjectWithTopics"
+      required: [id, name, code, subjects]
+
+    TopicProgressUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    TopicProgressResult:
       type: object
       properties:
         id:
           type: string
         userId:
           type: string
-        examType:
-          type: ["string", "null"]
-        subject:
-          type: ["string", "null"]
-        topic:
-          type: ["string", "null"]
-        subtopic:
-          type: ["string", "null"]
+        topicId:
+          type: string
         status:
           type: string
-        confidence:
-          type: ["string", "null"]
         lastRevisedAt:
           type: ["string", "null"]
-        createdAt:
-          type: string
-      required: [id, userId, status]
-
-    SyllabusUpdate:
-      type: object
-      properties:
-        status:
-          type: string
-        confidence:
-          type: string
-
-    SeedResult:
-      type: object
-      properties:
-        seeded:
-          type: integer
-        message:
-          type: string
-      required: [seeded, message]
+      required: [id, userId, topicId, status]
 
     CurrentAffairsArticle:
       type: object

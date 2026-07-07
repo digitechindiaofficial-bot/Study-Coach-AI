@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useUpsertProfile, useSeedSyllabus, getGetMyProfileQueryKey } from "@workspace/api-client-react";
+import { useUpsertProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,6 @@ export default function OnboardingPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const upsert = useUpsertProfile();
-  const seedSyllabus = useSeedSyllabus();
 
   const [step, setStep] = useState(1);
   const [examType, setExamType] = useState("");
@@ -54,7 +53,6 @@ export default function OnboardingPage() {
       },
       {
         onSuccess: () => {
-          seedSyllabus.mutate({});
           qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
           setLocation("/dashboard");
         },

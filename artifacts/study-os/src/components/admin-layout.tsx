@@ -5,6 +5,7 @@ import {
   Newspaper,
   Users,
   BrainCircuit,
+  BookOpen,
   LogOut,
   ShieldAlert,
   ArrowLeftCircle,
@@ -17,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Syllabus", href: "/admin/syllabus", icon: BookOpen },
   { name: "Current Affairs", href: "/admin/current-affairs", icon: Newspaper },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Quiz Questions", href: "/admin/quiz", icon: BrainCircuit },

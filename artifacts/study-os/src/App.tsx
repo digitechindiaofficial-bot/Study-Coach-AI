@@ -24,6 +24,7 @@ import AdminDashboardPage from "@/pages/admin/dashboard";
 import AdminCurrentAffairsPage from "@/pages/admin/current-affairs";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminQuizPage from "@/pages/admin/quiz";
+import AdminSyllabusPage from "@/pages/admin/syllabus";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -265,6 +266,9 @@ function Router() {
       </Route>
       <Route path="/admin/quiz">
         <AdminRoute component={AdminQuizPage} />
+      </Route>
+      <Route path="/admin/syllabus">
+        <AdminRoute component={AdminSyllabusPage} />
       </Route>
 
       <Route component={NotFound} />

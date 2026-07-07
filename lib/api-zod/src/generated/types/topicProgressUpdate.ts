@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SyllabusUpdate {
-  status?: string;
-  confidence?: string;
+export interface TopicProgressUpdate {
+  status: string;
 }

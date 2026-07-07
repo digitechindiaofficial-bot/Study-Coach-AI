@@ -1,10 +1,15 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { profilesTable, syllabusProgressTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import { UpdateSyllabusItemBody } from "@workspace/api-zod";
-import { getSyllabusForExam } from "../lib/syllabi";
+import {
+  profilesTable,
+  syllabusExamsTable,
+  syllabusSubjectsTable,
+  syllabusTopicsTable,
+  userTopicProgressTable,
+} from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { z } from "zod";
 
 const router = Router();
 
@@ -13,6 +18,10 @@ async function getProfileByClerkId(clerkUserId: string) {
   return rows[0] ?? null;
 }
 
+const UpdateTopicProgressBody = z.object({
+  status: z.enum(["not_started", "in_progress", "completed"]),
+});
+
 router.get("/syllabus", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -20,79 +29,90 @@ router.get("/syllabus", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
 
-  let query = db.select().from(syllabusProgressTable).where(eq(syllabusProgressTable.userId, profile.id)).$dynamic();
+  const exams = await db.select().from(syllabusExamsTable).orderBy(syllabusExamsTable.createdAt);
+  if (exams.length === 0) return res.json([]);
 
-  const items = await query;
+  const examIds = exams.map((e) => e.id);
+  const subjects = await db.select().from(syllabusSubjectsTable)
+    .where(inArray(syllabusSubjectsTable.examId, examIds))
+    .orderBy(syllabusSubjectsTable.displayOrder);
 
-  let filtered = items;
-  if (req.query.subject) {
-    filtered = filtered.filter(i => i.subject === req.query.subject);
-  }
-  if (req.query.status) {
-    if (req.query.status === "weak") {
-      filtered = filtered.filter(i => i.confidence === "weak");
-    } else {
-      filtered = filtered.filter(i => i.status === req.query.status);
-    }
-  }
+  const subjectIds = subjects.map((s) => s.id);
+  const topics = subjectIds.length > 0
+    ? await db.select().from(syllabusTopicsTable)
+        .where(inArray(syllabusTopicsTable.subjectId, subjectIds))
+        .orderBy(syllabusTopicsTable.displayOrder)
+    : [];
 
-  res.json(filtered);
-});
+  const topicIds = topics.map((t) => t.id);
+  const progress = topicIds.length > 0
+    ? await db.select().from(userTopicProgressTable)
+        .where(and(eq(userTopicProgressTable.userId, profile.id), inArray(userTopicProgressTable.topicId, topicIds)))
+    : [];
 
-router.patch("/syllabus/:id", async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  const progressMap = new Map(progress.map((p) => [p.topicId, p]));
 
-  const profile = await getProfileByClerkId(userId);
-  if (!profile) return res.status(404).json({ error: "Profile not found" });
-
-  const parsed = UpdateSyllabusItemBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
-
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.status === "completed") {
-    updateData.lastRevisedAt = new Date();
-  }
-
-  const [updated] = await db
-    .update(syllabusProgressTable)
-    .set(updateData)
-    .where(and(eq(syllabusProgressTable.id, req.params.id), eq(syllabusProgressTable.userId, profile.id)))
-    .returning();
-
-  if (!updated) return res.status(404).json({ error: "Item not found" });
-  res.json(updated);
-});
-
-router.post("/syllabus/seed", async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-  const profile = await getProfileByClerkId(userId);
-  if (!profile) return res.status(404).json({ error: "Profile not found" });
-
-  const examType = profile.examType ?? "SSC_CGL";
-
-  // Check if already seeded
-  const existing = await db.select({ id: syllabusProgressTable.id }).from(syllabusProgressTable)
-    .where(eq(syllabusProgressTable.userId, profile.id)).limit(1);
-
-  if (existing.length > 0) {
-    return res.json({ seeded: 0, message: "Syllabus already seeded" });
-  }
-
-  const topics = getSyllabusForExam(examType);
-  const rows = topics.map(t => ({
-    userId: profile.id,
-    examType,
-    subject: t.subject,
-    topic: t.topic,
-    subtopic: t.subtopic,
-    status: "not_started" as const,
+  const result = exams.map((exam) => ({
+    id: exam.id,
+    name: exam.name,
+    code: exam.code,
+    description: exam.description,
+    subjects: subjects
+      .filter((s) => s.examId === exam.id)
+      .map((subject) => ({
+        id: subject.id,
+        name: subject.name,
+        topics: topics
+          .filter((t) => t.subjectId === subject.id)
+          .map((topic) => {
+            const prog = progressMap.get(topic.id);
+            return {
+              id: topic.id,
+              name: topic.name,
+              status: prog?.status ?? "not_started",
+              lastRevisedAt: prog?.lastRevisedAt ?? null,
+            };
+          }),
+      })),
   }));
 
-  await db.insert(syllabusProgressTable).values(rows);
-  res.json({ seeded: rows.length, message: `Seeded ${rows.length} topics for ${examType}` });
+  res.json(result);
+});
+
+router.patch("/syllabus/topics/:topicId", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const profile = await getProfileByClerkId(userId);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+  const parsed = UpdateTopicProgressBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: String(parsed.error) });
+
+  const { topicId } = req.params;
+  const { status } = parsed.data;
+
+  const existing = await db.select().from(userTopicProgressTable)
+    .where(and(eq(userTopicProgressTable.userId, profile.id), eq(userTopicProgressTable.topicId, topicId)))
+    .limit(1);
+
+  const updateData = {
+    status,
+    lastRevisedAt: status === "completed" ? new Date() : null,
+  };
+
+  if (existing.length > 0) {
+    const [updated] = await db.update(userTopicProgressTable)
+      .set(updateData)
+      .where(and(eq(userTopicProgressTable.userId, profile.id), eq(userTopicProgressTable.topicId, topicId)))
+      .returning();
+    return res.json(updated);
+  } else {
+    const [created] = await db.insert(userTopicProgressTable)
+      .values({ userId: profile.id, topicId, ...updateData })
+      .returning();
+    return res.json(created);
+  }
 });
 
 export default router;

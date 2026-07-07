@@ -157,60 +157,44 @@ export const CompleteTaskResponse = zod.object({
 
 
 /**
- * @summary Get syllabus progress for the user's exam
+ * @summary Get all exams with subjects, topics, and user progress
  */
-export const GetSyllabusQueryParams = zod.object({
-  "subject": zod.coerce.string().optional(),
-  "status": zod.coerce.string().optional()
-})
-
 export const GetSyllabusResponseItem = zod.object({
   "id": zod.string(),
-  "userId": zod.string(),
-  "examType": zod.string().nullish(),
-  "subject": zod.string().nullish(),
-  "topic": zod.string().nullish(),
-  "subtopic": zod.string().nullish(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "subjects": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "topics": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
   "status": zod.string(),
-  "confidence": zod.string().nullish(),
-  "lastRevisedAt": zod.string().nullish(),
-  "createdAt": zod.string().optional()
+  "lastRevisedAt": zod.string().nullish()
+}))
+}))
 })
 export const GetSyllabusResponse = zod.array(GetSyllabusResponseItem)
 
 
 /**
- * @summary Update topic status or confidence
+ * @summary Update user progress for a topic
  */
-export const UpdateSyllabusItemParams = zod.object({
-  "id": zod.coerce.string()
+export const UpdateTopicProgressParams = zod.object({
+  "topicId": zod.coerce.string()
 })
 
-export const UpdateSyllabusItemBody = zod.object({
-  "status": zod.string().optional(),
-  "confidence": zod.string().optional()
+export const UpdateTopicProgressBody = zod.object({
+  "status": zod.string()
 })
 
-export const UpdateSyllabusItemResponse = zod.object({
+export const UpdateTopicProgressResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
-  "examType": zod.string().nullish(),
-  "subject": zod.string().nullish(),
-  "topic": zod.string().nullish(),
-  "subtopic": zod.string().nullish(),
+  "topicId": zod.string(),
   "status": zod.string(),
-  "confidence": zod.string().nullish(),
-  "lastRevisedAt": zod.string().nullish(),
-  "createdAt": zod.string().optional()
-})
-
-
-/**
- * @summary Seed syllabus for the user's exam type
- */
-export const SeedSyllabusResponse = zod.object({
-  "seeded": zod.number(),
-  "message": zod.string()
+  "lastRevisedAt": zod.string().nullish()
 })
 
 
