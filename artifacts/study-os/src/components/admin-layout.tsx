@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   ArrowLeftCircle,
   Menu,
+  Database,
 } from "lucide-react";
 import { useClerk } from "@clerk/react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const navItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Syllabus", href: "/admin/syllabus", icon: BookOpen },
+  { name: "Question Bank", href: "/admin/question-bank", icon: Database },
   { name: "Current Affairs", href: "/admin/current-affairs", icon: Newspaper },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Quiz Questions", href: "/admin/quiz", icon: BrainCircuit },
