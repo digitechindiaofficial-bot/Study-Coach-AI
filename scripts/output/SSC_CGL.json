@@ -1,0 +1,400 @@
+{
+  "exam": "SSC CGL",
+  "code": "SSC_CGL",
+  "description": "Staff Selection Commission — Combined Graduate Level",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "subjectCode": "QA",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "SSC_CGL_QA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "LCM & HCF",
+          "topicCode": "SSC_CGL_QA_017",
+          "displayOrder": 1
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "SSC_CGL_QA_002",
+          "displayOrder": 2
+        },
+        {
+          "name": "Approximation",
+          "topicCode": "SSC_CGL_QA_018",
+          "displayOrder": 3
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "SSC_CGL_QA_003",
+          "displayOrder": 4
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "SSC_CGL_QA_004",
+          "displayOrder": 5
+        },
+        {
+          "name": "Average",
+          "topicCode": "SSC_CGL_QA_005",
+          "displayOrder": 6
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "SSC_CGL_QA_006",
+          "displayOrder": 7
+        },
+        {
+          "name": "Discount",
+          "topicCode": "SSC_CGL_QA_019",
+          "displayOrder": 8
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "SSC_CGL_QA_009",
+          "displayOrder": 9
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "SSC_CGL_QA_007",
+          "displayOrder": 10
+        },
+        {
+          "name": "Pipe & Cistern",
+          "topicCode": "SSC_CGL_QA_020",
+          "displayOrder": 11
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "SSC_CGL_QA_008",
+          "displayOrder": 12
+        },
+        {
+          "name": "Mixture & Alligation",
+          "topicCode": "SSC_CGL_QA_021",
+          "displayOrder": 13
+        },
+        {
+          "name": "Algebra",
+          "topicCode": "SSC_CGL_QA_010",
+          "displayOrder": 14
+        },
+        {
+          "name": "Geometry",
+          "topicCode": "SSC_CGL_QA_011",
+          "displayOrder": 15
+        },
+        {
+          "name": "Mensuration",
+          "topicCode": "SSC_CGL_QA_012",
+          "displayOrder": 16
+        },
+        {
+          "name": "Trigonometry",
+          "topicCode": "SSC_CGL_QA_013",
+          "displayOrder": 17
+        },
+        {
+          "name": "Height & Distance",
+          "topicCode": "SSC_CGL_QA_022",
+          "displayOrder": 18
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "SSC_CGL_QA_015",
+          "displayOrder": 19
+        },
+        {
+          "name": "Statistics",
+          "topicCode": "SSC_CGL_QA_014",
+          "displayOrder": 20
+        },
+        {
+          "name": "Probability",
+          "topicCode": "SSC_CGL_QA_016",
+          "displayOrder": 21
+        },
+        {
+          "name": "Number Series",
+          "topicCode": "SSC_CGL_QA_023",
+          "displayOrder": 22
+        }
+      ]
+    },
+    {
+      "name": "English Language",
+      "subjectCode": "ENG",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Reading Comprehension",
+          "topicCode": "SSC_CGL_ENG_003",
+          "displayOrder": 0
+        },
+        {
+          "name": "Cloze Test",
+          "topicCode": "SSC_CGL_ENG_004",
+          "displayOrder": 1
+        },
+        {
+          "name": "Fill in the Blanks",
+          "topicCode": "SSC_CGL_ENG_014",
+          "displayOrder": 2
+        },
+        {
+          "name": "Spelling Correction",
+          "topicCode": "SSC_CGL_ENG_015",
+          "displayOrder": 3
+        },
+        {
+          "name": "Error Detection",
+          "topicCode": "SSC_CGL_ENG_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Sentence Improvement",
+          "topicCode": "SSC_CGL_ENG_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Para Jumbles",
+          "topicCode": "SSC_CGL_ENG_013",
+          "displayOrder": 6
+        },
+        {
+          "name": "Synonyms & Antonyms",
+          "topicCode": "SSC_CGL_ENG_016",
+          "displayOrder": 7
+        },
+        {
+          "name": "Idioms & Phrases",
+          "topicCode": "SSC_CGL_ENG_011",
+          "displayOrder": 8
+        },
+        {
+          "name": "One Word Substitution",
+          "topicCode": "SSC_CGL_ENG_012",
+          "displayOrder": 9
+        },
+        {
+          "name": "Active & Passive Voice",
+          "topicCode": "SSC_CGL_ENG_007",
+          "displayOrder": 10
+        },
+        {
+          "name": "Direct & Indirect Speech",
+          "topicCode": "SSC_CGL_ENG_008",
+          "displayOrder": 11
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "SSC_CGL_ENG_002",
+          "displayOrder": 12
+        }
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "subjectCode": "GIR",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Analogy",
+          "topicCode": "SSC_CGL_GIR_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Classification",
+          "topicCode": "SSC_CGL_GIR_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Series",
+          "topicCode": "SSC_CGL_GIR_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "SSC_CGL_GIR_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "SSC_CGL_GIR_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "SSC_CGL_GIR_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Ranking",
+          "topicCode": "SSC_CGL_GIR_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Alphabet Test",
+          "topicCode": "SSC_CGL_GIR_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Venn Diagram",
+          "topicCode": "SSC_CGL_GIR_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "SSC_CGL_GIR_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Puzzle",
+          "topicCode": "SSC_CGL_GIR_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Seating Arrangement",
+          "topicCode": "SSC_CGL_GIR_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Clock",
+          "topicCode": "SSC_CGL_GIR_013",
+          "displayOrder": 12
+        },
+        {
+          "name": "Calendar",
+          "topicCode": "SSC_CGL_GIR_014",
+          "displayOrder": 13
+        },
+        {
+          "name": "Mirror Image",
+          "topicCode": "SSC_CGL_GIR_015",
+          "displayOrder": 14
+        },
+        {
+          "name": "Paper Folding",
+          "topicCode": "SSC_CGL_GIR_016",
+          "displayOrder": 15
+        },
+        {
+          "name": "Dice",
+          "topicCode": "SSC_CGL_GIR_017",
+          "displayOrder": 16
+        },
+        {
+          "name": "Non-Verbal Reasoning",
+          "topicCode": "SSC_CGL_GIR_019",
+          "displayOrder": 17
+        },
+        {
+          "name": "Missing Number",
+          "topicCode": "SSC_CGL_GIR_020",
+          "displayOrder": 18
+        },
+        {
+          "name": "Statement & Assumptions",
+          "topicCode": "SSC_CGL_GIR_021",
+          "displayOrder": 19
+        },
+        {
+          "name": "Mathematical Operations",
+          "topicCode": "SSC_CGL_GIR_022",
+          "displayOrder": 20
+        }
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "subjectCode": "GA",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "History",
+          "topicCode": "SSC_CGL_GA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Geography",
+          "topicCode": "SSC_CGL_GA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Indian Polity",
+          "topicCode": "SSC_CGL_GA_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian Economy",
+          "topicCode": "SSC_CGL_GA_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Physics",
+          "topicCode": "SSC_CGL_GA_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Chemistry",
+          "topicCode": "SSC_CGL_GA_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Biology",
+          "topicCode": "SSC_CGL_GA_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Computer Awareness",
+          "topicCode": "SSC_CGL_GA_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Environment",
+          "topicCode": "SSC_CGL_GA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Current Affairs",
+          "topicCode": "SSC_CGL_GA_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Static GK",
+          "topicCode": "SSC_CGL_GA_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Art & Culture",
+          "topicCode": "SSC_CGL_GA_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Sports",
+          "topicCode": "SSC_CGL_GA_013",
+          "displayOrder": 12
+        },
+        {
+          "name": "Books & Authors",
+          "topicCode": "SSC_CGL_GA_014",
+          "displayOrder": 13
+        },
+        {
+          "name": "Awards & Honours",
+          "topicCode": "SSC_CGL_GA_015",
+          "displayOrder": 14
+        },
+        {
+          "name": "Government Schemes",
+          "topicCode": "SSC_CGL_GA_016",
+          "displayOrder": 15
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,278 @@
+{
+  "exam": "RRB NTPC",
+  "code": "RRB_NTPC",
+  "description": "Railway Recruitment Board — Non-Technical Popular Categories",
+  "subjects": [
+    {
+      "name": "Mathematics",
+      "subjectCode": "MATH",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "RRB_NTPC_MATH_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Decimals & Fractions",
+          "topicCode": "RRB_NTPC_MATH_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "LCM & HCF",
+          "topicCode": "RRB_NTPC_MATH_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "RRB_NTPC_MATH_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "RRB_NTPC_MATH_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Average",
+          "topicCode": "RRB_NTPC_MATH_016",
+          "displayOrder": 5
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "RRB_NTPC_MATH_010",
+          "displayOrder": 6
+        },
+        {
+          "name": "Discount",
+          "topicCode": "RRB_NTPC_MATH_017",
+          "displayOrder": 7
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "RRB_NTPC_MATH_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "RRB_NTPC_MATH_007",
+          "displayOrder": 9
+        },
+        {
+          "name": "Pipe & Cistern",
+          "topicCode": "RRB_NTPC_MATH_018",
+          "displayOrder": 10
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "RRB_NTPC_MATH_008",
+          "displayOrder": 11
+        },
+        {
+          "name": "Mensuration",
+          "topicCode": "RRB_NTPC_MATH_006",
+          "displayOrder": 12
+        },
+        {
+          "name": "Geometry",
+          "topicCode": "RRB_NTPC_MATH_019",
+          "displayOrder": 13
+        },
+        {
+          "name": "Trigonometry",
+          "topicCode": "RRB_NTPC_MATH_020",
+          "displayOrder": 14
+        },
+        {
+          "name": "Elementary Statistics",
+          "topicCode": "RRB_NTPC_MATH_013",
+          "displayOrder": 15
+        },
+        {
+          "name": "Tables & Graphs",
+          "topicCode": "RRB_NTPC_MATH_014",
+          "displayOrder": 16
+        },
+        {
+          "name": "Elementary Algebra",
+          "topicCode": "RRB_NTPC_MATH_011",
+          "displayOrder": 17
+        },
+        {
+          "name": "Age Calculations",
+          "topicCode": "RRB_NTPC_MATH_015",
+          "displayOrder": 18
+        }
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "subjectCode": "GIR",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Analogy",
+          "topicCode": "RRB_NTPC_GIR_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Classification",
+          "topicCode": "RRB_NTPC_GIR_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Number Series",
+          "topicCode": "RRB_NTPC_GIR_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "RRB_NTPC_GIR_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Mathematical Operations",
+          "topicCode": "RRB_NTPC_GIR_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "RRB_NTPC_GIR_015",
+          "displayOrder": 5
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "RRB_NTPC_GIR_016",
+          "displayOrder": 6
+        },
+        {
+          "name": "Ranking",
+          "topicCode": "RRB_NTPC_GIR_017",
+          "displayOrder": 7
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "RRB_NTPC_GIR_007",
+          "displayOrder": 8
+        },
+        {
+          "name": "Venn Diagram",
+          "topicCode": "RRB_NTPC_GIR_009",
+          "displayOrder": 9
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "RRB_NTPC_GIR_010",
+          "displayOrder": 10
+        },
+        {
+          "name": "Statement & Conclusion",
+          "topicCode": "RRB_NTPC_GIR_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Decision Making",
+          "topicCode": "RRB_NTPC_GIR_014",
+          "displayOrder": 12
+        },
+        {
+          "name": "Missing Number",
+          "topicCode": "RRB_NTPC_GIR_018",
+          "displayOrder": 13
+        },
+        {
+          "name": "Non-Verbal Reasoning",
+          "topicCode": "RRB_NTPC_GIR_019",
+          "displayOrder": 14
+        }
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "subjectCode": "GA",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Current Affairs",
+          "topicCode": "RRB_NTPC_GA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Indian Geography",
+          "topicCode": "RRB_NTPC_GA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Indian History",
+          "topicCode": "RRB_NTPC_GA_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian Polity & Constitution",
+          "topicCode": "RRB_NTPC_GA_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Indian Economy",
+          "topicCode": "RRB_NTPC_GA_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "General Science",
+          "topicCode": "RRB_NTPC_GA_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Physics",
+          "topicCode": "RRB_NTPC_GA_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Chemistry",
+          "topicCode": "RRB_NTPC_GA_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Life Science",
+          "topicCode": "RRB_NTPC_GA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Environmental Sciences",
+          "topicCode": "RRB_NTPC_GA_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Space & Technology",
+          "topicCode": "RRB_NTPC_GA_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Sports",
+          "topicCode": "RRB_NTPC_GA_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Books & Authors",
+          "topicCode": "RRB_NTPC_GA_013",
+          "displayOrder": 12
+        },
+        {
+          "name": "Government Schemes",
+          "topicCode": "RRB_NTPC_GA_014",
+          "displayOrder": 13
+        },
+        {
+          "name": "Computer & IT Basics",
+          "topicCode": "RRB_NTPC_GA_015",
+          "displayOrder": 14
+        },
+        {
+          "name": "Railways & Transport",
+          "topicCode": "RRB_NTPC_GA_016",
+          "displayOrder": 15
+        }
+      ]
+    }
+  ]
+}

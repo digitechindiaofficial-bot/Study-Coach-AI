@@ -1,0 +1,312 @@
+{
+  "exam": "IBPS Clerk",
+  "code": "IBPS_CLERK",
+  "description": "Institute of Banking Personnel Selection — Clerical Cadre",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "subjectCode": "QA",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "IBPS_CLERK_QA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "IBPS_CLERK_QA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Approximation",
+          "topicCode": "IBPS_CLERK_QA_012",
+          "displayOrder": 2
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "IBPS_CLERK_QA_003",
+          "displayOrder": 3
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "IBPS_CLERK_QA_004",
+          "displayOrder": 4
+        },
+        {
+          "name": "Average",
+          "topicCode": "IBPS_CLERK_QA_005",
+          "displayOrder": 5
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "IBPS_CLERK_QA_006",
+          "displayOrder": 6
+        },
+        {
+          "name": "Discount",
+          "topicCode": "IBPS_CLERK_QA_014",
+          "displayOrder": 7
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "IBPS_CLERK_QA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "IBPS_CLERK_QA_007",
+          "displayOrder": 9
+        },
+        {
+          "name": "Pipe & Cistern",
+          "topicCode": "IBPS_CLERK_QA_015",
+          "displayOrder": 10
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "IBPS_CLERK_QA_008",
+          "displayOrder": 11
+        },
+        {
+          "name": "Mixture & Alligation",
+          "topicCode": "IBPS_CLERK_QA_016",
+          "displayOrder": 12
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "IBPS_CLERK_QA_010",
+          "displayOrder": 13
+        },
+        {
+          "name": "Number Series",
+          "topicCode": "IBPS_CLERK_QA_011",
+          "displayOrder": 14
+        },
+        {
+          "name": "Quadratic Equations",
+          "topicCode": "IBPS_CLERK_QA_013",
+          "displayOrder": 15
+        }
+      ]
+    },
+    {
+      "name": "English Language",
+      "subjectCode": "ENG",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Reading Comprehension",
+          "topicCode": "IBPS_CLERK_ENG_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Cloze Test",
+          "topicCode": "IBPS_CLERK_ENG_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Error Detection",
+          "topicCode": "IBPS_CLERK_ENG_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Sentence Improvement",
+          "topicCode": "IBPS_CLERK_ENG_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Fill in the Blanks",
+          "topicCode": "IBPS_CLERK_ENG_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Para Jumbles",
+          "topicCode": "IBPS_CLERK_ENG_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "IBPS_CLERK_ENG_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Spelling Correction",
+          "topicCode": "IBPS_CLERK_ENG_010",
+          "displayOrder": 7
+        },
+        {
+          "name": "Word Usage",
+          "topicCode": "IBPS_CLERK_ENG_009",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "name": "Reasoning Ability",
+      "subjectCode": "REAS",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Analogy",
+          "topicCode": "IBPS_CLERK_REAS_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Classification",
+          "topicCode": "IBPS_CLERK_REAS_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "IBPS_CLERK_REAS_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "IBPS_CLERK_REAS_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "IBPS_CLERK_REAS_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Order & Ranking",
+          "topicCode": "IBPS_CLERK_REAS_012",
+          "displayOrder": 5
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "IBPS_CLERK_REAS_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Puzzle",
+          "topicCode": "IBPS_CLERK_REAS_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Seating Arrangement",
+          "topicCode": "IBPS_CLERK_REAS_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Inequality",
+          "topicCode": "IBPS_CLERK_REAS_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Alphanumeric Series",
+          "topicCode": "IBPS_CLERK_REAS_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Input-Output",
+          "topicCode": "IBPS_CLERK_REAS_013",
+          "displayOrder": 11
+        },
+        {
+          "name": "Data Sufficiency",
+          "topicCode": "IBPS_CLERK_REAS_014",
+          "displayOrder": 12
+        }
+      ]
+    },
+    {
+      "name": "General/Financial Awareness",
+      "subjectCode": "GFIN",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "Banking Awareness",
+          "topicCode": "IBPS_CLERK_GFIN_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Current Affairs",
+          "topicCode": "IBPS_CLERK_GFIN_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Static GK",
+          "topicCode": "IBPS_CLERK_GFIN_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian Economy",
+          "topicCode": "IBPS_CLERK_GFIN_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Government Schemes",
+          "topicCode": "IBPS_CLERK_GFIN_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Financial Institutions",
+          "topicCode": "IBPS_CLERK_GFIN_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "RBI Guidelines",
+          "topicCode": "IBPS_CLERK_GFIN_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Insurance Awareness",
+          "topicCode": "IBPS_CLERK_GFIN_008",
+          "displayOrder": 7
+        }
+      ]
+    },
+    {
+      "name": "Computer Knowledge",
+      "subjectCode": "COMP",
+      "displayOrder": 4,
+      "topics": [
+        {
+          "name": "Computer Fundamentals",
+          "topicCode": "IBPS_CLERK_COMP_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "MS Office",
+          "topicCode": "IBPS_CLERK_COMP_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Internet & Networking",
+          "topicCode": "IBPS_CLERK_COMP_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Keyboard Shortcuts",
+          "topicCode": "IBPS_CLERK_COMP_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Operating System",
+          "topicCode": "IBPS_CLERK_COMP_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "History of Computers",
+          "topicCode": "IBPS_CLERK_COMP_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Database Concepts",
+          "topicCode": "IBPS_CLERK_COMP_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Input/Output Devices",
+          "topicCode": "IBPS_CLERK_COMP_008",
+          "displayOrder": 7
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+{
+  "exam": "SSC CHSL",
+  "code": "SSC_CHSL",
+  "description": "Staff Selection Commission — Combined Higher Secondary Level",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "subjectCode": "QA",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "SSC_CHSL_QA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "LCM & HCF",
+          "topicCode": "SSC_CHSL_QA_015",
+          "displayOrder": 1
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "SSC_CHSL_QA_002",
+          "displayOrder": 2
+        },
+        {
+          "name": "Approximation",
+          "topicCode": "SSC_CHSL_QA_016",
+          "displayOrder": 3
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "SSC_CHSL_QA_003",
+          "displayOrder": 4
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "SSC_CHSL_QA_004",
+          "displayOrder": 5
+        },
+        {
+          "name": "Average",
+          "topicCode": "SSC_CHSL_QA_005",
+          "displayOrder": 6
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "SSC_CHSL_QA_006",
+          "displayOrder": 7
+        },
+        {
+          "name": "Discount",
+          "topicCode": "SSC_CHSL_QA_017",
+          "displayOrder": 8
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "SSC_CHSL_QA_009",
+          "displayOrder": 9
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "SSC_CHSL_QA_007",
+          "displayOrder": 10
+        },
+        {
+          "name": "Pipe & Cistern",
+          "topicCode": "SSC_CHSL_QA_018",
+          "displayOrder": 11
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "SSC_CHSL_QA_008",
+          "displayOrder": 12
+        },
+        {
+          "name": "Mixture & Alligation",
+          "topicCode": "SSC_CHSL_QA_019",
+          "displayOrder": 13
+        },
+        {
+          "name": "Algebra",
+          "topicCode": "SSC_CHSL_QA_010",
+          "displayOrder": 14
+        },
+        {
+          "name": "Geometry",
+          "topicCode": "SSC_CHSL_QA_011",
+          "displayOrder": 15
+        },
+        {
+          "name": "Mensuration",
+          "topicCode": "SSC_CHSL_QA_012",
+          "displayOrder": 16
+        },
+        {
+          "name": "Trigonometry",
+          "topicCode": "SSC_CHSL_QA_013",
+          "displayOrder": 17
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "SSC_CHSL_QA_014",
+          "displayOrder": 18
+        }
+      ]
+    },
+    {
+      "name": "English Language",
+      "subjectCode": "ENG",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Reading Comprehension",
+          "topicCode": "SSC_CHSL_ENG_003",
+          "displayOrder": 0
+        },
+        {
+          "name": "Cloze Test",
+          "topicCode": "SSC_CHSL_ENG_004",
+          "displayOrder": 1
+        },
+        {
+          "name": "Fill in the Blanks",
+          "topicCode": "SSC_CHSL_ENG_014",
+          "displayOrder": 2
+        },
+        {
+          "name": "Spelling Correction",
+          "topicCode": "SSC_CHSL_ENG_015",
+          "displayOrder": 3
+        },
+        {
+          "name": "Error Detection",
+          "topicCode": "SSC_CHSL_ENG_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Sentence Improvement",
+          "topicCode": "SSC_CHSL_ENG_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Para Jumbles",
+          "topicCode": "SSC_CHSL_ENG_016",
+          "displayOrder": 6
+        },
+        {
+          "name": "Synonyms & Antonyms",
+          "topicCode": "SSC_CHSL_ENG_017",
+          "displayOrder": 7
+        },
+        {
+          "name": "Idioms & Phrases",
+          "topicCode": "SSC_CHSL_ENG_011",
+          "displayOrder": 8
+        },
+        {
+          "name": "One Word Substitution",
+          "topicCode": "SSC_CHSL_ENG_012",
+          "displayOrder": 9
+        },
+        {
+          "name": "Active & Passive Voice",
+          "topicCode": "SSC_CHSL_ENG_007",
+          "displayOrder": 10
+        },
+        {
+          "name": "Direct & Indirect Speech",
+          "topicCode": "SSC_CHSL_ENG_008",
+          "displayOrder": 11
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "SSC_CHSL_ENG_002",
+          "displayOrder": 12
+        }
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "subjectCode": "GIR",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Analogy",
+          "topicCode": "SSC_CHSL_GIR_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Classification",
+          "topicCode": "SSC_CHSL_GIR_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Series",
+          "topicCode": "SSC_CHSL_GIR_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "SSC_CHSL_GIR_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "SSC_CHSL_GIR_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "SSC_CHSL_GIR_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Ranking",
+          "topicCode": "SSC_CHSL_GIR_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "SSC_CHSL_GIR_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Venn Diagram",
+          "topicCode": "SSC_CHSL_GIR_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Puzzle",
+          "topicCode": "SSC_CHSL_GIR_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Mirror Image",
+          "topicCode": "SSC_CHSL_GIR_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Paper Folding",
+          "topicCode": "SSC_CHSL_GIR_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Dice",
+          "topicCode": "SSC_CHSL_GIR_013",
+          "displayOrder": 12
+        },
+        {
+          "name": "Non-Verbal Reasoning",
+          "topicCode": "SSC_CHSL_GIR_014",
+          "displayOrder": 13
+        },
+        {
+          "name": "Missing Number",
+          "topicCode": "SSC_CHSL_GIR_015",
+          "displayOrder": 14
+        },
+        {
+          "name": "Mathematical Operations",
+          "topicCode": "SSC_CHSL_GIR_016",
+          "displayOrder": 15
+        }
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "subjectCode": "GA",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "History",
+          "topicCode": "SSC_CHSL_GA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Geography",
+          "topicCode": "SSC_CHSL_GA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Indian Polity",
+          "topicCode": "SSC_CHSL_GA_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian Economy",
+          "topicCode": "SSC_CHSL_GA_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Physics",
+          "topicCode": "SSC_CHSL_GA_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Chemistry",
+          "topicCode": "SSC_CHSL_GA_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Biology",
+          "topicCode": "SSC_CHSL_GA_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Computer Awareness",
+          "topicCode": "SSC_CHSL_GA_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Current Affairs",
+          "topicCode": "SSC_CHSL_GA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Static GK",
+          "topicCode": "SSC_CHSL_GA_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Environment",
+          "topicCode": "SSC_CHSL_GA_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Art & Culture",
+          "topicCode": "SSC_CHSL_GA_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Sports",
+          "topicCode": "SSC_CHSL_GA_013",
+          "displayOrder": 12
+        }
+      ]
+    },
+    {
+      "name": "Descriptive Paper",
+      "subjectCode": "DESC",
+      "displayOrder": 4,
+      "topics": [
+        {
+          "name": "Essay Writing",
+          "topicCode": "SSC_CHSL_DESC_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Letter Writing",
+          "topicCode": "SSC_CHSL_DESC_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Application Writing",
+          "topicCode": "SSC_CHSL_DESC_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Precis Writing",
+          "topicCode": "SSC_CHSL_DESC_004",
+          "displayOrder": 3
+        }
+      ]
+    }
+  ]
+}

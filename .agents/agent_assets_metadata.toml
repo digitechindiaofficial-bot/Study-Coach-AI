@@ -48,3 +48,51 @@ id = "XaK3n8nGqMmjJh0y3XRsw"
 uri = "file://syllabus-export/BPSC.json"
 type = "unspecified"
 title = "BPSC Syllabus"
+
+[[outputs]]
+id = "PnD0ZJn3Cjn7CwSF2Rt-d"
+uri = "file://scripts/output/SSC_CGL.json"
+type = "unspecified"
+title = "SSC_CGL.json — 4 subjects, 73 topics"
+
+[[outputs]]
+id = "Vv16P74KBB4SrNsm9bjiS"
+uri = "file://scripts/output/SSC_CHSL.json"
+type = "unspecified"
+title = "SSC_CHSL.json — 5 subjects, 65 topics"
+
+[[outputs]]
+id = "OqWrklPZW7-2oqlYWVYOC"
+uri = "file://scripts/output/IBPS_PO.json"
+type = "unspecified"
+title = "IBPS_PO.json — 5 subjects, 72 topics"
+
+[[outputs]]
+id = "9nc2wW_uN1XoDpZt301FR"
+uri = "file://scripts/output/IBPS_CLERK.json"
+type = "unspecified"
+title = "IBPS_CLERK.json — 5 subjects, 54 topics"
+
+[[outputs]]
+id = "yJbMHomQxauimdrf9HtpO"
+uri = "file://scripts/output/SBI_PO.json"
+type = "unspecified"
+title = "SBI_PO.json — 4 subjects, 62 topics"
+
+[[outputs]]
+id = "FZfhR4ocRtmFLU-IjzLqi"
+uri = "file://scripts/output/RRB_NTPC.json"
+type = "unspecified"
+title = "RRB_NTPC.json — 3 subjects, 50 topics"
+
+[[outputs]]
+id = "_QehQ_w3CDPa5eKH7qp9q"
+uri = "file://scripts/output/UPPSC.json"
+type = "unspecified"
+title = "UPPSC.json — 8 subjects, 76 topics"
+
+[[outputs]]
+id = "ZXBjNtmMZ-aBYjFzWy9gi"
+uri = "file://scripts/output/BPSC.json"
+type = "unspecified"
+title = "BPSC.json — 8 subjects, 76 topics"

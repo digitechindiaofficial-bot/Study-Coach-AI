@@ -1,0 +1,443 @@
+{
+  "exam": "BPSC",
+  "code": "BPSC",
+  "description": "Bihar Public Service Commission",
+  "subjects": [
+    {
+      "name": "History & Culture",
+      "subjectCode": "HIST",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Ancient India",
+          "topicCode": "BPSC_HIST_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Medieval India",
+          "topicCode": "BPSC_HIST_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Modern India",
+          "topicCode": "BPSC_HIST_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian National Movement",
+          "topicCode": "BPSC_HIST_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Bihar History",
+          "topicCode": "BPSC_HIST_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Bihar Culture & Heritage",
+          "topicCode": "BPSC_HIST_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Art & Culture",
+          "topicCode": "BPSC_HIST_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Post-Independence India",
+          "topicCode": "BPSC_HIST_008",
+          "displayOrder": 7
+        }
+      ]
+    },
+    {
+      "name": "Geography & Environment",
+      "subjectCode": "GEO",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Indian Geography",
+          "topicCode": "BPSC_GEO_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Bihar Geography",
+          "topicCode": "BPSC_GEO_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Physical Geography",
+          "topicCode": "BPSC_GEO_008",
+          "displayOrder": 2
+        },
+        {
+          "name": "Rivers & Water Bodies of Bihar",
+          "topicCode": "BPSC_GEO_007",
+          "displayOrder": 3
+        },
+        {
+          "name": "Soil & Agriculture of Bihar",
+          "topicCode": "BPSC_GEO_009",
+          "displayOrder": 4
+        },
+        {
+          "name": "Environment & Ecology",
+          "topicCode": "BPSC_GEO_003",
+          "displayOrder": 5
+        },
+        {
+          "name": "Climate Change",
+          "topicCode": "BPSC_GEO_004",
+          "displayOrder": 6
+        },
+        {
+          "name": "Disaster Management",
+          "topicCode": "BPSC_GEO_005",
+          "displayOrder": 7
+        },
+        {
+          "name": "World Geography",
+          "topicCode": "BPSC_GEO_006",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "name": "Indian Polity & Governance",
+      "subjectCode": "POL",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Indian Constitution",
+          "topicCode": "BPSC_POL_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Parliament & State Legislature",
+          "topicCode": "BPSC_POL_008",
+          "displayOrder": 1
+        },
+        {
+          "name": "Federalism",
+          "topicCode": "BPSC_POL_007",
+          "displayOrder": 2
+        },
+        {
+          "name": "Panchayati Raj",
+          "topicCode": "BPSC_POL_002",
+          "displayOrder": 3
+        },
+        {
+          "name": "Central & State Government Schemes",
+          "topicCode": "BPSC_POL_009",
+          "displayOrder": 4
+        },
+        {
+          "name": "Bihar Political System",
+          "topicCode": "BPSC_POL_004",
+          "displayOrder": 5
+        },
+        {
+          "name": "Public Administration",
+          "topicCode": "BPSC_POL_005",
+          "displayOrder": 6
+        },
+        {
+          "name": "Fundamental Rights & Duties",
+          "topicCode": "BPSC_POL_010",
+          "displayOrder": 7
+        },
+        {
+          "name": "Bihar Governance & Administration",
+          "topicCode": "BPSC_POL_011",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "name": "Economy & Development",
+      "subjectCode": "ECON",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "Indian Economy",
+          "topicCode": "BPSC_ECON_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Bihar Economy",
+          "topicCode": "BPSC_ECON_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Economic Development",
+          "topicCode": "BPSC_ECON_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Agriculture",
+          "topicCode": "BPSC_ECON_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Industry",
+          "topicCode": "BPSC_ECON_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Banking & Finance",
+          "topicCode": "BPSC_ECON_009",
+          "displayOrder": 5
+        },
+        {
+          "name": "Infrastructure Development",
+          "topicCode": "BPSC_ECON_010",
+          "displayOrder": 6
+        },
+        {
+          "name": "IT & Digital India",
+          "topicCode": "BPSC_ECON_007",
+          "displayOrder": 7
+        }
+      ]
+    },
+    {
+      "name": "General Science",
+      "subjectCode": "SCI",
+      "displayOrder": 4,
+      "topics": [
+        {
+          "name": "Physics",
+          "topicCode": "BPSC_SCI_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Chemistry",
+          "topicCode": "BPSC_SCI_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Biology",
+          "topicCode": "BPSC_SCI_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Science & Technology",
+          "topicCode": "BPSC_SCI_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Computer Fundamentals",
+          "topicCode": "BPSC_SCI_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Space & Defence Technology",
+          "topicCode": "BPSC_SCI_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Biotechnology",
+          "topicCode": "BPSC_SCI_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Nuclear Science",
+          "topicCode": "BPSC_SCI_008",
+          "displayOrder": 7
+        }
+      ]
+    },
+    {
+      "name": "Mathematics & Reasoning",
+      "subjectCode": "MREAS",
+      "displayOrder": 5,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "BPSC_MREAS_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "BPSC_MREAS_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "BPSC_MREAS_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "BPSC_MREAS_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Average",
+          "topicCode": "BPSC_MREAS_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "BPSC_MREAS_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "BPSC_MREAS_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "BPSC_MREAS_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "BPSC_MREAS_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Algebra",
+          "topicCode": "BPSC_MREAS_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Geometry",
+          "topicCode": "BPSC_MREAS_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "BPSC_MREAS_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Logical Reasoning",
+          "topicCode": "BPSC_MREAS_013",
+          "displayOrder": 12
+        },
+        {
+          "name": "Analogy",
+          "topicCode": "BPSC_MREAS_014",
+          "displayOrder": 13
+        },
+        {
+          "name": "Classification",
+          "topicCode": "BPSC_MREAS_015",
+          "displayOrder": 14
+        },
+        {
+          "name": "Series",
+          "topicCode": "BPSC_MREAS_016",
+          "displayOrder": 15
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "BPSC_MREAS_017",
+          "displayOrder": 16
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "BPSC_MREAS_018",
+          "displayOrder": 17
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "BPSC_MREAS_019",
+          "displayOrder": 18
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "BPSC_MREAS_020",
+          "displayOrder": 19
+        }
+      ]
+    },
+    {
+      "name": "General Hindi",
+      "subjectCode": "HINDI",
+      "displayOrder": 6,
+      "topics": [
+        {
+          "name": "Hindi Grammar",
+          "topicCode": "BPSC_HINDI_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Comprehension",
+          "topicCode": "BPSC_HINDI_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Essay Writing",
+          "topicCode": "BPSC_HINDI_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Letter Writing",
+          "topicCode": "BPSC_HINDI_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "BPSC_HINDI_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Translation",
+          "topicCode": "BPSC_HINDI_006",
+          "displayOrder": 5
+        }
+      ]
+    },
+    {
+      "name": "Bihar Special",
+      "subjectCode": "BIHAR",
+      "displayOrder": 7,
+      "topics": [
+        {
+          "name": "Bihar Geography — Key Places",
+          "topicCode": "BPSC_BIHAR_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Bihar Economy — Sectors",
+          "topicCode": "BPSC_BIHAR_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Bihar Polity — Legislature & Executive",
+          "topicCode": "BPSC_BIHAR_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Bihar Culture — Festivals & Fairs",
+          "topicCode": "BPSC_BIHAR_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Important Personalities of Bihar",
+          "topicCode": "BPSC_BIHAR_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Bihar Industrial Development",
+          "topicCode": "BPSC_BIHAR_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Bihar Agriculture & Irrigation",
+          "topicCode": "BPSC_BIHAR_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Bihar Government Schemes",
+          "topicCode": "BPSC_BIHAR_008",
+          "displayOrder": 7
+        }
+      ]
+    }
+  ]
+}

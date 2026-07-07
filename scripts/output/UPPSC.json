@@ -1,0 +1,443 @@
+{
+  "exam": "UPPSC",
+  "code": "UPPSC",
+  "description": "Uttar Pradesh Public Service Commission",
+  "subjects": [
+    {
+      "name": "History & Culture",
+      "subjectCode": "HIST",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Ancient India",
+          "topicCode": "UPPSC_HIST_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Medieval India",
+          "topicCode": "UPPSC_HIST_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Modern India",
+          "topicCode": "UPPSC_HIST_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian National Movement",
+          "topicCode": "UPPSC_HIST_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "World History",
+          "topicCode": "UPPSC_HIST_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Indian Culture & Heritage",
+          "topicCode": "UPPSC_HIST_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Art & Architecture",
+          "topicCode": "UPPSC_HIST_010",
+          "displayOrder": 6
+        },
+        {
+          "name": "Uttar Pradesh History",
+          "topicCode": "UPPSC_HIST_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Post-Independence India",
+          "topicCode": "UPPSC_HIST_009",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "name": "Geography & Environment",
+      "subjectCode": "GEO",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Physical Geography of India",
+          "topicCode": "UPPSC_GEO_009",
+          "displayOrder": 0
+        },
+        {
+          "name": "River Systems",
+          "topicCode": "UPPSC_GEO_010",
+          "displayOrder": 1
+        },
+        {
+          "name": "Soil & Vegetation",
+          "topicCode": "UPPSC_GEO_011",
+          "displayOrder": 2
+        },
+        {
+          "name": "Indian Agriculture",
+          "topicCode": "UPPSC_GEO_012",
+          "displayOrder": 3
+        },
+        {
+          "name": "Natural Resources",
+          "topicCode": "UPPSC_GEO_013",
+          "displayOrder": 4
+        },
+        {
+          "name": "World Geography",
+          "topicCode": "UPPSC_GEO_014",
+          "displayOrder": 5
+        },
+        {
+          "name": "Climate & Environment",
+          "topicCode": "UPPSC_GEO_015",
+          "displayOrder": 6
+        },
+        {
+          "name": "Environment & Ecology",
+          "topicCode": "UPPSC_GEO_016",
+          "displayOrder": 7
+        },
+        {
+          "name": "Disaster Management",
+          "topicCode": "UPPSC_GEO_017",
+          "displayOrder": 8
+        },
+        {
+          "name": "Uttar Pradesh Geography",
+          "topicCode": "UPPSC_GEO_018",
+          "displayOrder": 9
+        },
+        {
+          "name": "UP Resources & Industries",
+          "topicCode": "UPPSC_GEO_019",
+          "displayOrder": 10
+        }
+      ]
+    },
+    {
+      "name": "Indian Polity & Governance",
+      "subjectCode": "POL",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Indian Constitution",
+          "topicCode": "UPPSC_POL_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Parliament & State Legislature",
+          "topicCode": "UPPSC_POL_010",
+          "displayOrder": 1
+        },
+        {
+          "name": "Federalism",
+          "topicCode": "UPPSC_POL_008",
+          "displayOrder": 2
+        },
+        {
+          "name": "Panchayati Raj & Local Bodies",
+          "topicCode": "UPPSC_POL_002",
+          "displayOrder": 3
+        },
+        {
+          "name": "Fundamental Rights & Duties",
+          "topicCode": "UPPSC_POL_011",
+          "displayOrder": 4
+        },
+        {
+          "name": "Directive Principles",
+          "topicCode": "UPPSC_POL_012",
+          "displayOrder": 5
+        },
+        {
+          "name": "Government Policies & Schemes",
+          "topicCode": "UPPSC_POL_003",
+          "displayOrder": 6
+        },
+        {
+          "name": "Public Policy",
+          "topicCode": "UPPSC_POL_004",
+          "displayOrder": 7
+        },
+        {
+          "name": "Rights Issues",
+          "topicCode": "UPPSC_POL_005",
+          "displayOrder": 8
+        },
+        {
+          "name": "UP Governance",
+          "topicCode": "UPPSC_POL_007",
+          "displayOrder": 9
+        }
+      ]
+    },
+    {
+      "name": "Economy & Development",
+      "subjectCode": "ECON",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "Indian Economy",
+          "topicCode": "UPPSC_ECON_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Economic Development & Planning",
+          "topicCode": "UPPSC_ECON_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Agriculture Economy",
+          "topicCode": "UPPSC_ECON_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "UP Economy",
+          "topicCode": "UPPSC_ECON_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Industry & Trade",
+          "topicCode": "UPPSC_ECON_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Banking & Finance",
+          "topicCode": "UPPSC_ECON_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Poverty & Inequality",
+          "topicCode": "UPPSC_ECON_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Infrastructure Development",
+          "topicCode": "UPPSC_ECON_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "IT & Digital India",
+          "topicCode": "UPPSC_ECON_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Budget & Economic Survey",
+          "topicCode": "UPPSC_ECON_010",
+          "displayOrder": 9
+        }
+      ]
+    },
+    {
+      "name": "Science & Technology",
+      "subjectCode": "SCI",
+      "displayOrder": 4,
+      "topics": [
+        {
+          "name": "Physics",
+          "topicCode": "UPPSC_SCI_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Chemistry",
+          "topicCode": "UPPSC_SCI_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Biology",
+          "topicCode": "UPPSC_SCI_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Space & Defence Technology",
+          "topicCode": "UPPSC_SCI_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Biotechnology",
+          "topicCode": "UPPSC_SCI_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Nanotechnology",
+          "topicCode": "UPPSC_SCI_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Computer Science",
+          "topicCode": "UPPSC_SCI_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Environmental Science",
+          "topicCode": "UPPSC_SCI_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Energy Resources",
+          "topicCode": "UPPSC_SCI_009",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "name": "Ethics & Aptitude",
+      "subjectCode": "ETHICS",
+      "displayOrder": 5,
+      "topics": [
+        {
+          "name": "Ethics & Human Interface",
+          "topicCode": "UPPSC_ETHICS_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Integrity & Aptitude",
+          "topicCode": "UPPSC_ETHICS_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Social Influence",
+          "topicCode": "UPPSC_ETHICS_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Attitude",
+          "topicCode": "UPPSC_ETHICS_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Civil Service Values",
+          "topicCode": "UPPSC_ETHICS_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Emotional Intelligence",
+          "topicCode": "UPPSC_ETHICS_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Public Service Ethics",
+          "topicCode": "UPPSC_ETHICS_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Case Studies",
+          "topicCode": "UPPSC_ETHICS_008",
+          "displayOrder": 7
+        }
+      ]
+    },
+    {
+      "name": "General Hindi",
+      "subjectCode": "HINDI",
+      "displayOrder": 6,
+      "topics": [
+        {
+          "name": "Hindi Grammar",
+          "topicCode": "UPPSC_HINDI_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Comprehension",
+          "topicCode": "UPPSC_HINDI_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Letter Writing",
+          "topicCode": "UPPSC_HINDI_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Essay Writing",
+          "topicCode": "UPPSC_HINDI_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Translation",
+          "topicCode": "UPPSC_HINDI_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "UPPSC_HINDI_006",
+          "displayOrder": 5
+        }
+      ]
+    },
+    {
+      "name": "Aptitude & Reasoning (CSAT)",
+      "subjectCode": "APT",
+      "displayOrder": 7,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "UPPSC_APT_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "UPPSC_APT_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "UPPSC_APT_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Average",
+          "topicCode": "UPPSC_APT_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "UPPSC_APT_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "UPPSC_APT_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "UPPSC_APT_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Analogy",
+          "topicCode": "UPPSC_APT_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Series",
+          "topicCode": "UPPSC_APT_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "UPPSC_APT_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "UPPSC_APT_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "UPPSC_APT_012",
+          "displayOrder": 11
+        },
+        {
+          "name": "Logical Reasoning",
+          "topicCode": "UPPSC_APT_013",
+          "displayOrder": 12
+        }
+      ]
+    }
+  ]
+}

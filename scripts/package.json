@@ -8,6 +8,7 @@
     "generate-questions": "tsx ./src/generate-questions.ts",
     "seed-syllabi": "tsx ./src/seed-syllabi.ts",
     "migrate-syllabus-codes": "tsx ./src/migrate-syllabus-codes.ts",
+    "finalize-syllabi": "tsx ./src/finalize-syllabi.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

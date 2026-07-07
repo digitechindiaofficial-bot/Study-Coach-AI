@@ -1,0 +1,345 @@
+{
+  "exam": "SBI PO",
+  "code": "SBI_PO",
+  "description": "State Bank of India — Probationary Officer",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "subjectCode": "QA",
+      "displayOrder": 0,
+      "topics": [
+        {
+          "name": "Number System",
+          "topicCode": "SBI_PO_QA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Simplification",
+          "topicCode": "SBI_PO_QA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Approximation",
+          "topicCode": "SBI_PO_QA_016",
+          "displayOrder": 2
+        },
+        {
+          "name": "Percentage",
+          "topicCode": "SBI_PO_QA_003",
+          "displayOrder": 3
+        },
+        {
+          "name": "Ratio & Proportion",
+          "topicCode": "SBI_PO_QA_004",
+          "displayOrder": 4
+        },
+        {
+          "name": "Average",
+          "topicCode": "SBI_PO_QA_005",
+          "displayOrder": 5
+        },
+        {
+          "name": "Profit & Loss",
+          "topicCode": "SBI_PO_QA_006",
+          "displayOrder": 6
+        },
+        {
+          "name": "Discount",
+          "topicCode": "SBI_PO_QA_017",
+          "displayOrder": 7
+        },
+        {
+          "name": "Simple & Compound Interest",
+          "topicCode": "SBI_PO_QA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Time & Work",
+          "topicCode": "SBI_PO_QA_007",
+          "displayOrder": 9
+        },
+        {
+          "name": "Pipe & Cistern",
+          "topicCode": "SBI_PO_QA_018",
+          "displayOrder": 10
+        },
+        {
+          "name": "Time, Speed & Distance",
+          "topicCode": "SBI_PO_QA_008",
+          "displayOrder": 11
+        },
+        {
+          "name": "Mixture & Alligation",
+          "topicCode": "SBI_PO_QA_019",
+          "displayOrder": 12
+        },
+        {
+          "name": "Partnership",
+          "topicCode": "SBI_PO_QA_020",
+          "displayOrder": 13
+        },
+        {
+          "name": "Permutation & Combination",
+          "topicCode": "SBI_PO_QA_010",
+          "displayOrder": 14
+        },
+        {
+          "name": "Probability",
+          "topicCode": "SBI_PO_QA_011",
+          "displayOrder": 15
+        },
+        {
+          "name": "Data Interpretation",
+          "topicCode": "SBI_PO_QA_012",
+          "displayOrder": 16
+        },
+        {
+          "name": "Data Sufficiency",
+          "topicCode": "SBI_PO_QA_013",
+          "displayOrder": 17
+        },
+        {
+          "name": "Quadratic Equations",
+          "topicCode": "SBI_PO_QA_014",
+          "displayOrder": 18
+        },
+        {
+          "name": "Number Series",
+          "topicCode": "SBI_PO_QA_015",
+          "displayOrder": 19
+        }
+      ]
+    },
+    {
+      "name": "English Language",
+      "subjectCode": "ENG",
+      "displayOrder": 1,
+      "topics": [
+        {
+          "name": "Reading Comprehension",
+          "topicCode": "SBI_PO_ENG_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Cloze Test",
+          "topicCode": "SBI_PO_ENG_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Error Detection",
+          "topicCode": "SBI_PO_ENG_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Sentence Improvement",
+          "topicCode": "SBI_PO_ENG_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Fill in the Blanks",
+          "topicCode": "SBI_PO_ENG_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Para Jumbles",
+          "topicCode": "SBI_PO_ENG_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Para Summary",
+          "topicCode": "SBI_PO_ENG_010",
+          "displayOrder": 6
+        },
+        {
+          "name": "Vocabulary",
+          "topicCode": "SBI_PO_ENG_007",
+          "displayOrder": 7
+        },
+        {
+          "name": "Paragraph Completion",
+          "topicCode": "SBI_PO_ENG_008",
+          "displayOrder": 8
+        },
+        {
+          "name": "Word Association",
+          "topicCode": "SBI_PO_ENG_009",
+          "displayOrder": 9
+        },
+        {
+          "name": "Sentence Connectors",
+          "topicCode": "SBI_PO_ENG_011",
+          "displayOrder": 10
+        }
+      ]
+    },
+    {
+      "name": "Reasoning & Computer Aptitude",
+      "subjectCode": "RCA",
+      "displayOrder": 2,
+      "topics": [
+        {
+          "name": "Analogy",
+          "topicCode": "SBI_PO_RCA_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Coding-Decoding",
+          "topicCode": "SBI_PO_RCA_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Blood Relation",
+          "topicCode": "SBI_PO_RCA_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Direction Sense",
+          "topicCode": "SBI_PO_RCA_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Ranking",
+          "topicCode": "SBI_PO_RCA_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "Syllogism",
+          "topicCode": "SBI_PO_RCA_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Puzzle",
+          "topicCode": "SBI_PO_RCA_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "Seating Arrangement",
+          "topicCode": "SBI_PO_RCA_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Input-Output",
+          "topicCode": "SBI_PO_RCA_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Inequality",
+          "topicCode": "SBI_PO_RCA_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Critical Reasoning",
+          "topicCode": "SBI_PO_RCA_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Alphanumeric Series",
+          "topicCode": "SBI_PO_RCA_016",
+          "displayOrder": 11
+        },
+        {
+          "name": "Statement & Assumptions",
+          "topicCode": "SBI_PO_RCA_017",
+          "displayOrder": 12
+        },
+        {
+          "name": "Mathematical Operations",
+          "topicCode": "SBI_PO_RCA_018",
+          "displayOrder": 13
+        },
+        {
+          "name": "Computer Fundamentals",
+          "topicCode": "SBI_PO_RCA_012",
+          "displayOrder": 14
+        },
+        {
+          "name": "MS Office",
+          "topicCode": "SBI_PO_RCA_013",
+          "displayOrder": 15
+        },
+        {
+          "name": "Internet & Networking",
+          "topicCode": "SBI_PO_RCA_014",
+          "displayOrder": 16
+        },
+        {
+          "name": "Database Concepts",
+          "topicCode": "SBI_PO_RCA_019",
+          "displayOrder": 17
+        },
+        {
+          "name": "Cyber Security",
+          "topicCode": "SBI_PO_RCA_020",
+          "displayOrder": 18
+        }
+      ]
+    },
+    {
+      "name": "General/Economy/Banking Awareness",
+      "subjectCode": "BANK",
+      "displayOrder": 3,
+      "topics": [
+        {
+          "name": "Banking Awareness",
+          "topicCode": "SBI_PO_BANK_001",
+          "displayOrder": 0
+        },
+        {
+          "name": "Financial Awareness",
+          "topicCode": "SBI_PO_BANK_002",
+          "displayOrder": 1
+        },
+        {
+          "name": "Current Affairs",
+          "topicCode": "SBI_PO_BANK_003",
+          "displayOrder": 2
+        },
+        {
+          "name": "Static GK",
+          "topicCode": "SBI_PO_BANK_004",
+          "displayOrder": 3
+        },
+        {
+          "name": "Indian Economy",
+          "topicCode": "SBI_PO_BANK_005",
+          "displayOrder": 4
+        },
+        {
+          "name": "RBI & Monetary Policy",
+          "topicCode": "SBI_PO_BANK_006",
+          "displayOrder": 5
+        },
+        {
+          "name": "Government Schemes",
+          "topicCode": "SBI_PO_BANK_007",
+          "displayOrder": 6
+        },
+        {
+          "name": "International Organisations",
+          "topicCode": "SBI_PO_BANK_008",
+          "displayOrder": 7
+        },
+        {
+          "name": "Awards & Honours",
+          "topicCode": "SBI_PO_BANK_009",
+          "displayOrder": 8
+        },
+        {
+          "name": "Budget Highlights",
+          "topicCode": "SBI_PO_BANK_010",
+          "displayOrder": 9
+        },
+        {
+          "name": "Insurance Awareness",
+          "topicCode": "SBI_PO_BANK_011",
+          "displayOrder": 10
+        },
+        {
+          "name": "Capital Markets",
+          "topicCode": "SBI_PO_BANK_012",
+          "displayOrder": 11
+        }
+      ]
+    }
+  ]
+}
