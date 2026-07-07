@@ -1,0 +1,66 @@
+{
+  "exam": "RRB NTPC",
+  "code": "RRB_NTPC",
+  "subjects": [
+    {
+      "name": "Mathematics",
+      "topics": [
+        "Number System",
+        "Decimals & Fractions",
+        "LCM & HCF",
+        "Ratio & Proportion",
+        "Percentage",
+        "Mensuration",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Profit & Loss",
+        "Elementary Algebra",
+        "Geometry & Trigonometry",
+        "Elementary Statistics",
+        "Tables & Graphs",
+        "Age Calculations"
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Number Series",
+        "Coding-Decoding",
+        "Mathematical Operations",
+        "Relationships",
+        "Syllogism",
+        "Jumbling",
+        "Venn Diagram",
+        "Data Interpretation",
+        "Directions",
+        "Statement & Conclusion",
+        "Similarities & Differences",
+        "Decision Making"
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "topics": [
+        "Current Affairs",
+        "Indian Geography",
+        "Indian History",
+        "Indian Polity & Constitution",
+        "Indian Economy",
+        "General Science",
+        "Physics",
+        "Chemistry",
+        "Life Science",
+        "Environmental Sciences",
+        "Space & Technology",
+        "Sports",
+        "Books & Authors",
+        "Government Schemes",
+        "Computer & IT Basics",
+        "Railways & Transport"
+      ]
+    }
+  ]
+}

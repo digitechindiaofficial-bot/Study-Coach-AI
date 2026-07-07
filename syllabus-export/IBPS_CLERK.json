@@ -1,0 +1,78 @@
+{
+  "exam": "IBPS Clerk",
+  "code": "IBPS_CLERK",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Data Interpretation",
+        "Number Series",
+        "Approximation",
+        "Quadratic Equations"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Fill in the Blanks",
+        "Para Jumbles",
+        "Vocabulary",
+        "Spelling",
+        "Word Usage"
+      ]
+    },
+    {
+      "name": "Reasoning Ability",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Syllogism",
+        "Puzzle",
+        "Seating Arrangement",
+        "Inequality",
+        "Alphanumeric Series",
+        "Order & Ranking"
+      ]
+    },
+    {
+      "name": "General/Financial Awareness",
+      "topics": [
+        "Banking Awareness",
+        "Current Affairs",
+        "Static GK",
+        "Indian Economy",
+        "Government Schemes",
+        "Financial Institutions",
+        "RBI Guidelines"
+      ]
+    },
+    {
+      "name": "Computer Knowledge",
+      "topics": [
+        "Computer Fundamentals",
+        "MS Office",
+        "Internet & Networking",
+        "Keyboard Shortcuts",
+        "Operating System",
+        "History of Computers"
+      ]
+    }
+  ]
+}

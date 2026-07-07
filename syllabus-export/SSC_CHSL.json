@@ -1,0 +1,80 @@
+{
+  "exam": "SSC CHSL",
+  "code": "SSC_CHSL",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Algebra",
+        "Geometry",
+        "Mensuration",
+        "Trigonometry",
+        "Data Interpretation"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Grammar",
+        "Vocabulary",
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Active & Passive Voice",
+        "Direct & Indirect Speech",
+        "Synonyms",
+        "Antonyms",
+        "Idioms & Phrases",
+        "One Word Substitution",
+        "Spelling"
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Syllogism",
+        "Venn Diagram",
+        "Puzzle",
+        "Mirror Image",
+        "Paper Folding",
+        "Dice",
+        "Non-Verbal Reasoning"
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "topics": [
+        "History",
+        "Geography",
+        "Indian Polity",
+        "Indian Economy",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Awareness",
+        "Current Affairs",
+        "Static GK",
+        "Environment",
+        "Art & Culture",
+        "Sports"
+      ]
+    }
+  ]
+}

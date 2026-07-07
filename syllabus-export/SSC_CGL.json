@@ -1,0 +1,90 @@
+{
+  "exam": "SSC CGL",
+  "code": "SSC_CGL",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Algebra",
+        "Geometry",
+        "Mensuration",
+        "Trigonometry",
+        "Statistics",
+        "Data Interpretation",
+        "Probability"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Grammar",
+        "Vocabulary",
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Active & Passive Voice",
+        "Direct & Indirect Speech",
+        "Synonyms",
+        "Antonyms",
+        "Idioms & Phrases",
+        "One Word Substitution",
+        "Para Jumbles"
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Alphabet Test",
+        "Venn Diagram",
+        "Syllogism",
+        "Puzzle",
+        "Seating Arrangement",
+        "Clock",
+        "Calendar",
+        "Mirror Image",
+        "Paper Folding",
+        "Dice",
+        "Cube",
+        "Non-Verbal Reasoning"
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "topics": [
+        "History",
+        "Geography",
+        "Indian Polity",
+        "Indian Economy",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Awareness",
+        "Environment",
+        "Current Affairs",
+        "Static GK",
+        "Art & Culture",
+        "Sports",
+        "Books & Authors",
+        "Awards & Honours",
+        "Government Schemes"
+      ]
+    }
+  ]
+}

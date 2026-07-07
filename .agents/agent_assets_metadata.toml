@@ -1,0 +1,50 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ErplGqO_PwnkBrRLJ-CzM"
+uri = "file://syllabus-export/SSC_CGL.json"
+type = "unspecified"
+title = "SSC CGL Syllabus"
+
+[[outputs]]
+id = "B_t4I5plgKMQeGz5-MmA0"
+uri = "file://syllabus-export/SSC_CHSL.json"
+type = "unspecified"
+title = "SSC CHSL Syllabus"
+
+[[outputs]]
+id = "gnpZboYE84GWXKwATDtX_"
+uri = "file://syllabus-export/IBPS_PO.json"
+type = "unspecified"
+title = "IBPS PO Syllabus"
+
+[[outputs]]
+id = "kXaLRiNHVY7Qsxcpp8Qjw"
+uri = "file://syllabus-export/IBPS_CLERK.json"
+type = "unspecified"
+title = "IBPS Clerk Syllabus"
+
+[[outputs]]
+id = "-Q1OJO9oopyf7nXuXf_t1"
+uri = "file://syllabus-export/SBI_PO.json"
+type = "unspecified"
+title = "SBI PO Syllabus"
+
+[[outputs]]
+id = "QITNl68__ho1StR8OH61H"
+uri = "file://syllabus-export/RRB_NTPC.json"
+type = "unspecified"
+title = "RRB NTPC Syllabus"
+
+[[outputs]]
+id = "RdtAfpG7zxj3o5hz4CyEV"
+uri = "file://syllabus-export/UPPSC.json"
+type = "unspecified"
+title = "UPPSC Syllabus"
+
+[[outputs]]
+id = "XaK3n8nGqMmjJh0y3XRsw"
+uri = "file://syllabus-export/BPSC.json"
+type = "unspecified"
+title = "BPSC Syllabus"

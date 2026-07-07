@@ -1,0 +1,103 @@
+{
+  "exam": "UPPSC",
+  "code": "UPPSC",
+  "subjects": [
+    {
+      "name": "History & Culture",
+      "topics": [
+        "Ancient India",
+        "Medieval India",
+        "Modern India",
+        "Indian National Movement",
+        "World History",
+        "Indian Culture & Heritage",
+        "Art Forms",
+        "Uttar Pradesh History",
+        "Post-Independence India"
+      ]
+    },
+    {
+      "name": "Geography",
+      "topics": [
+        "Physical Geography of India",
+        "Indian Agriculture",
+        "Natural Resources",
+        "Disaster Management",
+        "World Geography",
+        "Climate & Environment",
+        "Uttar Pradesh Geography",
+        "UP Resources & Industries"
+      ]
+    },
+    {
+      "name": "Indian Polity & Governance",
+      "topics": [
+        "Indian Constitution",
+        "Panchayati Raj & Local Bodies",
+        "Government Policies & Schemes",
+        "Public Policy",
+        "Rights Issues",
+        "UP Political System",
+        "UP Governance",
+        "Federalism",
+        "Current Affairs — Governance"
+      ]
+    },
+    {
+      "name": "Economy & Science",
+      "topics": [
+        "Indian Economy",
+        "Economic Development & Planning",
+        "Agriculture Economy",
+        "UP Economy",
+        "Industry & Trade",
+        "Science & Technology",
+        "Environment & Ecology",
+        "Energy Resources",
+        "IT & Digital India"
+      ]
+    },
+    {
+      "name": "Ethics & Aptitude",
+      "topics": [
+        "Ethics & Human Interface",
+        "Integrity & Aptitude",
+        "Social Influence",
+        "Attitude",
+        "Civil Service Values",
+        "Emotional Intelligence",
+        "Public Service Ethics",
+        "Case Studies"
+      ]
+    },
+    {
+      "name": "General Hindi",
+      "topics": [
+        "Hindi Grammar",
+        "Comprehension",
+        "Letter Writing",
+        "Essay Writing",
+        "Translation",
+        "Vocabulary"
+      ]
+    },
+    {
+      "name": "Quantitative Aptitude & Reasoning",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Data Interpretation",
+        "Analogy",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Syllogism",
+        "Logical Reasoning"
+      ]
+    }
+  ]
+}

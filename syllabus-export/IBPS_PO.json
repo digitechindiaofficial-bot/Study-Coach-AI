@@ -1,0 +1,90 @@
+{
+  "exam": "IBPS PO",
+  "code": "IBPS_PO",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Permutation & Combination",
+        "Probability",
+        "Data Interpretation",
+        "Data Sufficiency",
+        "Quadratic Equations",
+        "Number Series"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Fill in the Blanks",
+        "Para Jumbles",
+        "Vocabulary",
+        "Paragraph Completion",
+        "Word Association",
+        "Sentence Connectors"
+      ]
+    },
+    {
+      "name": "Reasoning Ability",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Syllogism",
+        "Puzzle",
+        "Seating Arrangement",
+        "Input-Output",
+        "Inequality",
+        "Data Sufficiency",
+        "Critical Reasoning",
+        "Order & Ranking"
+      ]
+    },
+    {
+      "name": "General/Economy/Banking Awareness",
+      "topics": [
+        "Banking Awareness",
+        "Financial Awareness",
+        "Current Affairs",
+        "Static GK",
+        "Government Schemes",
+        "Indian Economy",
+        "RBI & Monetary Policy",
+        "International Organisations",
+        "Awards & Honours",
+        "Budget & Five-Year Plans"
+      ]
+    },
+    {
+      "name": "Computer Knowledge",
+      "topics": [
+        "Computer Fundamentals",
+        "MS Office",
+        "Internet & Networking",
+        "Database Concepts",
+        "Cyber Security",
+        "Input/Output Devices",
+        "Operating System",
+        "Programming Basics",
+        "Number System in Computers"
+      ]
+    }
+  ]
+}

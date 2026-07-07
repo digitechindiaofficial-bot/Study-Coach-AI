@@ -1,0 +1,105 @@
+{
+  "exam": "BPSC",
+  "code": "BPSC",
+  "subjects": [
+    {
+      "name": "History & Culture",
+      "topics": [
+        "Ancient India",
+        "Medieval India",
+        "Modern India",
+        "Indian National Movement",
+        "Bihar History",
+        "Bihar Culture & Heritage",
+        "Art & Culture",
+        "Post-Independence India"
+      ]
+    },
+    {
+      "name": "Geography & Environment",
+      "topics": [
+        "Indian Geography",
+        "Bihar Geography",
+        "Environment & Ecology",
+        "Climate Change",
+        "Disaster Management",
+        "World Geography",
+        "Rivers & Water Bodies of Bihar"
+      ]
+    },
+    {
+      "name": "Indian Polity & Governance",
+      "topics": [
+        "Indian Constitution",
+        "Panchayati Raj",
+        "Government Schemes",
+        "Bihar Political System",
+        "Public Administration",
+        "Rights Issues",
+        "Federalism"
+      ]
+    },
+    {
+      "name": "Economy & Development",
+      "topics": [
+        "Indian Economy",
+        "Bihar Economy",
+        "Economic Development",
+        "Agriculture",
+        "Industry",
+        "Science & Technology",
+        "IT & Digital India",
+        "Current Affairs — Economy"
+      ]
+    },
+    {
+      "name": "Mathematics & Reasoning",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Algebra",
+        "Geometry",
+        "Data Interpretation",
+        "Logical Reasoning",
+        "Analogy",
+        "Classification",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Syllogism"
+      ]
+    },
+    {
+      "name": "General Hindi",
+      "topics": [
+        "Hindi Grammar",
+        "Comprehension",
+        "Essay Writing",
+        "Letter Writing",
+        "Vocabulary",
+        "Translation"
+      ]
+    },
+    {
+      "name": "Bihar Special",
+      "topics": [
+        "Bihar Geography — Key Places",
+        "Bihar Economy — Sectors",
+        "Bihar Polity — Legislature & Executive",
+        "Bihar Culture — Festivals & Fairs",
+        "Important Personalities of Bihar",
+        "Bihar Industrial Development",
+        "Bihar Agriculture & Irrigation",
+        "Bihar Government Schemes"
+      ]
+    }
+  ]
+}

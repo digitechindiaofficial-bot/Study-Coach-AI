@@ -1,0 +1,75 @@
+{
+  "exam": "SBI PO",
+  "code": "SBI_PO",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Simple & Compound Interest",
+        "Permutation & Combination",
+        "Probability",
+        "Data Interpretation",
+        "Data Sufficiency",
+        "Quadratic Equations",
+        "Number Series"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Fill in the Blanks",
+        "Para Jumbles",
+        "Vocabulary",
+        "Paragraph Completion",
+        "Word Association"
+      ]
+    },
+    {
+      "name": "Reasoning & Computer Aptitude",
+      "topics": [
+        "Analogy",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Syllogism",
+        "Puzzle",
+        "Seating Arrangement",
+        "Input-Output",
+        "Inequality",
+        "Critical Reasoning",
+        "Computer Fundamentals",
+        "MS Office",
+        "Internet & Networking",
+        "Keyboard Shortcuts"
+      ]
+    },
+    {
+      "name": "General/Economy/Banking Awareness",
+      "topics": [
+        "Banking Awareness",
+        "Financial Awareness",
+        "Current Affairs",
+        "Static GK",
+        "Indian Economy",
+        "RBI & Monetary Policy",
+        "Government Schemes",
+        "International Organisations",
+        "Awards & Honours",
+        "Budget Highlights"
+      ]
+    }
+  ]
+}
