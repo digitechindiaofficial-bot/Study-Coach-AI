@@ -300,109 +300,125 @@ const SyllabusImportInput = z.object({
   subjects: z.array(SyllabusSubjectInput).min(1),
 });
 
-router.get("/admin/syllabus/exams", async (_req, res) => {
-  const exams = await db.select().from(syllabusExamsTable).orderBy(desc(syllabusExamsTable.createdAt));
-  if (exams.length === 0) return res.json([]);
+router.get("/admin/syllabus/exams", async (req, res) => {
+  try {
+    const exams = await db.select().from(syllabusExamsTable).orderBy(desc(syllabusExamsTable.createdAt));
+    if (exams.length === 0) return res.json([]);
 
-  const examIds = exams.map((e) => e.id);
-  const subjects = await db.select().from(syllabusSubjectsTable)
-    .where(inArray(syllabusSubjectsTable.examId, examIds));
-  const subjectIds = subjects.map((s) => s.id);
-  const topicCounts = subjectIds.length > 0
-    ? await db.select({ subjectId: syllabusTopicsTable.subjectId, cnt: count() })
-        .from(syllabusTopicsTable)
-        .where(inArray(syllabusTopicsTable.subjectId, subjectIds))
-        .groupBy(syllabusTopicsTable.subjectId)
-    : [];
+    const examIds = exams.map((e) => e.id);
+    const subjects = await db.select().from(syllabusSubjectsTable)
+      .where(inArray(syllabusSubjectsTable.examId, examIds));
+    const subjectIds = subjects.map((s) => s.id);
+    const topicCounts = subjectIds.length > 0
+      ? await db.select({ subjectId: syllabusTopicsTable.subjectId, cnt: count() })
+          .from(syllabusTopicsTable)
+          .where(inArray(syllabusTopicsTable.subjectId, subjectIds))
+          .groupBy(syllabusTopicsTable.subjectId)
+      : [];
 
-  const topicCountBySubject = new Map(topicCounts.map((r) => [r.subjectId, Number(r.cnt)]));
-  const subjectsByExam = new Map<string, typeof subjects>();
-  for (const s of subjects) {
-    const arr = subjectsByExam.get(s.examId) ?? [];
-    arr.push(s);
-    subjectsByExam.set(s.examId, arr);
+    const topicCountBySubject = new Map(topicCounts.map((r) => [r.subjectId, Number(r.cnt)]));
+    const subjectsByExam = new Map<string, typeof subjects>();
+    for (const s of subjects) {
+      const arr = subjectsByExam.get(s.examId) ?? [];
+      arr.push(s);
+      subjectsByExam.set(s.examId, arr);
+    }
+
+    const result = exams.map((exam) => {
+      const examSubjects = subjectsByExam.get(exam.id) ?? [];
+      const topicCount = examSubjects.reduce((sum, s) => sum + (topicCountBySubject.get(s.id) ?? 0), 0);
+      return {
+        id: exam.id,
+        name: exam.name,
+        code: exam.code,
+        description: exam.description,
+        subjectCount: examSubjects.length,
+        topicCount,
+        createdAt: exam.createdAt,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "Failed to list syllabus exams");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-
-  const result = exams.map((exam) => {
-    const examSubjects = subjectsByExam.get(exam.id) ?? [];
-    const topicCount = examSubjects.reduce((sum, s) => sum + (topicCountBySubject.get(s.id) ?? 0), 0);
-    return {
-      id: exam.id,
-      name: exam.name,
-      code: exam.code,
-      description: exam.description,
-      subjectCount: examSubjects.length,
-      topicCount,
-      createdAt: exam.createdAt,
-    };
-  });
-
-  res.json(result);
 });
 
 router.post("/admin/syllabus/import", async (req, res) => {
-  const body = req.body;
-  const inputs = Array.isArray(body) ? body : [body];
+  try {
+    const body = req.body;
 
-  const results: { exam: string; topics: number }[] = [];
-
-  for (const raw of inputs) {
-    const parsed = SyllabusImportInput.safeParse(raw);
-    if (!parsed.success) {
-      res.status(400).json({ error: `Invalid input: ${parsed.error.message}` });
+    if (body === undefined || body === null) {
+      res.status(400).json({ error: "Request body is empty or not valid JSON" });
       return;
     }
-    const { exam, code, description, subjects } = parsed.data;
 
-    const existing = await db.select({ id: syllabusExamsTable.id })
-      .from(syllabusExamsTable)
-      .where(eq(syllabusExamsTable.code, code))
-      .limit(1);
+    const inputs = Array.isArray(body) ? body : [body];
 
-    let examId: string;
-    if (existing.length > 0) {
-      examId = existing[0].id;
-      const existingSubjects = await db.select({ id: syllabusSubjectsTable.id })
-        .from(syllabusSubjectsTable)
-        .where(eq(syllabusSubjectsTable.examId, examId));
-      if (existingSubjects.length > 0) {
-        await db.delete(syllabusTopicsTable)
-          .where(inArray(syllabusTopicsTable.subjectId, existingSubjects.map((s) => s.id)));
+    const results: { exam: string; topics: number }[] = [];
+
+    for (const raw of inputs) {
+      const parsed = SyllabusImportInput.safeParse(raw);
+      if (!parsed.success) {
+        res.status(400).json({ error: `Invalid input for exam: ${parsed.error.message}` });
+        return;
       }
-      await db.delete(syllabusSubjectsTable).where(eq(syllabusSubjectsTable.examId, examId));
-      await db.update(syllabusExamsTable)
-        .set({ name: exam, description: description ?? null })
-        .where(eq(syllabusExamsTable.id, examId));
-    } else {
-      const [created] = await db.insert(syllabusExamsTable)
-        .values({ name: exam, code, description: description ?? null })
-        .returning();
-      examId = created.id;
+      const { exam, code, description, subjects } = parsed.data;
+
+      const existing = await db.select({ id: syllabusExamsTable.id })
+        .from(syllabusExamsTable)
+        .where(eq(syllabusExamsTable.code, code))
+        .limit(1);
+
+      let examId: string;
+      if (existing.length > 0) {
+        examId = existing[0].id;
+        const existingSubjects = await db.select({ id: syllabusSubjectsTable.id })
+          .from(syllabusSubjectsTable)
+          .where(eq(syllabusSubjectsTable.examId, examId));
+        if (existingSubjects.length > 0) {
+          await db.delete(syllabusTopicsTable)
+            .where(inArray(syllabusTopicsTable.subjectId, existingSubjects.map((s) => s.id)));
+        }
+        await db.delete(syllabusSubjectsTable).where(eq(syllabusSubjectsTable.examId, examId));
+        await db.update(syllabusExamsTable)
+          .set({ name: exam, description: description ?? null })
+          .where(eq(syllabusExamsTable.id, examId));
+      } else {
+        const [created] = await db.insert(syllabusExamsTable)
+          .values({ name: exam, code, description: description ?? null })
+          .returning();
+        examId = created.id;
+      }
+
+      let totalTopics = 0;
+      for (let si = 0; si < subjects.length; si++) {
+        const subj = subjects[si];
+        const [createdSubject] = await db.insert(syllabusSubjectsTable)
+          .values({ examId, name: subj.name, displayOrder: si })
+          .returning();
+
+        const topicRows = subj.topics.map((t, ti) => ({
+          subjectId: createdSubject.id,
+          name: t,
+          displayOrder: ti,
+        }));
+        if (topicRows.length > 0) {
+          await db.insert(syllabusTopicsTable).values(topicRows);
+          totalTopics += topicRows.length;
+        }
+      }
+
+      results.push({ exam, topics: totalTopics });
     }
 
-    let totalTopics = 0;
-    for (let si = 0; si < subjects.length; si++) {
-      const subj = subjects[si];
-      const [createdSubject] = await db.insert(syllabusSubjectsTable)
-        .values({ examId, name: subj.name, displayOrder: si })
-        .returning();
-
-      const topicRows = subj.topics.map((t, ti) => ({
-        subjectId: createdSubject.id,
-        name: t,
-        displayOrder: ti,
-      }));
-      if (topicRows.length > 0) {
-        await db.insert(syllabusTopicsTable).values(topicRows);
-        totalTopics += topicRows.length;
-      }
-    }
-
-    results.push({ exam, topics: totalTopics });
+    const summary = results.map((r) => `${r.exam}: ${r.topics} topics`).join(", ");
+    res.json({ message: `Imported successfully — ${summary}`, results });
+  } catch (err) {
+    req.log.error(err, "Syllabus import failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-
-  const summary = results.map((r) => `${r.exam}: ${r.topics} topics`).join(", ");
-  res.json({ message: `Imported successfully — ${summary}`, results });
 });
 
 router.delete("/admin/syllabus/exams/:id", async (req, res) => {
