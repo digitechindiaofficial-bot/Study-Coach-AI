@@ -87,13 +87,14 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
 }
 
 function AdminRoute({ component: Component }: any) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const [, setLocation] = useLocation();
-  const [status, setStatus] = useState<"checking" | "allowed" | "denied">("checking");
+  const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "unauthenticated">("checking");
 
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
+      setStatus("unauthenticated");
       setLocation("/login");
       return;
     }
@@ -105,23 +106,42 @@ function AdminRoute({ component: Component }: any) {
           setStatus("allowed");
         } else {
           setStatus("denied");
-          setLocation("/dashboard");
         }
       })
       .catch(() => {
         if (cancelled) return;
         setStatus("denied");
-        setLocation("/dashboard");
       });
     return () => {
       cancelled = true;
     };
   }, [isLoaded, isSignedIn, setLocation]);
 
-  if (status !== "allowed") {
+  if (status === "checking") {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
+
+  if (status === "denied") {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background gap-4 p-8 text-center">
+        <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-red-600" style={{ animation: "none" }} />
+        </div>
+        <h1 className="text-2xl font-bold text-red-700">Access Denied</h1>
+        <p className="text-muted-foreground max-w-sm">
+          Your account is not authorised to access the admin panel. Make sure you are signed in with the admin email address set in the <strong>ADMIN_EMAIL</strong> secret.
+        </p>
+        <p className="text-xs text-muted-foreground">Signed-in Clerk ID: <code className="bg-muted px-1 rounded">{userId}</code></p>
+        <button
+          onClick={() => setLocation("/dashboard")}
+          className="mt-2 px-4 py-2 rounded bg-primary text-primary-foreground text-sm font-medium"
+        >
+          Back to Dashboard
+        </button>
       </div>
     );
   }

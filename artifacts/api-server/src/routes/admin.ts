@@ -32,10 +32,22 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction): Pr
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const ok = await isAdminEmail(userId);
-  if (!ok) {
-    req.log.warn({ userId }, "Non-admin user attempted to access admin panel");
-    res.status(403).json({ error: "forbidden", message: "Admin access only." });
+  const adminEmail = process.env.ADMIN_EMAIL;
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const email =
+      user.emailAddresses.find((e: { id: string }) => e.id === user.primaryEmailAddressId)?.emailAddress ??
+      user.emailAddresses[0]?.emailAddress ??
+      null;
+    req.log.info({ userId, email, adminEmail: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
+    if (!adminEmail || !email || email.toLowerCase() !== adminEmail.toLowerCase()) {
+      req.log.warn({ userId, email }, "Admin access denied — email mismatch or ADMIN_EMAIL not set");
+      res.status(403).json({ error: "forbidden", message: "Admin access only." });
+      return;
+    }
+  } catch (err) {
+    req.log.error({ userId, err: String(err) }, "Admin check failed — Clerk lookup error");
+    res.status(403).json({ error: "forbidden", message: "Admin check failed." });
     return;
   }
   next();
