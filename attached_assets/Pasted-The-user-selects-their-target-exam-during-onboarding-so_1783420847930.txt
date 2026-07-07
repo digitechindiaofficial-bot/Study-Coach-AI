@@ -1,0 +1,131 @@
+The user selects their target exam during onboarding, so the syllabus should be personalized.
+
+Update the syllabus system with the following rules:
+
+1. Every user should only see the syllabus of their selected exam.
+2. Do not load or display syllabus of any other exam.
+3. The syllabus page should automatically fetch data using the user's selected_exam.
+4. The admin can still import all exam syllabi, but users only access their own exam.
+
+Syllabus Structure
+
+Exam
+    ├── Subject
+    │      ├── Topic
+
+No subtopics are required.
+
+Each topic should support:
+- AI Notes
+- Quiz
+- PYQs
+- Practice Questions
+- Revision
+- Mark Complete
+
+Each exam should contain its complete official syllabus.
+
+Supported Exams:
+
+- SSC CGL
+- SSC CHSL
+- IBPS PO
+- IBPS Clerk
+- SBI PO
+- RRB NTPC
+- UPPSC
+- BPSC
+
+Example JSON
+
+{
+  "exam": "SSC CGL",
+  "code": "SSC_CGL",
+  "subjects": [
+    {
+      "name": "Quantitative Aptitude",
+      "topics": [
+        "Number System",
+        "Simplification",
+        "Percentage",
+        "Ratio & Proportion",
+        "Average",
+        "Profit & Loss",
+        "Time & Work",
+        "Time, Speed & Distance",
+        "Algebra",
+        "Geometry",
+        "Mensuration",
+        "Trigonometry",
+        "Statistics",
+        "Data Interpretation",
+        "Probability"
+      ]
+    },
+    {
+      "name": "English Language",
+      "topics": [
+        "Grammar",
+        "Vocabulary",
+        "Reading Comprehension",
+        "Cloze Test",
+        "Error Detection",
+        "Sentence Improvement",
+        "Active & Passive Voice",
+        "Direct & Indirect Speech",
+        "Synonyms",
+        "Antonyms",
+        "Idioms & Phrases",
+        "One Word Substitution"
+      ]
+    },
+    {
+      "name": "General Intelligence & Reasoning",
+      "topics": [
+        "Analogy",
+        "Classification",
+        "Series",
+        "Coding-Decoding",
+        "Blood Relation",
+        "Direction Sense",
+        "Ranking",
+        "Alphabet Test",
+        "Venn Diagram",
+        "Syllogism",
+        "Puzzle",
+        "Seating Arrangement",
+        "Clock",
+        "Calendar",
+        "Mirror Image",
+        "Paper Folding",
+        "Dice",
+        "Cube",
+        "Non-Verbal Reasoning"
+      ]
+    },
+    {
+      "name": "General Awareness",
+      "topics": [
+        "History",
+        "Geography",
+        "Indian Polity",
+        "Indian Economy",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Awareness",
+        "Environment",
+        "Current Affairs",
+        "Static GK",
+        "Art & Culture",
+        "Sports",
+        "Books & Authors",
+        "Awards & Honours",
+        "Government Schemes"
+      ]
+    }
+  ]
+}
+
+Do not use placeholder syllabus.
+Use the latest official syllabus for every supported exam.

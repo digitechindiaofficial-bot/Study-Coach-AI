@@ -29,7 +29,11 @@ router.get("/syllabus", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
 
-  const exams = await db.select().from(syllabusExamsTable).orderBy(syllabusExamsTable.createdAt);
+  if (!profile.examType) return res.json([]);
+
+  const exams = await db.select().from(syllabusExamsTable)
+    .where(eq(syllabusExamsTable.code, profile.examType))
+    .orderBy(syllabusExamsTable.createdAt);
   if (exams.length === 0) return res.json([]);
 
   const examIds = exams.map((e) => e.id);

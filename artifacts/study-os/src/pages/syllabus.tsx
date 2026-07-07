@@ -2,16 +2,27 @@ import { useGetSyllabus, useUpdateTopicProgress, getGetSyllabusQueryKey } from "
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, Circle, Minus, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import {
+  Loader2, CheckCircle2, Circle, Minus, ChevronDown, ChevronRight,
+  BookOpen, Brain, HelpCircle, FileText, PenLine, RotateCcw,
+} from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG = {
-  not_started: { label: "Not Started", icon: Circle, color: "text-muted-foreground" },
-  in_progress: { label: "In Progress", icon: Minus, color: "text-amber-500" },
-  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-500" },
-};
+  not_started: { label: "Not Started", icon: Circle, color: "text-muted-foreground", badge: "secondary" },
+  in_progress:  { label: "In Progress", icon: Minus,        color: "text-amber-500",       badge: "warning"   },
+  completed:    { label: "Completed",   icon: CheckCircle2, color: "text-green-500",        badge: "success"   },
+} as const;
+
+const TOPIC_ACTIONS = [
+  { icon: Brain,      label: "AI Notes"   },
+  { icon: HelpCircle, label: "Quiz"       },
+  { icon: FileText,   label: "PYQs"       },
+  { icon: PenLine,    label: "Practice"   },
+  { icon: RotateCcw,  label: "Revise"     },
+] as const;
 
 type TopicStatus = "not_started" | "in_progress" | "completed";
 
@@ -38,174 +49,221 @@ interface ExamWithProgress {
 
 export default function SyllabusPage() {
   const qc = useQueryClient();
-  const [expandedExams, setExpandedExams] = useState<Set<string>>(new Set());
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [expandedTopic, setExpandedTopic]       = useState<string | null>(null);
+  const [statusFilter, setStatusFilter]         = useState("all");
 
   const { data: rawData = [], isLoading } = useGetSyllabus({}, {
-    query: { queryKey: getGetSyllabusQueryKey() }
+    query: { queryKey: getGetSyllabusQueryKey() },
   });
   const exams = rawData as ExamWithProgress[];
+  const exam  = exams[0] ?? null;
 
   const updateProgress = useUpdateTopicProgress();
 
-  const toggle = (set: Set<string>, key: string) => {
-    const n = new Set(set);
-    n.has(key) ? n.delete(key) : n.add(key);
-    return n;
+  const toggleSubject = (id: string) => {
+    setExpandedSubjects((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
   };
 
   const cycleStatus = (topic: TopicWithProgress) => {
-    const statuses: TopicStatus[] = ["not_started", "in_progress", "completed"];
-    const next = statuses[(statuses.indexOf(topic.status as TopicStatus) + 1) % 3];
+    const order: TopicStatus[] = ["not_started", "in_progress", "completed"];
+    const next = order[(order.indexOf(topic.status as TopicStatus) + 1) % 3];
     updateProgress.mutate(
       { topicId: topic.id, data: { status: next } },
-      { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSyllabusQueryKey() }) }
+      { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSyllabusQueryKey() }) },
     );
   };
 
-  const allTopics = exams.flatMap((e) => e.subjects.flatMap((s) => s.topics));
-  const total = allTopics.length;
-  const done = allTopics.filter((t) => t.status === "completed").length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3, 4].map((i) => <div key={i} className="h-16 bg-muted rounded animate-pulse" />)}
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
+        ))}
       </div>
     );
   }
 
-  if (exams.length === 0) {
+  if (!exam) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-5">
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
           <BookOpen className="w-10 h-10 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold mb-3">No Syllabus Yet</h1>
-          <p className="text-muted-foreground max-w-md">
-            The admin hasn't imported any syllabus data yet. Once imported, your exam topics will appear here.
+          <h1 className="text-2xl font-bold mb-2">No Syllabus Yet</h1>
+          <p className="text-muted-foreground max-w-sm text-sm">
+            Your exam syllabus hasn't been imported yet. It will appear here once the admin adds it.
           </p>
         </div>
       </div>
     );
   }
 
+  const allTopics = exam.subjects.flatMap((s) => s.topics);
+  const done = allTopics.filter((t) => t.status === "completed").length;
+  const inProg = allTopics.filter((t) => t.status === "in_progress").length;
+  const total  = allTopics.length;
+  const pct    = total > 0 ? Math.round((done / total) * 100) : 0;
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Syllabus Tracker</h1>
-        <p className="text-muted-foreground mt-1">Track every topic. Tap the status icon to mark progress.</p>
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <h1 className="text-2xl font-bold tracking-tight">{exam.name} Syllabus</h1>
+          <Badge variant="secondary" className="font-mono text-xs">{exam.code}</Badge>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Tap a topic's status icon to cycle through Not Started → In Progress → Completed.
+        </p>
       </div>
 
-      {total > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Overall Completion</span>
-              <span className="font-bold text-primary">{done}/{total} topics ({pct}%)</span>
-            </div>
-            <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Progress card */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold">Overall Progress</span>
+            <span className="text-sm font-bold text-primary">{pct}% complete</span>
+          </div>
+          <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <span><span className="font-semibold text-green-500">{done}</span> Completed</span>
+            <span><span className="font-semibold text-amber-500">{inProg}</span> In Progress</span>
+            <span><span className="font-semibold">{total - done - inProg}</span> Not Started</span>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Filter chips */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "not_started", "in_progress", "completed"].map((f) => (
-          <Button key={f} variant={statusFilter === f ? "default" : "outline"} size="sm" onClick={() => setStatusFilter(f)}>
-            {f === "all" ? "All" : f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+        {(["all", "not_started", "in_progress", "completed"] as const).map((f) => (
+          <Button
+            key={f}
+            variant={statusFilter === f ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter(f)}
+            className="h-8 text-xs"
+          >
+            {f === "all" ? "All Topics" : f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
           </Button>
         ))}
       </div>
 
-      <div className="space-y-4">
-        {exams.map((exam) => {
-          const examTopics = exam.subjects.flatMap((s) => s.topics);
-          const examDone = examTopics.filter((t) => t.status === "completed").length;
-          const isExamExpanded = expandedExams.has(exam.id);
+      {/* Subject → Topic tree */}
+      <div className="space-y-3">
+        {exam.subjects.map((subject) => {
+          const filteredTopics = statusFilter === "all"
+            ? subject.topics
+            : subject.topics.filter((t) => t.status === statusFilter);
+          if (filteredTopics.length === 0) return null;
+
+          const subjectDone  = subject.topics.filter((t) => t.status === "completed").length;
+          const isExpanded   = expandedSubjects.has(subject.id);
+          const allDone      = subjectDone === subject.topics.length && subject.topics.length > 0;
 
           return (
-            <Card key={exam.id} className="overflow-hidden">
+            <Card key={subject.id} className="overflow-hidden">
+              {/* Subject header */}
               <div
-                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors bg-primary/5 border-b"
-                onClick={() => setExpandedExams(toggle(expandedExams, exam.id))}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none transition-colors",
+                  "hover:bg-muted/30",
+                  allDone ? "bg-green-500/5" : "bg-muted/10",
+                )}
+                onClick={() => toggleSubject(subject.id)}
               >
-                {isExamExpanded
-                  ? <ChevronDown className="w-5 h-5 text-primary shrink-0" />
-                  : <ChevronRight className="w-5 h-5 text-primary shrink-0" />
-                }
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-base">{exam.name}</span>
-                    <Badge variant="secondary" className="text-xs font-mono">{exam.code}</Badge>
-                  </div>
-                  {exam.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{exam.description}</p>
-                  )}
-                </div>
-                <Badge variant={examDone === examTopics.length && examTopics.length > 0 ? "default" : "secondary"} className="shrink-0">
-                  {examDone}/{examTopics.length}
-                </Badge>
+                {isExpanded
+                  ? <ChevronDown  className="w-4 h-4 text-muted-foreground shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                <span className="font-semibold text-sm flex-1">{subject.name}</span>
+                <span className={cn(
+                  "text-xs font-medium tabular-nums",
+                  allDone ? "text-green-500" : "text-muted-foreground",
+                )}>
+                  {subjectDone}/{subject.topics.length}
+                </span>
               </div>
 
-              {isExamExpanded && (
-                <div className="divide-y">
-                  {exam.subjects.map((subject) => {
-                    const filteredTopics = statusFilter === "all"
-                      ? subject.topics
-                      : subject.topics.filter((t) => t.status === statusFilter);
-
-                    if (filteredTopics.length === 0) return null;
-
-                    const subjectDone = subject.topics.filter((t) => t.status === "completed").length;
-                    const subjectKey = `${exam.id}::${subject.id}`;
-                    const isSubjExpanded = expandedSubjects.has(subjectKey);
+              {/* Topics */}
+              {isExpanded && (
+                <div className="divide-y divide-muted/50 border-t">
+                  {filteredTopics.map((topic) => {
+                    const status  = (topic.status || "not_started") as TopicStatus;
+                    const cfg     = STATUS_CONFIG[status] ?? STATUS_CONFIG.not_started;
+                    const Icon    = cfg.icon;
+                    const isOpen  = expandedTopic === topic.id;
 
                     return (
-                      <div key={subject.id}>
-                        <div
-                          className="flex items-center gap-3 px-4 py-3 bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
-                          onClick={() => setExpandedSubjects(toggle(expandedSubjects, subjectKey))}
-                        >
-                          <div className="w-5 shrink-0" />
-                          {isSubjExpanded
-                            ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                            : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                          }
-                          <span className="text-sm font-semibold flex-1">{subject.name}</span>
-                          <span className="text-xs text-muted-foreground">{subjectDone}/{subject.topics.length}</span>
+                      <div key={topic.id} className="group">
+                        <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors">
+                          {/* Status toggle */}
+                          <button
+                            onClick={() => cycleStatus(topic)}
+                            className={cn("shrink-0 transition-all hover:scale-110", cfg.color)}
+                            title={`${cfg.label} — click to change`}
+                          >
+                            <Icon className="w-5 h-5" />
+                          </button>
+
+                          {/* Topic name */}
+                          <span
+                            className={cn(
+                              "text-sm flex-1 cursor-pointer",
+                              status === "completed" && "line-through text-muted-foreground",
+                            )}
+                            onClick={() => setExpandedTopic(isOpen ? null : topic.id)}
+                          >
+                            {topic.name}
+                          </span>
+
+                          {/* Expand actions button */}
+                          <button
+                            onClick={() => setExpandedTopic(isOpen ? null : topic.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                          >
+                            <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+                          </button>
                         </div>
 
-                        {isSubjExpanded && filteredTopics.map((topic) => {
-                          const status = (topic.status || "not_started") as keyof typeof STATUS_CONFIG;
-                          const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.not_started;
-                          const Icon = cfg.icon;
-                          return (
-                            <div
-                              key={topic.id}
-                              className="flex items-center gap-3 px-4 py-2.5 border-t border-muted/50 hover:bg-muted/20 transition-colors"
-                            >
-                              <div className="w-9 shrink-0" />
-                              <button
-                                onClick={() => cycleStatus(topic)}
-                                className={cn("shrink-0 transition-colors hover:scale-110", cfg.color)}
-                                title={`Status: ${cfg.label} — click to change`}
+                        {/* Topic action buttons */}
+                        {isOpen && (
+                          <div className="px-4 pb-3 flex gap-2 flex-wrap">
+                            {TOPIC_ACTIONS.map(({ icon: ActionIcon, label }) => (
+                              <Button
+                                key={label}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs gap-1.5"
+                                onClick={() => {}}
                               >
-                                <Icon className="w-5 h-5" />
-                              </button>
-                              <span className={cn(
-                                "text-sm flex-1",
-                                topic.status === "completed" && "line-through text-muted-foreground"
-                              )}>
-                                {topic.name}
-                              </span>
-                            </div>
-                          );
-                        })}
+                                <ActionIcon className="w-3.5 h-3.5" />
+                                {label}
+                              </Button>
+                            ))}
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs gap-1.5 ml-auto"
+                              variant={status === "completed" ? "secondary" : "default"}
+                              onClick={() => {
+                                const next: TopicStatus = status === "completed" ? "not_started" : "completed";
+                                updateProgress.mutate(
+                                  { topicId: topic.id, data: { status: next } },
+                                  { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSyllabusQueryKey() }) },
+                                );
+                              }}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              {status === "completed" ? "Mark Incomplete" : "Mark Complete"}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -215,6 +273,18 @@ export default function SyllabusPage() {
           );
         })}
       </div>
+
+      {filteredCount(exam, statusFilter) === 0 && statusFilter !== "all" && (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          No topics with status "{statusFilter.replace(/_/g, " ")}" found.
+        </div>
+      )}
     </div>
   );
+}
+
+function filteredCount(exam: ExamWithProgress, filter: string) {
+  return exam.subjects.reduce((acc, s) => {
+    return acc + (filter === "all" ? s.topics.length : s.topics.filter((t) => t.status === filter).length);
+  }, 0);
 }

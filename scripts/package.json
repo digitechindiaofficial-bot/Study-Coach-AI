@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "generate-questions": "tsx ./src/generate-questions.ts",
+    "seed-syllabi": "tsx ./src/seed-syllabi.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
