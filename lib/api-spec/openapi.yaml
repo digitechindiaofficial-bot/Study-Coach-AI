@@ -665,9 +665,13 @@ components:
           type: number
         studyHoursThisWeek:
           type: number
+        studyHoursThisMonth:
+          type: number
+        totalStudyHours:
+          type: number
         topicsCompletedThisMonth:
           type: integer
-      required: [streakCount, longestStreak, totalTasksCompleted, syllabusCompletionPercent, avgQuizAccuracy, studyHoursThisWeek, topicsCompletedThisMonth]
+      required: [streakCount, longestStreak, totalTasksCompleted, syllabusCompletionPercent, avgQuizAccuracy, studyHoursThisWeek, studyHoursThisMonth, totalStudyHours, topicsCompletedThisMonth]
 
     HeatmapDay:
       type: object
@@ -678,7 +682,9 @@ components:
           type: boolean
         tasksCompleted:
           type: integer
-      required: [date, studied, tasksCompleted]
+        hoursStudied:
+          type: number
+      required: [date, studied, tasksCompleted, hoursStudied]
 
     WeakArea:
       type: object

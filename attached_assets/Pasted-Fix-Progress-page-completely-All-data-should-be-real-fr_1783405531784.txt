@@ -1,0 +1,148 @@
+Fix Progress page completely. All data should be real from database.
+
+PROBLEM 1 - Daily Study Hours chart (last 14 days) showing no data:
+
+1. Create study_logs table if not exists:
+CREATE TABLE IF NOT EXISTS study_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  date DATE DEFAULT CURRENT_DATE,
+  hours_studied DECIMAL DEFAULT 0,
+  tasks_completed INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, date)
+);
+
+2. Every time user checks/completes a task in study planner,
+   upsert into study_logs:
+   
+   await supabase
+     .from('study_logs')
+     .upsert({
+       user_id: userId,
+       date: today,
+       hours_studied: taskDurationMinutes / 60,
+       tasks_completed: 1
+     }, { 
+       onConflict: 'user_id,date',
+       ignoreDuplicates: false 
+     })
+
+3. In progress page fetch last 14 days:
+
+   const today = new Date()
+   const fourteenDaysAgo = new Date(
+     today - 14 * 24 * 60 * 60 * 1000
+   ).toISOString().split('T')[0]
+   
+   const { data: studyLogs } = await supabase
+     .from('study_logs')
+     .select('*')
+     .eq('user_id', userId)
+     .gte('date', fourteenDaysAgo)
+     .order('date', { ascending: true })
+
+4. Fill missing days with 0:
+   Generate array of last 14 dates, merge with DB data,
+   missing dates = { hours_studied: 0, tasks_completed: 0 }
+   
+   Never show empty chart - always show 14 bars even if all zero.
+
+PROBLEM 2 - Last 30 days studied/missed calendar not working:
+
+1. Fetch last 30 days study_logs:
+
+   const thirtyDaysAgo = new Date(
+     today - 30 * 24 * 60 * 60 * 1000
+   ).toISOString().split('T')[0]
+   
+   const { data: monthLogs } = await supabase
+     .from('study_logs')
+     .select('date, tasks_completed')
+     .eq('user_id', userId)
+     .gte('date', thirtyDaysAgo)
+
+2. Build 30 day calendar grid:
+   - Each day = small square
+   - Green = studied (tasks_completed > 0)
+   - Gray = missed (no entry or tasks_completed = 0)
+   - Today = highlighted with border
+   - Show day number inside each square
+   - 7 columns (Mon to Sun)
+   - GitHub contribution style
+
+3. Below calendar show:
+   - Total days studied: X / 30
+   - Current streak: X days
+   - Best streak: X days
+   - Total hours this month: X hrs
+
+PROBLEM 3 - Streak not updating:
+
+Fix streak logic:
+1. When user completes ANY task, call this:
+
+const updateStreak = async () => {
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(
+    Date.now() - 86400000
+  ).toISOString().split('T')[0]
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('streak_count, last_active_date, best_streak')
+    .eq('id', userId)
+    .single()
+  
+  const lastActive = profile.last_active_date?.split('T')[0]
+  
+  if (lastActive === today) return // already updated
+  
+  let newStreak = 1
+  if (lastActive === yesterday) {
+    newStreak = (profile.streak_count || 0) + 1
+  }
+  
+  const bestStreak = Math.max(
+    newStreak, 
+    profile.best_streak || 0
+  )
+  
+  await supabase
+    .from('profiles')
+    .update({
+      streak_count: newStreak,
+      last_active_date: today,
+      best_streak: bestStreak
+    })
+    .eq('id', userId)
+}
+
+2. Add best_streak column to profiles:
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS best_streak INTEGER DEFAULT 0;
+
+PROBLEM 4 - Progress page stats must be real data:
+
+Show these real stats:
+- Total tasks completed: 
+  SELECT COUNT(*) FROM daily_tasks 
+  WHERE user_id = ? AND is_completed = true
+
+- Total study hours:
+  SELECT SUM(hours_studied) FROM study_logs 
+  WHERE user_id = ?
+
+- Quiz accuracy:
+  SELECT 
+    COUNT(*) FILTER (WHERE is_correct = true) * 100 / COUNT(*)
+  FROM quiz_attempts WHERE user_id = ?
+
+- Syllabus completion:
+  SELECT 
+    COUNT(*) FILTER (WHERE status = 'completed') * 100 / COUNT(*)
+  FROM syllabus_progress WHERE user_id = ?
+
+Show loading skeleton while fetching.
+Show "Start studying to see your progress!" 
+if no data exists yet.

@@ -5,8 +5,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { TrendingUp, Flame, BookOpen, BrainCircuit, Clock, AlertCircle, Sparkles } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { TrendingUp, Flame, BookOpen, BrainCircuit, Clock, AlertCircle, Sparkles, CalendarDays } from "lucide-react";
+import { format, parseISO, startOfDay } from "date-fns";
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function ProgressPage() {
   const { data: summary, isLoading: summaryLoading } = useGetProgressSummary({ query: { queryKey: getGetProgressSummaryQueryKey() } });
@@ -19,12 +21,12 @@ export default function ProgressPage() {
 
   const s = summary as any;
   const stats = [
-    { label: "Day Streak", value: `${s?.streakCount ?? 0} 🔥`, icon: Flame, color: "text-amber-500" },
-    { label: "Tasks Completed", value: s?.totalTasksCompleted ?? 0, icon: TrendingUp, color: "text-primary" },
-    { label: "Syllabus Done", value: `${s?.syllabusCompletionPercent ?? 0}%`, icon: BookOpen, color: "text-green-600" },
-    { label: "Quiz Accuracy", value: `${s?.avgQuizAccuracy ?? 0}%`, icon: BrainCircuit, color: "text-purple-600" },
-    { label: "Study Hours (wk)", value: `${s?.studyHoursThisWeek ?? 0}h`, icon: Clock, color: "text-blue-600" },
-    { label: "Topics This Month", value: s?.topicsCompletedThisMonth ?? 0, icon: TrendingUp, color: "text-primary" },
+    { label: "Day Streak", value: `${s?.streakCount ?? 0} 🔥`, icon: Flame, color: "text-amber-500", sub: `Best: ${s?.longestStreak ?? 0} days` },
+    { label: "Tasks Completed", value: s?.totalTasksCompleted ?? 0, icon: TrendingUp, color: "text-primary", sub: "all time" },
+    { label: "Syllabus Done", value: `${s?.syllabusCompletionPercent ?? 0}%`, icon: BookOpen, color: "text-green-600", sub: "of syllabus" },
+    { label: "Quiz Accuracy", value: `${s?.avgQuizAccuracy ?? 0}%`, icon: BrainCircuit, color: "text-purple-600", sub: "overall" },
+    { label: "Total Study Hours", value: `${s?.totalStudyHours ?? 0}h`, icon: Clock, color: "text-blue-600", sub: `${s?.studyHoursThisWeek ?? 0}h this week` },
+    { label: "Tasks This Month", value: s?.topicsCompletedThisMonth ?? 0, icon: CalendarDays, color: "text-primary", sub: "last 30 days" },
   ];
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -36,6 +38,20 @@ export default function ProgressPage() {
 
   const hasAnyActivity = (s?.totalTasksCompleted ?? 0) > 0 || (quizStats as any[]).length > 0 || chartData.some(d => d.hours > 0);
 
+  // Build 7-column Mon-Sun calendar from heatmap data
+  const heatmapDays = heatmap as any[];
+  const calendarCells: (any | null)[] = [];
+  if (heatmapDays.length > 0) {
+    const firstDate = parseISO(heatmapDays[0].date);
+    // getDay(): 0=Sun, 1=Mon ... convert to Mon=0, Sun=6
+    const firstDayOfWeek = (firstDate.getDay() + 6) % 7;
+    for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
+    for (const day of heatmapDays) calendarCells.push(day);
+  }
+
+  const daysStudied = heatmapDays.filter(d => d.studied).length;
+  const totalHoursThisMonth = heatmapDays.reduce((sum: number, d: any) => sum + (d.hoursStudied ?? 0), 0);
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -44,9 +60,10 @@ export default function ProgressPage() {
           <Skeleton className="h-5 w-48" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-[240px]" />
+        <Skeleton className="h-[280px]" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
@@ -71,39 +88,39 @@ export default function ProgressPage() {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold mb-2">No data yet — start studying!</h3>
+            <h3 className="text-lg font-bold mb-2">Start studying to see your progress!</h3>
             <p className="text-muted-foreground max-w-sm">Complete tasks in your study planner and take a few quizzes to see your progress here.</p>
           </CardContent>
         </Card>
       ) : (
         <>
+          {/* Stats grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {stats.map((st, i) => (
               <Card key={i}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                     <st.icon className={`w-5 h-5 ${st.color}`}/>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-xl font-bold">{st.value}</div>
                     <div className="text-xs text-muted-foreground">{st.label}</div>
-                    {st.label === "Day Streak" && (
-                      <div className="text-[11px] text-muted-foreground">Best: {s?.longestStreak ?? 0} days</div>
-                    )}
+                    {st.sub && <div className="text-[11px] text-muted-foreground">{st.sub}</div>}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
+          {/* Daily Study Hours Chart */}
           <Card>
             <CardHeader><CardTitle className="text-base">Daily Study Hours (Last 14 Days)</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={1}/>
-                  <YAxis tick={{ fontSize: 10 }} domain={[0, 10]}/>
-                  <Tooltip formatter={(v: any) => `${v}h`}/>
+                  <YAxis tick={{ fontSize: 10 }} domain={[0, "auto"]}/>
+                  <Tooltip formatter={(v: any) => [`${v}h`, "Hours"]}/>
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {chartData.map((entry, i) => (
                       <Cell key={i} fill={entry.rawDate === todayStr ? "#d97706" : "#fbbf24"} />
@@ -114,29 +131,84 @@ export default function ProgressPage() {
             </CardContent>
           </Card>
 
+          {/* 30-Day Activity Calendar */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Flame className="w-4 h-4 text-amber-500"/>Last 30 Days
+                <Flame className="w-4 h-4 text-amber-500"/>
+                Last 30 Days Activity
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-10 gap-1.5">
-                {(heatmap as any[]).map((day: any) => (
-                  <div
-                    key={day.date}
-                    title={`${format(parseISO(day.date), "MMM d")}: ${day.tasksCompleted} task${day.tasksCompleted === 1 ? "" : "s"} completed`}
-                    className={`aspect-square rounded-sm ${day.studied ? "bg-green-500" : "bg-muted"}`}
-                  />
+              {/* Day-of-week headers */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {DAY_LABELS.map(d => (
+                  <div key={d} className="text-center text-[10px] text-muted-foreground font-medium">{d}</div>
                 ))}
               </div>
-              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-                <div className="w-3 h-3 rounded-sm bg-muted" /> Missed
-                <div className="w-3 h-3 rounded-sm bg-green-500 ml-3" /> Studied
+
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarCells.map((day, i) => {
+                  if (day === null) {
+                    return <div key={`pad-${i}`} className="aspect-square" />;
+                  }
+                  const isToday = day.date === todayStr;
+                  const dayNum = parseInt(day.date.split("-")[2], 10);
+                  return (
+                    <div
+                      key={day.date}
+                      title={`${format(parseISO(day.date), "EEE, MMM d")}: ${day.tasksCompleted} task${day.tasksCompleted === 1 ? "" : "s"} · ${day.hoursStudied}h`}
+                      className={[
+                        "aspect-square rounded-sm flex items-center justify-center text-[10px] font-semibold cursor-default transition-all",
+                        day.studied
+                          ? "bg-green-500 text-white"
+                          : "bg-muted text-muted-foreground",
+                        isToday ? "ring-2 ring-offset-1 ring-primary" : "",
+                      ].join(" ")}
+                    >
+                      {dayNum}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-muted" /> Missed
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-green-500" /> Studied
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm ring-2 ring-primary bg-muted" /> Today
+                </div>
+              </div>
+
+              {/* Month stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-600">{daysStudied}<span className="text-sm font-normal text-muted-foreground">/{heatmapDays.length}</span></div>
+                  <div className="text-xs text-muted-foreground">Days Studied</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-amber-500">{s?.streakCount ?? 0}</div>
+                  <div className="text-xs text-muted-foreground">Current Streak</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-purple-600">{s?.longestStreak ?? 0}</div>
+                  <div className="text-xs text-muted-foreground">Best Streak</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-blue-600">{Math.round(totalHoursThisMonth * 10) / 10}h</div>
+                  <div className="text-xs text-muted-foreground">Hours This Month</div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Quiz performance & weak areas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-base">Quiz Performance by Subject</CardTitle></CardHeader>
@@ -147,7 +219,7 @@ export default function ProgressPage() {
                       <div key={st.subject} className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="font-medium truncate pr-2">{st.subject}</span>
-                          <span className={`font-bold ${st.accuracy >= 70 ? "text-green-600" : st.accuracy >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                          <span className={`font-bold shrink-0 ${st.accuracy >= 70 ? "text-green-600" : st.accuracy >= 50 ? "text-amber-600" : "text-red-600"}`}>
                             {st.accuracy}%
                           </span>
                         </div>
@@ -157,6 +229,7 @@ export default function ProgressPage() {
                             style={{ width: `${st.accuracy}%` }}
                           />
                         </div>
+                        <p className="text-xs text-muted-foreground">{st.totalQuestions} questions attempted</p>
                       </div>
                     ))}
                   </div>
@@ -178,11 +251,11 @@ export default function ProgressPage() {
                     {(weakAreas as any[]).map((wa: any, i: number) => (
                       <div key={i} className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <div>
+                          <div className="min-w-0 pr-2">
                             <span className="font-medium">{wa.topic}</span>
                             <span className="text-xs text-muted-foreground ml-1">({wa.subject})</span>
                           </div>
-                          <span className="font-bold text-destructive">{wa.accuracy}%</span>
+                          <span className="font-bold text-destructive shrink-0">{wa.accuracy}%</span>
                         </div>
                         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-destructive rounded-full" style={{ width: `${wa.accuracy}%` }}/>

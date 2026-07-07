@@ -20,12 +20,13 @@ router.get("/progress/summary", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json({
     streakCount: 0, longestStreak: 0, totalTasksCompleted: 0, syllabusCompletionPercent: 0,
-    avgQuizAccuracy: 0, studyHoursThisWeek: 0, topicsCompletedThisMonth: 0,
+    avgQuizAccuracy: 0, studyHoursThisWeek: 0, studyHoursThisMonth: 0, totalStudyHours: 0,
+    topicsCompletedThisMonth: 0,
   });
 
   const healedProfile = await resetStreakIfBroken(profile);
 
-  // Tasks completed
+  // All tasks
   const tasks = await db.select().from(dailyTasksTable).where(eq(dailyTasksTable.userId, profile.id));
   const completedTasks = tasks.filter(t => t.isCompleted);
 
@@ -34,9 +35,16 @@ router.get("/progress/summary", async (req, res) => {
   const thisWeekTasks = completedTasks.filter(t => t.date >= weekAgoStr);
   const studyHoursThisWeek = thisWeekTasks.reduce((sum, t) => sum + (t.durationMinutes ?? 60), 0) / 60;
 
-  // This month completions
+  // This month study hours (last 30 days)
   const monthAgoStr = getISTDateString(-30);
-  const thisMonthTopics = completedTasks.filter(t => t.date >= monthAgoStr).length;
+  const thisMonthTasks = completedTasks.filter(t => t.date >= monthAgoStr);
+  const studyHoursThisMonth = thisMonthTasks.reduce((sum, t) => sum + (t.durationMinutes ?? 60), 0) / 60;
+
+  // All-time total study hours
+  const totalStudyHours = completedTasks.reduce((sum, t) => sum + (t.durationMinutes ?? 60), 0) / 60;
+
+  // This month completions
+  const thisMonthTopics = thisMonthTasks.length;
 
   // Syllabus completion
   const syllabusItems = await db.select().from(syllabusProgressTable).where(eq(syllabusProgressTable.userId, profile.id));
@@ -57,6 +65,8 @@ router.get("/progress/summary", async (req, res) => {
     syllabusCompletionPercent,
     avgQuizAccuracy,
     studyHoursThisWeek: Math.round(studyHoursThisWeek * 10) / 10,
+    studyHoursThisMonth: Math.round(studyHoursThisMonth * 10) / 10,
+    totalStudyHours: Math.round(totalStudyHours * 10) / 10,
     topicsCompletedThisMonth: thisMonthTopics,
   });
 });
@@ -150,15 +160,18 @@ router.get("/progress/heatmap", async (req, res) => {
     ));
 
   const countByDate: Record<string, number> = {};
+  const minutesByDate: Record<string, number> = {};
   for (const task of tasks) {
     countByDate[task.date] = (countByDate[task.date] ?? 0) + 1;
+    minutesByDate[task.date] = (minutesByDate[task.date] ?? 0) + (task.durationMinutes ?? 60);
   }
 
   const result = [];
   for (let i = days - 1; i >= 0; i--) {
     const dateStr = getISTDateString(-i);
     const tasksCompleted = countByDate[dateStr] ?? 0;
-    result.push({ date: dateStr, studied: tasksCompleted > 0, tasksCompleted });
+    const hoursStudied = Math.round(((minutesByDate[dateStr] ?? 0) / 60) * 10) / 10;
+    result.push({ date: dateStr, studied: tasksCompleted > 0, tasksCompleted, hoursStudied });
   }
 
   res.json(result);
