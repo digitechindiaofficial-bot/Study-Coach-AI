@@ -15,6 +15,7 @@ export * from './getCurrentAffairsParams';
 export * from './getDailyStudyHoursParams';
 export * from './getDailyTasksParams';
 export * from './getQuizQuestionsParams';
+export * from './getQuizStatsParams';
 export * from './healthStatus';
 export * from './heatmapDay';
 export * from './mcqGenerateInput';

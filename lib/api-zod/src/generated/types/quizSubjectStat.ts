@@ -8,9 +8,12 @@
 
 export interface QuizSubjectStat {
   subject: string;
+  /** @nullable */
+  subjectCode?: string | null;
   totalQuestions: number;
   correct: number;
   accuracy: number;
   /** @nullable */
   lastPracticed?: string | null;
+  questionsAvailable?: number;
 }

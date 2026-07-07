@@ -10,6 +10,12 @@ import type { QuizQuestionOptions } from './quizQuestionOptions';
 export interface QuizQuestion {
   id: string;
   /** @nullable */
+  examCode?: string | null;
+  /** @nullable */
+  subjectCode?: string | null;
+  /** @nullable */
+  topicCode?: string | null;
+  /** @nullable */
   subject?: string | null;
   /** @nullable */
   topic?: string | null;

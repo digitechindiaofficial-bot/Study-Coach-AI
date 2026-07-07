@@ -4,6 +4,9 @@ import { z } from "zod/v4";
 
 export const quizQuestionsTable = pgTable("quiz_questions", {
   id: uuid("id").defaultRandom().primaryKey(),
+  examCode: text("exam_code"),
+  subjectCode: text("subject_code"),
+  topicCode: text("topic_code"),
   subject: text("subject"),
   topic: text("topic"),
   questionText: text("question_text").notNull(),

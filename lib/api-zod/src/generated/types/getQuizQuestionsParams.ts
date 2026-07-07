@@ -7,9 +7,13 @@
  */
 
 export type GetQuizQuestionsParams = {
+examCode?: string;
+subjectCode?: string;
+topicCode?: string;
 subject?: string;
 topic?: string;
 difficulty?: string;
 limit?: number;
 weakOnly?: boolean;
+exclude?: string;
 };

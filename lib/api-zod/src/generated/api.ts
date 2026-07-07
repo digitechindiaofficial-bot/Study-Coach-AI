@@ -226,15 +226,22 @@ export const GetCurrentAffairsResponse = zod.array(GetCurrentAffairsResponseItem
  * @summary Get quiz questions
  */
 export const GetQuizQuestionsQueryParams = zod.object({
+  "examCode": zod.coerce.string().optional(),
+  "subjectCode": zod.coerce.string().optional(),
+  "topicCode": zod.coerce.string().optional(),
   "subject": zod.coerce.string().optional(),
   "topic": zod.coerce.string().optional(),
   "difficulty": zod.coerce.string().optional(),
   "limit": zod.coerce.number().optional(),
-  "weakOnly": zod.coerce.boolean().optional()
+  "weakOnly": zod.coerce.boolean().optional(),
+  "exclude": zod.coerce.string().optional()
 })
 
 export const GetQuizQuestionsResponseItem = zod.object({
   "id": zod.string(),
+  "examCode": zod.string().nullish(),
+  "subjectCode": zod.string().nullish(),
+  "topicCode": zod.string().nullish(),
   "subject": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "questionText": zod.string(),
@@ -273,12 +280,18 @@ export const SubmitQuizAttemptResponse = zod.object({
 /**
  * @summary Get quiz statistics per subject
  */
+export const GetQuizStatsQueryParams = zod.object({
+  "examCode": zod.coerce.string().optional()
+})
+
 export const GetQuizStatsResponseItem = zod.object({
   "subject": zod.string(),
+  "subjectCode": zod.string().nullish(),
   "totalQuestions": zod.number(),
   "correct": zod.number(),
   "accuracy": zod.number(),
-  "lastPracticed": zod.string().nullish()
+  "lastPracticed": zod.string().nullish(),
+  "questionsAvailable": zod.number().optional()
 })
 export const GetQuizStatsResponse = zod.array(GetQuizStatsResponseItem)
 

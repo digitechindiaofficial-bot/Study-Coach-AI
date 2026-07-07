@@ -9,6 +9,7 @@
     "seed-syllabi": "tsx ./src/seed-syllabi.ts",
     "migrate-syllabus-codes": "tsx ./src/migrate-syllabus-codes.ts",
     "finalize-syllabi": "tsx ./src/finalize-syllabi.ts",
+    "migrate-quiz-codes": "tsx ./src/migrate-quiz-codes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

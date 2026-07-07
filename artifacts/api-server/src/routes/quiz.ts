@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { profilesTable, quizQuestionsTable, quizAttemptsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql, SQL } from "drizzle-orm";
 import { SubmitQuizAttemptBody, GenerateMcqFromNewsBody } from "@workspace/api-zod";
 import { GoogleGenAI } from "@google/genai";
 
@@ -15,51 +15,137 @@ async function getProfileByClerkId(clerkUserId: string) {
   return rows[0] ?? null;
 }
 
+// GET /api/quiz/questions
+// Filters: examCode, subjectCode, topicCode (code-based, preferred)
+//          subject, topic (legacy text-based, fallback)
+//          difficulty, limit, weakOnly, exclude
+// Ordering: unseen questions (never attempted by this user) first, then RANDOM()
 router.get("/quiz/questions", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const { subject, topic, difficulty, limit: limitStr, weakOnly, exclude } = req.query as Record<string, string>;
-  const limit = Math.min(parseInt(limitStr) || 50, 200);
-  const excludeIds = new Set(exclude ? exclude.split(",").filter(Boolean) : []);
+  const {
+    examCode, subjectCode, topicCode,
+    subject, topic, difficulty,
+    limit: limitStr, weakOnly, exclude,
+  } = req.query as Record<string, string>;
 
-  let questions = await db.select().from(quizQuestionsTable);
+  const limit = Math.min(parseInt(limitStr) || 20, 200);
+  const excludeIds = exclude ? exclude.split(",").filter(Boolean) : [];
 
-  if (subject) questions = questions.filter(q => q.subject === subject);
-  if (topic) questions = questions.filter(q => q.topic === topic);
-  if (difficulty) questions = questions.filter(q => q.difficulty === difficulty);
-  if (excludeIds.size > 0) questions = questions.filter(q => !excludeIds.has(q.id));
+  const profile = await getProfileByClerkId(userId);
+  const profileId = profile?.id ?? null;
 
-  if (weakOnly === "true") {
-    const profile = await getProfileByClerkId(userId);
-    if (profile) {
-      const attempts = await db.select().from(quizAttemptsTable).where(eq(quizAttemptsTable.userId, profile.id));
-      const topicAccuracy: Record<string, { correct: number; total: number }> = {};
-      for (const attempt of attempts) {
-        const q = questions.find(q => q.id === attempt.questionId);
-        if (!q?.topic) continue;
-        if (!topicAccuracy[q.topic]) topicAccuracy[q.topic] = { correct: 0, total: 0 };
-        topicAccuracy[q.topic].total++;
-        if (attempt.isCorrect) topicAccuracy[q.topic].correct++;
-      }
-      const weakTopics = Object.entries(topicAccuracy)
-        .filter(([_, v]) => v.total > 0 && v.correct / v.total < 0.6)
-        .map(([t]) => t);
-      if (weakTopics.length > 0) {
-        questions = questions.filter(q => q.topic && weakTopics.includes(q.topic));
-      }
+  // Resolve active exam: explicit param → profile's selected exam
+  const activeExamCode = examCode || profile?.examType || null;
+
+  // Build SQL WHERE fragments
+  const whereParts: SQL[] = [];
+
+  if (activeExamCode) {
+    whereParts.push(sql`q.exam_code = ${activeExamCode}`);
+  }
+
+  // Prefer code-based filtering; fall back to legacy text for old questions
+  if (subjectCode) {
+    whereParts.push(sql`q.subject_code = ${subjectCode}`);
+  } else if (subject) {
+    whereParts.push(sql`q.subject = ${subject}`);
+  }
+
+  if (topicCode) {
+    whereParts.push(sql`q.topic_code = ${topicCode}`);
+  } else if (topic) {
+    whereParts.push(sql`q.topic = ${topic}`);
+  }
+
+  if (difficulty) {
+    whereParts.push(sql`q.difficulty = ${difficulty}`);
+  }
+
+  if (excludeIds.length > 0) {
+    whereParts.push(sql`q.id != ALL(${excludeIds}::uuid[])`);
+  }
+
+  // Weak area: find topics where user accuracy < 60% within this exam
+  if (weakOnly === "true" && profileId) {
+    const weakResult = await db.execute(sql`
+      SELECT q.topic_code, q.topic
+      FROM quiz_attempts qa
+      JOIN quiz_questions q ON q.id = qa.question_id
+      WHERE qa.user_id = ${profileId}
+        ${activeExamCode ? sql`AND q.exam_code = ${activeExamCode}` : sql``}
+      GROUP BY q.topic_code, q.topic
+      HAVING COUNT(*) > 0
+         AND COUNT(CASE WHEN qa.is_correct THEN 1 END)::float / COUNT(*) < 0.6
+    `);
+
+    const rows = weakResult.rows as Array<{ topic_code: string | null; topic: string | null }>;
+    const weakCodes = rows.map(r => r.topic_code).filter(Boolean) as string[];
+    const weakNames = rows.map(r => r.topic).filter(Boolean) as string[];
+
+    if (weakCodes.length === 0 && weakNames.length === 0) {
+      return res.json([]);
+    }
+
+    const codePart = weakCodes.length > 0 ? sql`q.topic_code = ANY(${weakCodes}::text[])` : null;
+    const namePart = weakNames.length > 0 ? sql`q.topic = ANY(${weakNames}::text[])` : null;
+
+    if (codePart && namePart) {
+      whereParts.push(sql`(${codePart} OR ${namePart})`);
+    } else if (codePart) {
+      whereParts.push(codePart);
+    } else if (namePart) {
+      whereParts.push(namePart);
     }
   }
 
-  // Fisher-Yates shuffle
-  for (let i = questions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [questions[i], questions[j]] = [questions[j], questions[i]];
+  const whereClause = whereParts.length > 0
+    ? sql`WHERE ${sql.join(whereParts, sql` AND `)}`
+    : sql``;
+
+  // Prioritise questions this user has never attempted (unseen-first ordering)
+  const unseenJoin = profileId
+    ? sql`LEFT JOIN (
+        SELECT DISTINCT question_id FROM quiz_attempts WHERE user_id = ${profileId}
+      ) _seen ON _seen.question_id = q.id`
+    : sql``;
+
+  const orderClause = profileId
+    ? sql`CASE WHEN _seen.question_id IS NULL THEN 0 ELSE 1 END, RANDOM()`
+    : sql`RANDOM()`;
+
+  const result = await db.execute(sql`
+    SELECT q.*
+    FROM quiz_questions q
+    ${unseenJoin}
+    ${whereClause}
+    ORDER BY ${orderClause}
+    LIMIT ${limit}
+  `);
+
+  const questions = result.rows as Record<string, unknown>[];
+
+  // Warn admin when pool is running low for this filter combination
+  if (questions.length < limit) {
+    req.log.warn(
+      {
+        event: "quiz_question_shortage",
+        examCode: activeExamCode,
+        subjectCode: subjectCode ?? null,
+        topicCode: topicCode ?? null,
+        difficulty: difficulty ?? null,
+        found: questions.length,
+        requested: limit,
+      },
+      `Quiz pool low: ${questions.length}/${limit} for exam=${activeExamCode} sub=${subjectCode ?? subject ?? "*"} topic=${topicCode ?? topic ?? "*"}`,
+    );
   }
 
-  res.json(questions.slice(0, limit));
+  res.json(questions);
 });
 
+// POST /api/quiz/attempts
 router.post("/quiz/attempts", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -70,7 +156,7 @@ router.post("/quiz/attempts", async (req, res) => {
   const parsed = SubmitQuizAttemptBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
 
-  // ── Daily limit check for free plan ──
+  // Daily limit for free plan
   const today = new Date().toISOString().split("T")[0];
   const isCountFresh = profile.quizCountDate === today;
   const currentCount = isCountFresh ? (profile.quizCountToday ?? 0) : 0;
@@ -97,60 +183,102 @@ router.post("/quiz/attempts", async (req, res) => {
     timeTakenSeconds: parsed.data.timeTakenSeconds,
   }).returning();
 
-  // Increment daily counter
   await db.update(profilesTable)
-    .set({
-      quizCountToday: currentCount + 1,
-      quizCountDate: today,
-    })
+    .set({ quizCountToday: currentCount + 1, quizCountDate: today })
     .where(eq(profilesTable.clerkUserId, userId));
 
-  res.status(201).json({ ...attempt, questionsLeft: profile.planType === "free" ? FREE_DAILY_LIMIT - currentCount - 1 : null });
+  res.status(201).json({
+    ...attempt,
+    questionsLeft: profile.planType === "free" ? FREE_DAILY_LIMIT - currentCount - 1 : null,
+  });
 });
 
+// GET /api/quiz/stats
+// Returns per-subject stats for the user, scoped to their exam.
+// Includes questionsAvailable for ALL subjects with questions (not just attempted ones).
 router.get("/quiz/stats", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+  const { examCode } = req.query as Record<string, string>;
+
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json([]);
 
-  const attempts = await db.select().from(quizAttemptsTable)
-    .where(eq(quizAttemptsTable.userId, profile.id));
+  const activeExamCode = examCode || profile.examType || null;
 
-  const questions = await db.select().from(quizQuestionsTable);
-  const qMap = new Map(questions.map(q => [q.id, q]));
+  // All subjects with available question counts for this exam
+  const countsResult = await db.execute(sql`
+    SELECT subject, subject_code, COUNT(*)::int AS questions_available
+    FROM quiz_questions
+    ${activeExamCode ? sql`WHERE exam_code = ${activeExamCode}` : sql``}
+    GROUP BY subject, subject_code
+  `);
 
-  const subjectStats: Record<string, { correct: number; total: number; lastPracticed: string | null }> = {};
+  // Attempt stats per subject for this user + exam
+  const attemptsResult = await db.execute(sql`
+    SELECT
+      q.subject,
+      q.subject_code,
+      COUNT(qa.id)::int                                                   AS total,
+      COUNT(CASE WHEN qa.is_correct THEN 1 END)::int                      AS correct,
+      MAX(qa.attempted_at)::text                                          AS last_practiced
+    FROM quiz_attempts qa
+    JOIN quiz_questions q ON q.id = qa.question_id
+    WHERE qa.user_id = ${profile.id}
+      ${activeExamCode ? sql`AND q.exam_code = ${activeExamCode}` : sql``}
+    GROUP BY q.subject, q.subject_code
+  `);
 
-  for (const attempt of attempts) {
-    const q = qMap.get(attempt.questionId);
-    const subject = q?.subject ?? "Unknown";
-    if (!subjectStats[subject]) subjectStats[subject] = { correct: 0, total: 0, lastPracticed: null };
-    subjectStats[subject].total++;
-    if (attempt.isCorrect) subjectStats[subject].correct++;
-    const attemptDate = attempt.attemptedAt.toISOString();
-    if (!subjectStats[subject].lastPracticed || attemptDate > subjectStats[subject].lastPracticed!) {
-      subjectStats[subject].lastPracticed = attemptDate;
-    }
+  type StatEntry = {
+    subject: string;
+    subjectCode: string | null;
+    totalQuestions: number;
+    correct: number;
+    accuracy: number;
+    lastPracticed: string | null;
+    questionsAvailable: number;
+  };
+
+  const statMap = new Map<string, StatEntry>();
+
+  for (const row of countsResult.rows as any[]) {
+    const key = row.subject_code ?? row.subject ?? "Unknown";
+    statMap.set(key, {
+      subject: row.subject ?? "Unknown",
+      subjectCode: row.subject_code ?? null,
+      totalQuestions: 0,
+      correct: 0,
+      accuracy: 0,
+      lastPracticed: null,
+      questionsAvailable: row.questions_available ?? 0,
+    });
   }
 
-  const stats = Object.entries(subjectStats).map(([subject, data]) => ({
-    subject,
-    totalQuestions: data.total,
-    correct: data.correct,
-    accuracy: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
-    lastPracticed: data.lastPracticed,
-  }));
+  for (const row of attemptsResult.rows as any[]) {
+    const key = row.subject_code ?? row.subject ?? "Unknown";
+    const existing = statMap.get(key);
+    const total = row.total ?? 0;
+    const correct = row.correct ?? 0;
+    statMap.set(key, {
+      ...(existing ?? { questionsAvailable: 0 }),
+      subject: row.subject ?? "Unknown",
+      subjectCode: row.subject_code ?? null,
+      totalQuestions: total,
+      correct,
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+      lastPracticed: row.last_practiced ?? null,
+    });
+  }
 
-  res.json(stats);
+  res.json([...statMap.values()]);
 });
 
+// POST /api/quiz/generate-mcq  (Pro-only, AI-powered)
 router.post("/quiz/generate-mcq", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  // MCQ generation from news is a Pro-only feature
   const profile = await getProfileByClerkId(userId);
   if (profile?.planType === "free") {
     return res.status(403).json({ error: "pro_required", message: "MCQ generation from news is a Pro feature." });

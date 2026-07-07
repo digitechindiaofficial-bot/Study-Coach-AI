@@ -131,6 +131,12 @@ export type QuizQuestionOptions = { [key: string]: unknown };
 export interface QuizQuestion {
   id: string;
   /** @nullable */
+  examCode?: string | null;
+  /** @nullable */
+  subjectCode?: string | null;
+  /** @nullable */
+  topicCode?: string | null;
+  /** @nullable */
   subject?: string | null;
   /** @nullable */
   topic?: string | null;
@@ -167,11 +173,14 @@ export interface QuizAttempt {
 
 export interface QuizSubjectStat {
   subject: string;
+  /** @nullable */
+  subjectCode?: string | null;
   totalQuestions: number;
   correct: number;
   accuracy: number;
   /** @nullable */
   lastPracticed?: string | null;
+  questionsAvailable?: number;
 }
 
 export interface McqGenerateInput {
@@ -232,11 +241,19 @@ days?: number;
 };
 
 export type GetQuizQuestionsParams = {
+examCode?: string;
+subjectCode?: string;
+topicCode?: string;
 subject?: string;
 topic?: string;
 difficulty?: string;
 limit?: number;
 weakOnly?: boolean;
+exclude?: string;
+};
+
+export type GetQuizStatsParams = {
+examCode?: string;
 };
 
 export type GetDailyStudyHoursParams = {

@@ -223,6 +223,18 @@ paths:
       tags: [quiz]
       summary: Get quiz questions
       parameters:
+        - name: examCode
+          in: query
+          schema:
+            type: string
+        - name: subjectCode
+          in: query
+          schema:
+            type: string
+        - name: topicCode
+          in: query
+          schema:
+            type: string
         - name: subject
           in: query
           schema:
@@ -243,6 +255,10 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: exclude
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Questions list
@@ -277,6 +293,11 @@ paths:
       operationId: getQuizStats
       tags: [quiz]
       summary: Get quiz statistics per subject
+      parameters:
+        - name: examCode
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Quiz stats
@@ -566,6 +587,12 @@ components:
       properties:
         id:
           type: string
+        examCode:
+          type: ["string", "null"]
+        subjectCode:
+          type: ["string", "null"]
+        topicCode:
+          type: ["string", "null"]
         subject:
           type: ["string", "null"]
         topic:
@@ -623,6 +650,8 @@ components:
       properties:
         subject:
           type: string
+        subjectCode:
+          type: ["string", "null"]
         totalQuestions:
           type: integer
         correct:
@@ -631,6 +660,8 @@ components:
           type: number
         lastPracticed:
           type: ["string", "null"]
+        questionsAvailable:
+          type: integer
       required: [subject, totalQuestions, correct, accuracy]
 
     McqGenerateInput:

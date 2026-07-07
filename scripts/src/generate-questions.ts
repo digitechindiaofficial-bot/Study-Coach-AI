@@ -10,7 +10,18 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "@workspace/db";
 import { quizQuestionsTable } from "@workspace/db";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+
+// Maps display subject name → subject_code (matches syllabus-codes.ts)
+const SUBJECT_CODE_MAP: Record<string, string> = {
+  "Quantitative Aptitude": "QA",
+  "Reasoning": "GIR",
+  "English": "ENG",
+  "General Awareness": "GA",
+  "Banking Awareness": "BFA",
+  "Computer": "COMP",
+  "Current Affairs GK": "GA",
+};
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const PROGRESS_FILE = ".local/question-gen-progress.json";
@@ -22,9 +33,10 @@ const MAX_RETRIES = 3;
 // Topic map: subject → topics[]
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; questionsPerTopic: number }> = {
+const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; primaryExamCode: string; questionsPerTopic: number }> = {
   "Quantitative Aptitude": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Number System",
@@ -61,6 +73,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "Reasoning": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Analogy (Verbal)",
@@ -97,6 +110,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "English": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Reading Comprehension",
@@ -133,6 +147,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "General Awareness": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Ancient Indian History",
@@ -169,6 +184,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "Banking Awareness": {
     examTypes: ["Banking"],
+    primaryExamCode: "IBPS_PO",
     questionsPerTopic: 10,
     topics: [
       "RBI and Monetary Policy",
@@ -195,6 +211,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "Computer": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Computer Fundamentals and Generations",
@@ -221,6 +238,7 @@ const SUBJECTS: Record<string, { topics: string[]; examTypes: string[]; question
   },
   "Current Affairs GK": {
     examTypes: ["SSC", "Banking", "Railway"],
+    primaryExamCode: "SSC_CGL",
     questionsPerTopic: 10,
     topics: [
       "Indian Economy and Budget 2025",
@@ -349,14 +367,39 @@ function delay(ms: number) {
 // Insert to DB
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function lookupTopicCode(examCode: string, topicName: string): Promise<string | null> {
+  try {
+    const result = await db.execute(sql`
+      SELECT st.topic_code
+      FROM syllabus_topics st
+      JOIN syllabus_subjects ss ON ss.id = st.subject_id
+      JOIN syllabus_exams se ON se.id = ss.exam_id
+      WHERE se.code = ${examCode}
+        AND LOWER(TRIM(st.name)) = LOWER(TRIM(${topicName}))
+      LIMIT 1
+    `);
+    return (result.rows[0] as any)?.topic_code ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function insertQuestions(
   questions: RawQuestion[],
   subject: string,
   topic: string,
   examTypes: string[],
+  primaryExamCode: string,
 ) {
   if (questions.length === 0) return 0;
+
+  const subjectCode = SUBJECT_CODE_MAP[subject] ?? null;
+  const topicCode = await lookupTopicCode(primaryExamCode, topic);
+
   const rows = questions.map(q => ({
+    examCode: primaryExamCode,
+    subjectCode,
+    topicCode,
     subject,
     topic,
     questionText: q.questionText,
@@ -385,10 +428,10 @@ async function main() {
   const progress = loadProgress();
 
   // Count total topics
-  const allTasks: Array<{ subject: string; topic: string; examTypes: string[]; count: number }> = [];
+  const allTasks: Array<{ subject: string; topic: string; examTypes: string[]; primaryExamCode: string; count: number }> = [];
   for (const [subject, cfg] of Object.entries(SUBJECTS)) {
     for (const topic of cfg.topics) {
-      allTasks.push({ subject, topic, examTypes: cfg.examTypes, count: cfg.questionsPerTopic });
+      allTasks.push({ subject, topic, examTypes: cfg.examTypes, primaryExamCode: cfg.primaryExamCode, count: cfg.questionsPerTopic });
     }
   }
 
@@ -426,7 +469,7 @@ async function main() {
 
     try {
       const questions = await callGemini(task.subject, task.topic, task.count);
-      const inserted = await insertQuestions(questions, task.subject, task.topic, task.examTypes);
+      const inserted = await insertQuestions(questions, task.subject, task.topic, task.examTypes, task.primaryExamCode);
       progress.completed.push(key);
       progress.totalInserted += inserted;
       saveProgress(progress);

@@ -28,6 +28,7 @@ import type {
   GetDailyStudyHoursParams,
   GetDailyTasksParams,
   GetQuizQuestionsParams,
+  GetQuizStatsParams,
   HealthStatus,
   HeatmapDay,
   McqGenerateInput,
@@ -1053,20 +1054,27 @@ export const useSubmitQuizAttempt = <TError = ErrorType<unknown>,
       return useMutation(getSubmitQuizAttemptMutationOptions(options));
     }
 
-export const getGetQuizStatsUrl = () => {
+export const getGetQuizStatsUrl = (params?: GetQuizStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/quiz/stats`
+  return stringifiedParams.length > 0 ? `/api/quiz/stats?${stringifiedParams}` : `/api/quiz/stats`
 }
 
 /**
  * @summary Get quiz statistics per subject
  */
-export const getQuizStats = async ( options?: RequestInit): Promise<QuizSubjectStat[]> => {
+export const getQuizStats = async (params?: GetQuizStatsParams, options?: RequestInit): Promise<QuizSubjectStat[]> => {
 
-  return customFetch<QuizSubjectStat[]>(getGetQuizStatsUrl(),
+  return customFetch<QuizSubjectStat[]>(getGetQuizStatsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1079,23 +1087,23 @@ export const getQuizStats = async ( options?: RequestInit): Promise<QuizSubjectS
 
 
 
-export const getGetQuizStatsQueryKey = () => {
+export const getGetQuizStatsQueryKey = (params?: GetQuizStatsParams,) => {
     return [
-    `/api/quiz/stats`
+    `/api/quiz/stats`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetQuizStatsQueryOptions = <TData = Awaited<ReturnType<typeof getQuizStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuizStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetQuizStatsQueryOptions = <TData = Awaited<ReturnType<typeof getQuizStats>>, TError = ErrorType<unknown>>(params?: GetQuizStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuizStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetQuizStatsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetQuizStatsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuizStats>>> = ({ signal }) => getQuizStats({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuizStats>>> = ({ signal }) => getQuizStats(params, { signal, ...requestOptions });
 
 
 
@@ -1113,11 +1121,11 @@ export type GetQuizStatsQueryError = ErrorType<unknown>
  */
 
 export function useGetQuizStats<TData = Awaited<ReturnType<typeof getQuizStats>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuizStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetQuizStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuizStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetQuizStatsQueryOptions(options)
+  const queryOptions = getGetQuizStatsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
