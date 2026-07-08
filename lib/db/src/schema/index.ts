@@ -7,3 +7,5 @@ export * from "./current-affairs";
 export * from "./quiz";
 export * from "./question-bank";
 export * from "./mock-tests";
+export * from "./exam-patterns";
+export * from "./mock-test-analytics";

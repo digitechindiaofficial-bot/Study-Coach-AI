@@ -29,6 +29,9 @@ export const mockTestsTable = pgTable(
     instructions: text("instructions"),
     version: integer("version").notNull().default(1),
     totalMarks: integer("total_marks").notNull().default(0),
+    mockNumber: integer("mock_number").notNull().default(1),
+    status: text("status").notNull().default("draft"),
+    examPatternId: uuid("exam_pattern_id"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -37,6 +40,8 @@ export const mockTestsTable = pgTable(
     index("idx_mt_exam_code").on(t.examCode),
     index("idx_mt_active").on(t.isActive),
     index("idx_mt_type").on(t.mockType),
+    index("idx_mt_status").on(t.status),
+    index("idx_mt_exam_number").on(t.examCode, t.mockNumber),
   ],
 );
 

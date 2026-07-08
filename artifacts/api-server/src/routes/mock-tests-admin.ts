@@ -4,29 +4,31 @@
  * All routes protected by requireAdmin.
  *
  * Mock CRUD:
- *   GET    /admin/mock-tests                                       — list all
- *   POST   /admin/mock-tests                                       — create
- *   GET    /admin/mock-tests/:id                                   — full detail
- *   PUT    /admin/mock-tests/:id                                   — update metadata
- *   DELETE /admin/mock-tests/:id                                   — soft delete
+ *   GET    /api/admin/mock-tests                  — list all (filterable by status)
+ *   POST   /api/admin/mock-tests                  — create (draft by default)
+ *   GET    /api/admin/mock-tests/:id              — full detail
+ *   PUT    /api/admin/mock-tests/:id              — update metadata
+ *   PUT    /api/admin/mock-tests/:id/status       — change status (draft/published/archived)
+ *   DELETE /api/admin/mock-tests/:id              — soft delete
  *
  * Section management:
- *   POST   /admin/mock-tests/:id/sections                         — add section
- *   PUT    /admin/mock-tests/:id/sections/:sid                     — update section
- *   DELETE /admin/mock-tests/:id/sections/:sid                     — delete section
+ *   POST   /api/admin/mock-tests/:id/sections
+ *   PUT    /api/admin/mock-tests/:id/sections/:sid
+ *   DELETE /api/admin/mock-tests/:id/sections/:sid
  *
- * Rule management (upsert per section):
- *   PUT    /admin/mock-tests/:id/sections/:sid/rule               — upsert rule
+ * Rule management:
+ *   PUT    /api/admin/mock-tests/:id/sections/:sid/rule
  *
- * Fixed questions (for fixed-type rules):
- *   POST   /admin/mock-tests/:id/sections/:sid/rule/questions      — add question
- *   DELETE /admin/mock-tests/:id/sections/:sid/rule/questions/:qid — remove question
+ * Fixed questions:
+ *   POST   /api/admin/mock-tests/:id/sections/:sid/rule/questions
+ *   DELETE /api/admin/mock-tests/:id/sections/:sid/rule/questions/:qid
  *
  * Question bank search:
- *   GET    /admin/mock-tests/question-bank/search                  — search question_bank
+ *   GET    /api/admin/mock-tests/question-bank/search
  *
- * Import:
- *   POST   /admin/mock-tests/import/json                           — import full mock
+ * Import (with full validation):
+ *   POST   /api/admin/mock-tests/import/validate  — validate without saving
+ *   POST   /api/admin/mock-tests/import/json      — validate + import
  */
 
 import { Router, type Request, type Response, type NextFunction } from "express";
@@ -39,8 +41,9 @@ import {
   mockTestFixedQuestionsTable,
   mockTestAttemptsTable,
   questionBankTable,
+  examPatternsTable,
 } from "@workspace/db";
-import { eq, and, inArray, like, ilike, asc, desc, count } from "drizzle-orm";
+import { eq, and, inArray, ilike, asc, desc, count } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -78,10 +81,7 @@ async function getMockWithSections(id: string) {
     .orderBy(asc(mockTestSectionsTable.orderNum));
 
   const rules = sections.length
-    ? await db
-        .select()
-        .from(mockTestSectionRulesTable)
-        .where(inArray(mockTestSectionRulesTable.sectionId, sections.map((s) => s.id)))
+    ? await db.select().from(mockTestSectionRulesTable).where(inArray(mockTestSectionRulesTable.sectionId, sections.map((s) => s.id)))
     : [];
 
   const fixedQs = rules.filter((r) => r.selectionType === "fixed").length
@@ -110,46 +110,48 @@ async function getMockWithSections(id: string) {
 }
 
 async function recalcTotalMarks(mockId: string) {
-  const sections = await db
-    .select()
-    .from(mockTestSectionsTable)
-    .where(eq(mockTestSectionsTable.mockTestId, mockId));
-  const total = sections.reduce(
-    (sum, s) => sum + s.questionCount * parseFloat(String(s.marksPerQuestion)),
-    0,
-  );
-  await db
-    .update(mockTestsTable)
-    .set({ totalMarks: Math.round(total), updatedAt: new Date() })
-    .where(eq(mockTestsTable.id, mockId));
+  const sections = await db.select().from(mockTestSectionsTable).where(eq(mockTestSectionsTable.mockTestId, mockId));
+  const total = sections.reduce((sum, s) => sum + s.questionCount * parseFloat(String(s.marksPerQuestion)), 0);
+  await db.update(mockTestsTable).set({ totalMarks: Math.round(total), updatedAt: new Date() }).where(eq(mockTestsTable.id, mockId));
+}
+
+async function autoMockNumber(examCode: string): Promise<number> {
+  const existing = await db
+    .select({ mockNumber: mockTestsTable.mockNumber })
+    .from(mockTestsTable)
+    .where(and(eq(mockTestsTable.examCode, examCode), eq(mockTestsTable.isActive, true)))
+    .orderBy(desc(mockTestsTable.mockNumber))
+    .limit(1);
+  return (existing[0]?.mockNumber ?? 0) + 1;
 }
 
 // ── Mock CRUD ────────────────────────────────────────────────────────────────
 
 router.get("/admin/mock-tests", async (req, res) => {
+  const { status } = req.query as { status?: string };
+
+  const conditions = [eq(mockTestsTable.isActive, true)];
+  if (status && ["draft", "published", "archived"].includes(status)) {
+    conditions.push(eq(mockTestsTable.status, status));
+  }
+
   const mocks = await db
     .select()
     .from(mockTestsTable)
-    .orderBy(desc(mockTestsTable.createdAt));
+    .where(and(...conditions))
+    .orderBy(asc(mockTestsTable.examCode), asc(mockTestsTable.mockNumber), desc(mockTestsTable.createdAt));
 
   const mockIds = mocks.map((m) => m.id);
-  const sections = mockIds.length
-    ? await db
-        .select()
-        .from(mockTestSectionsTable)
-        .where(inArray(mockTestSectionsTable.mockTestId, mockIds))
-    : [];
 
-  const attempts = mockIds.length
-    ? await db
-        .select({
-          mockTestId: mockTestAttemptsTable.mockTestId,
-          id: mockTestAttemptsTable.id,
-          status: mockTestAttemptsTable.status,
-        })
-        .from(mockTestAttemptsTable)
-        .where(inArray(mockTestAttemptsTable.mockTestId, mockIds))
-    : [];
+  const [sections, attempts] = await Promise.all([
+    mockIds.length ? db.select().from(mockTestSectionsTable).where(inArray(mockTestSectionsTable.mockTestId, mockIds)) : Promise.resolve([]),
+    mockIds.length
+      ? db
+          .select({ mockTestId: mockTestAttemptsTable.mockTestId, status: mockTestAttemptsTable.status })
+          .from(mockTestAttemptsTable)
+          .where(inArray(mockTestAttemptsTable.mockTestId, mockIds))
+      : Promise.resolve([]),
+  ]);
 
   const sectionsByMock = new Map<string, number>();
   for (const s of sections) sectionsByMock.set(s.mockTestId, (sectionsByMock.get(s.mockTestId) ?? 0) + 1);
@@ -174,13 +176,18 @@ const mockCreateSchema = z.object({
   timeLimitMinutes: z.coerce.number().int().positive().default(60),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("mixed"),
   instructions: z.string().optional().nullable(),
+  mockNumber: z.coerce.number().int().positive().optional(),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  examPatternId: z.string().uuid().optional().nullable(),
 });
 
 router.post("/admin/mock-tests", async (req, res) => {
   const parsed = mockCreateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const [mock] = await db.insert(mockTestsTable).values(parsed.data).returning();
+  const mockNumber = parsed.data.mockNumber ?? await autoMockNumber(parsed.data.examCode);
+
+  const [mock] = await db.insert(mockTestsTable).values({ ...parsed.data, mockNumber }).returning();
   res.status(201).json(mock);
 });
 
@@ -197,6 +204,46 @@ router.put("/admin/mock-tests/:id", async (req, res) => {
   const [updated] = await db
     .update(mockTestsTable)
     .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(mockTestsTable.id, req.params.id))
+    .returning();
+
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(updated);
+});
+
+// ── Status change ─────────────────────────────────────────────────────────────
+
+router.put("/admin/mock-tests/:id/status", async (req, res) => {
+  const schema = z.object({ status: z.enum(["draft", "published", "archived"]) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "status must be draft, published, or archived" }); return; }
+
+  if (parsed.data.status === "published") {
+    const sections = await db
+      .select()
+      .from(mockTestSectionsTable)
+      .where(eq(mockTestSectionsTable.mockTestId, req.params.id));
+
+    if (sections.length === 0) {
+      res.status(422).json({ error: "Cannot publish: mock has no sections." });
+      return;
+    }
+
+    const rules = await db
+      .select()
+      .from(mockTestSectionRulesTable)
+      .where(inArray(mockTestSectionRulesTable.sectionId, sections.map((s) => s.id)));
+
+    const missingSections = sections.filter((s) => !rules.find((r) => r.sectionId === s.id));
+    if (missingSections.length > 0) {
+      res.status(422).json({ error: `Cannot publish: sections missing rules — ${missingSections.map((s) => s.name).join(", ")}` });
+      return;
+    }
+  }
+
+  const [updated] = await db
+    .update(mockTestsTable)
+    .set({ status: parsed.data.status, updatedAt: new Date() })
     .where(eq(mockTestsTable.id, req.params.id))
     .returning();
 
@@ -270,12 +317,7 @@ router.delete("/admin/mock-tests/:id/sections/:sid", async (req, res) => {
 
   if (!section[0]) { res.status(404).json({ error: "Section not found" }); return; }
 
-  const rule = await db
-    .select()
-    .from(mockTestSectionRulesTable)
-    .where(eq(mockTestSectionRulesTable.sectionId, req.params.sid))
-    .limit(1);
-
+  const rule = await db.select().from(mockTestSectionRulesTable).where(eq(mockTestSectionRulesTable.sectionId, req.params.sid)).limit(1);
   if (rule[0]) {
     await db.delete(mockTestFixedQuestionsTable).where(eq(mockTestFixedQuestionsTable.ruleId, rule[0].id));
     await db.delete(mockTestSectionRulesTable).where(eq(mockTestSectionRulesTable.id, rule[0].id));
@@ -313,24 +355,13 @@ router.put("/admin/mock-tests/:id/sections/:sid/rule", async (req, res) => {
   const parsed = ruleSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const existing = await db
-    .select()
-    .from(mockTestSectionRulesTable)
-    .where(eq(mockTestSectionRulesTable.sectionId, req.params.sid))
-    .limit(1);
+  const existing = await db.select().from(mockTestSectionRulesTable).where(eq(mockTestSectionRulesTable.sectionId, req.params.sid)).limit(1);
 
   let rule;
   if (existing[0]) {
-    [rule] = await db
-      .update(mockTestSectionRulesTable)
-      .set(parsed.data)
-      .where(eq(mockTestSectionRulesTable.id, existing[0].id))
-      .returning();
+    [rule] = await db.update(mockTestSectionRulesTable).set(parsed.data).where(eq(mockTestSectionRulesTable.id, existing[0].id)).returning();
   } else {
-    [rule] = await db
-      .insert(mockTestSectionRulesTable)
-      .values({ ...parsed.data, sectionId: req.params.sid })
-      .returning();
+    [rule] = await db.insert(mockTestSectionRulesTable).values({ ...parsed.data, sectionId: req.params.sid }).returning();
   }
 
   res.json(rule);
@@ -339,21 +370,14 @@ router.put("/admin/mock-tests/:id/sections/:sid/rule", async (req, res) => {
 // ── Fixed questions ──────────────────────────────────────────────────────────
 
 router.post("/admin/mock-tests/:id/sections/:sid/rule/questions", async (req, res) => {
-  const rule = await db
-    .select()
-    .from(mockTestSectionRulesTable)
-    .where(eq(mockTestSectionRulesTable.sectionId, req.params.sid))
-    .limit(1);
+  const rule = await db.select().from(mockTestSectionRulesTable).where(eq(mockTestSectionRulesTable.sectionId, req.params.sid)).limit(1);
   if (!rule[0]) { res.status(404).json({ error: "Rule not found for this section" }); return; }
 
   const schema = z.object({ questionBankId: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "questionBankId required" }); return; }
 
-  const existing = await db
-    .select({ count: count() })
-    .from(mockTestFixedQuestionsTable)
-    .where(eq(mockTestFixedQuestionsTable.ruleId, rule[0].id));
+  const existing = await db.select({ count: count() }).from(mockTestFixedQuestionsTable).where(eq(mockTestFixedQuestionsTable.ruleId, rule[0].id));
   const nextOrder = (existing[0]?.count ?? 0) + 1;
 
   const [fq] = await db
@@ -384,14 +408,10 @@ router.get("/admin/mock-tests/question-bank/search", async (req, res) => {
 
   const rows = await db
     .select({
-      id: questionBankTable.id,
-      examCode: questionBankTable.examCode,
-      subjectCode: questionBankTable.subjectCode,
-      topicCode: questionBankTable.topicCode,
-      difficulty: questionBankTable.difficulty,
-      question: questionBankTable.question,
-      source: questionBankTable.source,
-      examYear: questionBankTable.examYear,
+      id: questionBankTable.id, examCode: questionBankTable.examCode,
+      subjectCode: questionBankTable.subjectCode, topicCode: questionBankTable.topicCode,
+      difficulty: questionBankTable.difficulty, question: questionBankTable.question,
+      source: questionBankTable.source, examYear: questionBankTable.examYear,
     })
     .from(questionBankTable)
     .where(and(...conditions))
@@ -400,7 +420,9 @@ router.get("/admin/mock-tests/question-bank/search", async (req, res) => {
   res.json(rows);
 });
 
-// ── Import JSON ──────────────────────────────────────────────────────────────
+// ── Import validation ─────────────────────────────────────────────────────────
+
+type ValidationIssue = { section: string; type: string; message: string };
 
 const importSchema = z.object({
   name: z.string().min(1),
@@ -410,6 +432,9 @@ const importSchema = z.object({
   timeLimitMinutes: z.coerce.number().int().positive().default(60),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("mixed"),
   instructions: z.string().optional().nullable(),
+  mockNumber: z.coerce.number().int().positive().optional(),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  examPatternId: z.string().uuid().optional().nullable(),
   sections: z.array(
     z.object({
       name: z.string().min(1),
@@ -436,25 +461,136 @@ const importSchema = z.object({
   ).default([]),
 });
 
+type ImportInput = z.infer<typeof importSchema>;
+
+async function validateImport(d: ImportInput): Promise<{ valid: boolean; issues: ValidationIssue[]; warnings: ValidationIssue[] }> {
+  const issues: ValidationIssue[] = [];
+  const warnings: ValidationIssue[] = [];
+  const allFixedIds: string[] = [];
+
+  for (const [idx, sec] of d.sections.entries()) {
+    const secLabel = `Section ${idx + 1} (${sec.name})`;
+
+    if (!sec.rule) {
+      issues.push({ section: secLabel, type: "MISSING_RULE", message: "Section has no rule configured" });
+      continue;
+    }
+
+    if (sec.rule.selectionType === "fixed") {
+      const ids = sec.rule.questionIds ?? [];
+
+      if (ids.length === 0) {
+        issues.push({ section: secLabel, type: "NO_FIXED_QUESTIONS", message: "Fixed selection rule has no questionIds" });
+        continue;
+      }
+      if (ids.length < sec.questionCount) {
+        issues.push({ section: secLabel, type: "INSUFFICIENT_QUESTIONS", message: `Needs ${sec.questionCount} questions but only ${ids.length} provided` });
+      }
+
+      const unique = new Set(ids);
+      if (unique.size < ids.length) {
+        issues.push({ section: secLabel, type: "DUPLICATE_QUESTIONS", message: `${ids.length - unique.size} duplicate question IDs within section` });
+      }
+
+      const crossDups = ids.filter((id) => allFixedIds.includes(id));
+      if (crossDups.length > 0) {
+        issues.push({ section: secLabel, type: "CROSS_SECTION_DUPLICATES", message: `${crossDups.length} question IDs appear in multiple sections` });
+      }
+      allFixedIds.push(...ids);
+
+      const found = await db
+        .select({ id: questionBankTable.id, examCode: questionBankTable.examCode, subjectCode: questionBankTable.subjectCode })
+        .from(questionBankTable)
+        .where(inArray(questionBankTable.id, [...unique]));
+
+      const foundIds = new Set(found.map((q) => q.id));
+      const missing = ids.filter((id) => !foundIds.has(id));
+      if (missing.length > 0) {
+        issues.push({ section: secLabel, type: "MISSING_QUESTIONS", message: `${missing.length} question IDs not found in question bank` });
+      }
+
+      for (const q of found) {
+        if (d.examCode && q.examCode !== d.examCode) {
+          warnings.push({ section: secLabel, type: "EXAM_MISMATCH", message: `Question ${q.id.slice(0, 8)}… has examCode "${q.examCode}", import is "${d.examCode}"` });
+        }
+        if (sec.subjectCode && q.subjectCode !== sec.subjectCode) {
+          warnings.push({ section: secLabel, type: "SUBJECT_MISMATCH", message: `Question ${q.id.slice(0, 8)}… has subjectCode "${q.subjectCode}", section is "${sec.subjectCode}"` });
+        }
+      }
+    } else {
+      // Dynamic: check availability
+      const ruleExamCode = sec.rule.examCode ?? d.examCode;
+      const totalRequired = sec.questionCount;
+      const distribTotal = (sec.rule.easyCount ?? 0) + (sec.rule.mediumCount ?? 0) + (sec.rule.hardCount ?? 0);
+
+      if (distribTotal > 0) {
+        const checkDiff = async (diff: string, needed: number) => {
+          if (needed <= 0) return;
+          const conds = [eq(questionBankTable.isActive, true), eq(questionBankTable.examCode, ruleExamCode)];
+          if (sec.rule!.subjectCode) conds.push(eq(questionBankTable.subjectCode, sec.rule!.subjectCode));
+          conds.push(eq(questionBankTable.difficulty, diff));
+          const [{ total }] = await db.select({ total: count() }).from(questionBankTable).where(and(...conds));
+          if (total < needed) {
+            issues.push({ section: secLabel, type: "INSUFFICIENT_QUESTIONS", message: `Need ${needed} ${diff} questions for ${ruleExamCode}/${sec.rule!.subjectCode ?? "any"}, only ${total} available` });
+          }
+        };
+        await checkDiff("easy", sec.rule.easyCount ?? 0);
+        await checkDiff("medium", sec.rule.mediumCount ?? 0);
+        await checkDiff("hard", sec.rule.hardCount ?? 0);
+      } else {
+        const conds = [eq(questionBankTable.isActive, true), eq(questionBankTable.examCode, ruleExamCode)];
+        if (sec.rule.subjectCode) conds.push(eq(questionBankTable.subjectCode, sec.rule.subjectCode));
+        if (sec.rule.difficulty) conds.push(eq(questionBankTable.difficulty, sec.rule.difficulty));
+        const [{ total }] = await db.select({ total: count() }).from(questionBankTable).where(and(...conds));
+        if (total < totalRequired) {
+          issues.push({ section: secLabel, type: "INSUFFICIENT_QUESTIONS", message: `Need ${totalRequired} questions, only ${total} available matching rule criteria` });
+        }
+      }
+    }
+  }
+
+  if (d.examPatternId) {
+    const pattern = await db.select().from(examPatternsTable).where(eq(examPatternsTable.id, d.examPatternId)).limit(1);
+    if (!pattern[0]) {
+      warnings.push({ section: "Meta", type: "PATTERN_NOT_FOUND", message: "examPatternId references a pattern that doesn't exist" });
+    } else {
+      const totalQ = d.sections.reduce((s, sec) => s + sec.questionCount, 0);
+      if (totalQ !== pattern[0].totalQuestions) {
+        warnings.push({ section: "Meta", type: "PATTERN_MISMATCH", message: `Total questions ${totalQ} != pattern total ${pattern[0].totalQuestions}` });
+      }
+    }
+  }
+
+  return { valid: issues.length === 0, issues, warnings };
+}
+
+router.post("/admin/mock-tests/import/validate", async (req, res) => {
+  const parsed = importSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  const result = await validateImport(parsed.data);
+  res.json(result);
+});
+
 router.post("/admin/mock-tests/import/json", async (req, res) => {
   const parsed = importSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const d = parsed.data;
+  const validation = await validateImport(d);
+  if (!validation.valid) {
+    res.status(422).json({ error: "Import validation failed", issues: validation.issues, warnings: validation.warnings });
     return;
   }
 
-  const d = parsed.data;
+  const mockNumber = d.mockNumber ?? await autoMockNumber(d.examCode);
 
   const [mock] = await db
     .insert(mockTestsTable)
     .values({
-      examCode: d.examCode,
-      name: d.name,
-      description: d.description,
-      mockType: d.mockType,
-      timeLimitMinutes: d.timeLimitMinutes,
-      difficulty: d.difficulty,
-      instructions: d.instructions,
+      examCode: d.examCode, name: d.name, description: d.description,
+      mockType: d.mockType, timeLimitMinutes: d.timeLimitMinutes,
+      difficulty: d.difficulty, instructions: d.instructions,
+      mockNumber, status: d.status, examPatternId: d.examPatternId,
     })
     .returning();
 
@@ -464,13 +600,9 @@ router.post("/admin/mock-tests/import/json", async (req, res) => {
     const [section] = await db
       .insert(mockTestSectionsTable)
       .values({
-        mockTestId: mock.id,
-        name: sec.name,
-        subjectCode: sec.subjectCode,
-        orderNum: sec.orderNum,
-        questionCount: sec.questionCount,
-        marksPerQuestion: String(sec.marksPerQuestion),
-        negativeMarks: String(sec.negativeMarks),
+        mockTestId: mock.id, name: sec.name, subjectCode: sec.subjectCode,
+        orderNum: sec.orderNum, questionCount: sec.questionCount,
+        marksPerQuestion: String(sec.marksPerQuestion), negativeMarks: String(sec.negativeMarks),
         timeLimitSeconds: sec.timeLimitSeconds,
       })
       .returning();
@@ -481,27 +613,17 @@ router.post("/admin/mock-tests/import/json", async (req, res) => {
       const [rule] = await db
         .insert(mockTestSectionRulesTable)
         .values({
-          sectionId: section.id,
-          selectionType: sec.rule.selectionType,
-          examCode: sec.rule.examCode,
-          subjectCode: sec.rule.subjectCode,
-          topicCode: sec.rule.topicCode,
-          difficulty: sec.rule.difficulty,
-          easyCount: sec.rule.easyCount,
-          mediumCount: sec.rule.mediumCount,
-          hardCount: sec.rule.hardCount,
-          randomize: sec.rule.randomize,
-          language: sec.rule.language,
+          sectionId: section.id, selectionType: sec.rule.selectionType,
+          examCode: sec.rule.examCode, subjectCode: sec.rule.subjectCode,
+          topicCode: sec.rule.topicCode, difficulty: sec.rule.difficulty,
+          easyCount: sec.rule.easyCount, mediumCount: sec.rule.mediumCount,
+          hardCount: sec.rule.hardCount, randomize: sec.rule.randomize, language: sec.rule.language,
         })
         .returning();
 
       if (sec.rule.selectionType === "fixed" && sec.rule.questionIds?.length) {
         await db.insert(mockTestFixedQuestionsTable).values(
-          sec.rule.questionIds.map((qId, i) => ({
-            ruleId: rule.id,
-            questionBankId: qId,
-            orderNum: i + 1,
-          })),
+          sec.rule.questionIds.map((qId, i) => ({ ruleId: rule.id, questionBankId: qId, orderNum: i + 1 })),
         );
       }
     }
@@ -509,7 +631,11 @@ router.post("/admin/mock-tests/import/json", async (req, res) => {
 
   await db.update(mockTestsTable).set({ totalMarks: Math.round(totalMarks) }).where(eq(mockTestsTable.id, mock.id));
 
-  res.status(201).json({ id: mock.id, name: mock.name, sectionCount: d.sections.length, totalMarks: Math.round(totalMarks) });
+  res.status(201).json({
+    id: mock.id, name: mock.name, mockNumber, status: mock.status,
+    sectionCount: d.sections.length, totalMarks: Math.round(totalMarks),
+    warnings: validation.warnings,
+  });
 });
 
 export default router;

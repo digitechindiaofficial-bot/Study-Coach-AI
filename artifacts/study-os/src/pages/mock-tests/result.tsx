@@ -6,11 +6,38 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle2, XCircle, MinusCircle, Flag, Trophy, Clock, Target,
   TrendingUp, BarChart2, Brain, Loader2, ChevronDown, ChevronUp,
-  RotateCcw, Home,
+  RotateCcw, Home, AlertTriangle, Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface SubjectStat {
+  code: string;
+  name: string;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+  total: number;
+  accuracy: number;
+  marksEarned: number;
+  negativeMarks: number;
+}
+
+interface SectionStat {
+  id: string;
+  name: string;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+  total: number;
+  accuracy: number;
+  marksEarned: number;
+  negativeMarks: number;
+}
+
+interface TopicStat {
+  code: string;
   subjectCode: string;
   correct: number;
   incorrect: number;
@@ -19,7 +46,26 @@ interface SubjectStat {
   accuracy: number;
 }
 
+interface Analytics {
+  subjectWise: SubjectStat[];
+  sectionWise: SectionStat[];
+  topicWise: TopicStat[];
+  questionTimeMap: Record<string, number>;
+  totalTimeSeconds: number;
+  correctCount: number;
+  incorrectCount: number;
+  unattemptedCount: number;
+  markedForReviewCount: number;
+  totalNegativeMarks: number;
+  score: number;
+  totalMarks: number;
+  accuracy: number;
+  rank: number | null;
+  totalAttempts: number | null;
+}
+
 interface QuestionDetail {
+  attemptQuestionId: string;
   orderNum: number;
   sectionName: string;
   subjectCode: string;
@@ -46,21 +92,21 @@ interface ResultData {
     score: string | null;
     totalMarks: number | null;
     timeTakenSeconds: number | null;
-    correctCount: number;
-    incorrectCount: number;
-    unattemptedCount: number;
-    accuracy: string | null;
+    submittedAt: string | null;
   };
   mock: {
     id: string;
     name: string;
-    timeLimitMinutes: number;
-    mockType: string;
+    mockNumber: number;
     examCode: string;
+    totalMarks: number;
   } | null;
-  subjectWise: SubjectStat[];
+  analytics: Analytics;
   questionDetails: QuestionDetail[];
+  sections: { id: string; name: string; subjectCode: string | null; orderNum: number }[];
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--";
@@ -78,312 +124,457 @@ function getOptionText(q: QuestionDetail, opt: string) {
   return opt === "a" ? q.optionA : opt === "b" ? q.optionB : opt === "c" ? q.optionC : q.optionD;
 }
 
-function QuestionReviewItem({ q, index }: { q: QuestionDetail; index: number }) {
-  const [open, setOpen] = useState(false);
-
-  const icon =
-    q.isCorrect === true ? (
-      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-    ) : q.isCorrect === false ? (
-      <XCircle className="h-4 w-4 text-red-600 shrink-0" />
-    ) : (
-      <MinusCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-    );
-
-  const rowBg =
-    q.isCorrect === true ? "border-green-200 bg-green-50/30" :
-    q.isCorrect === false ? "border-red-200 bg-red-50/30" :
-    "border-muted";
-
+function AccuracyBar({ accuracy }: { accuracy: number }) {
   return (
-    <div className={cn("border rounded-lg overflow-hidden", rowBg)}>
-      <button
-        className="w-full flex items-center justify-between gap-3 p-3 text-left hover:bg-black/5 transition-colors"
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {icon}
-          <span className="text-xs font-semibold text-muted-foreground shrink-0">Q{q.orderNum}</span>
-          <span className="text-sm truncate">{q.question}</span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {q.isMarkedForReview && <Flag className="h-3.5 w-3.5 text-orange-500" />}
-          <span className="text-xs font-medium">
-            {parseFloat(q.marksAwarded) > 0 ? `+${q.marksAwarded}` : q.marksAwarded}
-          </span>
-          {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </div>
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 space-y-3 border-t bg-card">
-          <p className="text-sm font-medium pt-3 leading-relaxed">{q.question}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {(["a", "b", "c", "d"] as const).map((opt) => {
-              const isCorrect = opt === q.correctAnswer;
-              const isSelected = opt === q.selectedOption;
-              return (
-                <div
-                  key={opt}
-                  className={cn(
-                    "text-sm p-2.5 rounded-lg border",
-                    isCorrect ? "bg-green-50 border-green-300 text-green-800 font-medium" :
-                    isSelected ? "bg-red-50 border-red-300 text-red-800" :
-                    "bg-muted/30 border-muted text-muted-foreground",
-                  )}
-                >
-                  <span className="font-bold mr-1.5">{OPTION_LABELS[opt]}.</span>
-                  {getOptionText(q, opt)}
-                  {isCorrect && <CheckCircle2 className="h-3.5 w-3.5 inline ml-1.5 text-green-600" />}
-                  {isSelected && !isCorrect && <XCircle className="h-3.5 w-3.5 inline ml-1.5 text-red-600" />}
-                </div>
-              );
-            })}
-          </div>
-          {q.explanation && (
-            <div className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <span className="font-semibold text-blue-700">Explanation: </span>
-              {q.explanation}
-            </div>
-          )}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="capitalize">{q.difficulty}</span>
-            <span>·</span>
-            <span>{q.subjectCode}</span>
-            <span>·</span>
-            <span>{formatDuration(q.timeSpentSeconds)} spent</span>
-          </div>
-        </div>
-      )}
+    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+      <div
+        className={cn(
+          "h-1.5 rounded-full",
+          accuracy >= 70 ? "bg-green-500" : accuracy >= 50 ? "bg-amber-500" : "bg-red-500",
+        )}
+        style={{ width: `${Math.min(100, accuracy)}%` }}
+      />
     </div>
   );
 }
 
-export default function MockTestResultPage({ id, attemptId }: { id: string; attemptId: string }) {
+// ── Main Component ────────────────────────────────────────────────────────────
+
+export default function MockTestResultPage() {
   const [data, setData] = useState<ResultData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "subjects" | "sections" | "review">("overview");
+
+  const pathParts = window.location.pathname.split("/");
+  const mockId = pathParts[2];
+  const attemptId = pathParts[4];
 
   useEffect(() => {
-    fetch(`/api/mock-tests/${id}/attempts/${attemptId}/result`, { credentials: "include" })
+    fetch(`/api/mock-tests/${mockId}/attempts/${attemptId}/result`, {
+      credentials: "include",
+      headers: { "Cache-Control": "no-cache" },
+    })
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load result");
         return r.json();
       })
       .then(setData)
-      .catch(() => setError("Failed to load results."))
+      .catch(() => setError("Failed to load results. Please try again."))
       .finally(() => setIsLoading(false));
-  }, [id, attemptId]);
+  }, [mockId, attemptId]);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground text-sm">Calculating results...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="text-center py-20">
-        <p className="text-destructive">{error ?? "Something went wrong"}</p>
-        <Link href="/mock-tests"><Button variant="outline" className="mt-4">Back to Tests</Button></Link>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <p className="text-destructive font-medium">{error ?? "Result not found"}</p>
+        <Link href="/mock-tests"><Button variant="outline"><Home className="h-4 w-4 mr-2" /> Back to Tests</Button></Link>
       </div>
     );
   }
 
-  const { attempt, mock, subjectWise, questionDetails } = data;
-  const score = parseFloat(attempt.score ?? "0");
-  const totalMarks = attempt.totalMarks ?? 0;
-  const accuracy = parseFloat(attempt.accuracy ?? "0");
-  const pct = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+  const a = data.analytics;
+  const percentage = a.totalMarks > 0 ? (a.score / a.totalMarks) * 100 : 0;
 
-  const scoreColor = pct >= 70 ? "text-green-600" : pct >= 50 ? "text-amber-600" : "text-red-600";
-  const scoreBg = pct >= 70 ? "from-green-500 to-emerald-500" : pct >= 50 ? "from-amber-500 to-orange-500" : "from-red-500 to-rose-500";
+  const scoreColor =
+    percentage >= 80 ? "text-green-600" :
+    percentage >= 60 ? "text-blue-600" :
+    percentage >= 40 ? "text-amber-600" : "text-red-600";
+
+  const scoreBg =
+    percentage >= 80 ? "bg-green-50 border-green-200" :
+    percentage >= 60 ? "bg-blue-50 border-blue-200" :
+    percentage >= 40 ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-10">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">{mock?.name ?? "Mock Test"}</h1>
-          <p className="text-sm text-muted-foreground">Result · {mock?.examCode}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Link href="/mock-tests">
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs px-2">
+                <Home className="h-3.5 w-3.5" /> Mock Tests
+              </Button>
+            </Link>
+            <span className="text-muted-foreground text-xs">/</span>
+            <span className="text-xs text-muted-foreground">{data.mock?.name}</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Result — {data.mock?.name ?? "Mock Test"}</h1>
+          <p className="text-muted-foreground text-sm">
+            {data.mock?.examCode} • Mock #{data.mock?.mockNumber}
+            {data.attempt.submittedAt && (
+              <> • {new Date(data.attempt.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</>
+            )}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/mock-tests/${id}`}>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <RotateCcw className="h-4 w-4" /> Retake
-            </Button>
-          </Link>
-          <Link href="/mock-tests">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Home className="h-4 w-4" /> All Tests
-            </Button>
+        <div className="flex gap-2">
+          <Link href={`/mock-tests/${mockId}`}>
+            <Button variant="outline" size="sm" className="gap-1"><RotateCcw className="h-4 w-4" /> Retake</Button>
           </Link>
         </div>
       </div>
 
       {/* Score Banner */}
-      <Card className="overflow-hidden border-0 shadow-lg">
-        <div className={cn("bg-gradient-to-r p-6 text-white", scoreBg)}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center">
-                <Trophy className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-4xl font-bold">
-                  {score}<span className="text-2xl font-normal opacity-80">/{totalMarks}</span>
-                </p>
-                <p className="text-white/80 text-sm mt-0.5">
-                  {pct >= 70 ? "Excellent performance!" : pct >= 50 ? "Good effort!" : "Keep practicing!"}
-                </p>
-              </div>
+      <Card className={cn("border-2", scoreBg)}>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            {/* Big Score */}
+            <div className="text-center">
+              <div className={cn("text-6xl font-bold", scoreColor)}>{a.score.toFixed(1)}</div>
+              <div className="text-muted-foreground text-sm">out of {a.totalMarks}</div>
+              <div className={cn("text-2xl font-semibold mt-1", scoreColor)}>{percentage.toFixed(1)}%</div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-center">
+
+            {/* Stats Grid */}
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold">{accuracy.toFixed(1)}%</p>
-                <p className="text-white/70 text-xs">Accuracy</p>
+                <div className="text-2xl font-bold text-green-600">{a.correctCount}</div>
+                <div className="text-xs text-muted-foreground">Correct</div>
               </div>
               <div>
-                <p className="text-2xl font-bold">{formatDuration(attempt.timeTakenSeconds)}</p>
-                <p className="text-white/70 text-xs">Time Taken</p>
+                <div className="text-2xl font-bold text-red-600">{a.incorrectCount}</div>
+                <div className="text-xs text-muted-foreground">Incorrect</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-muted-foreground">{a.unattemptedCount}</div>
+                <div className="text-xs text-muted-foreground">Skipped</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-amber-600">{a.accuracy.toFixed(1)}%</div>
+                <div className="text-xs text-muted-foreground">Accuracy</div>
               </div>
             </div>
           </div>
-        </div>
+
+          {/* Secondary stats */}
+          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              Time: <span className="text-foreground font-medium ml-1">{formatDuration(a.totalTimeSeconds)}</span>
+            </span>
+            <span className="flex items-center gap-1 text-red-600">
+              <Minus className="h-3.5 w-3.5" />
+              Negative: <span className="font-medium ml-1">−{a.totalNegativeMarks.toFixed(2)}</span>
+            </span>
+            {a.markedForReviewCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Flag className="h-3.5 w-3.5" />
+                Marked: <span className="text-foreground font-medium ml-1">{a.markedForReviewCount}</span>
+              </span>
+            )}
+            {a.rank && a.totalAttempts && (
+              <span className="flex items-center gap-1">
+                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                Rank: <span className="text-foreground font-medium ml-1">#{a.rank} / {a.totalAttempts}</span>
+              </span>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Stats tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="border-green-200 bg-green-50/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-green-600 shrink-0" />
-            <div>
-              <p className="text-2xl font-bold text-green-700">{attempt.correctCount}</p>
-              <p className="text-xs text-green-600">Correct</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <XCircle className="h-8 w-8 text-red-600 shrink-0" />
-            <div>
-              <p className="text-2xl font-bold text-red-700">{attempt.incorrectCount}</p>
-              <p className="text-xs text-red-600">Incorrect</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-muted">
-          <CardContent className="p-4 flex items-center gap-3">
-            <MinusCircle className="h-8 w-8 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-2xl font-bold text-muted-foreground">{attempt.unattemptedCount}</p>
-              <p className="text-xs text-muted-foreground">Unattempted</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-orange-200 bg-orange-50/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Flag className="h-8 w-8 text-orange-500 shrink-0" />
-            <div>
-              <p className="text-2xl font-bold text-orange-600">
-                {questionDetails.filter((q) => q.isMarkedForReview).length}
-              </p>
-              <p className="text-xs text-orange-500">Marked</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {(["overview", "subjects", "sections", "review"] as const).map((tab) => (
+          <Button
+            key={tab}
+            variant={activeTab === tab ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab(tab)}
+            className="capitalize"
+          >
+            {tab === "overview" && <BarChart2 className="h-3.5 w-3.5 mr-1" />}
+            {tab === "subjects" && <Brain className="h-3.5 w-3.5 mr-1" />}
+            {tab === "sections" && <Target className="h-3.5 w-3.5 mr-1" />}
+            {tab === "review" && <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+            {tab === "overview" ? "Overview" : tab === "subjects" ? "Subject-wise" : tab === "sections" ? "Section-wise" : "Question Review"}
+          </Button>
+        ))}
       </div>
 
-      {/* Subject-wise performance */}
-      {subjectWise.length > 0 && (
+      {/* Overview Tab */}
+      {activeTab === "overview" && (
+        <div className="space-y-4">
+          {a.subjectWise.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Subject Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {a.subjectWise.map((s) => (
+                    <div key={s.code}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{s.code}</span>
+                        <span className={cn("text-sm font-bold", s.accuracy >= 70 ? "text-green-600" : s.accuracy >= 50 ? "text-amber-600" : "text-red-600")}>
+                          {s.accuracy.toFixed(1)}%
+                        </span>
+                      </div>
+                      <AccuracyBar accuracy={s.accuracy} />
+                      <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                        <span className="text-green-600">✓ {s.correct}</span>
+                        <span className="text-red-600">✗ {s.incorrect}</span>
+                        <span>— {s.unattempted}</span>
+                        <span className="ml-auto">+{s.marksEarned.toFixed(1)} / −{s.negativeMarks.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {a.topicWise.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Topic Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground text-xs">
+                        <th className="text-left pb-2 font-medium">Topic</th>
+                        <th className="text-left pb-2 font-medium">Subject</th>
+                        <th className="text-center pb-2 font-medium">Total</th>
+                        <th className="text-center pb-2 font-medium">✓</th>
+                        <th className="text-center pb-2 font-medium">✗</th>
+                        <th className="text-center pb-2 font-medium">Accuracy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {a.topicWise.sort((a, b) => b.accuracy - a.accuracy).map((t) => (
+                        <tr key={t.code} className="border-b last:border-0">
+                          <td className="py-2 font-medium">{t.code}</td>
+                          <td className="py-2 text-muted-foreground text-xs">{t.subjectCode}</td>
+                          <td className="py-2 text-center">{t.total}</td>
+                          <td className="py-2 text-center text-green-600">{t.correct}</td>
+                          <td className="py-2 text-center text-red-600">{t.incorrect}</td>
+                          <td className="py-2 text-center">
+                            <span className={cn("font-semibold", t.accuracy >= 70 ? "text-green-600" : t.accuracy >= 50 ? "text-amber-600" : "text-red-600")}>
+                              {t.accuracy.toFixed(0)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Subject-wise Tab */}
+      {activeTab === "subjects" && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart2 className="h-4 w-4" /> Subject-wise Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="p-0">
+            {a.subjectWise.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No subject-wise data available</div>
+            ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-muted-foreground text-xs">
-                    <th className="text-left py-2 pr-4 font-medium">Subject</th>
-                    <th className="text-center py-2 px-3 font-medium">Total</th>
-                    <th className="text-center py-2 px-3 font-medium text-green-600">Correct</th>
-                    <th className="text-center py-2 px-3 font-medium text-red-600">Wrong</th>
-                    <th className="text-center py-2 px-3 font-medium text-muted-foreground">Skipped</th>
-                    <th className="text-center py-2 pl-3 font-medium">Accuracy</th>
+                  <tr className="border-b text-muted-foreground text-xs bg-muted/50">
+                    <th className="text-left px-4 py-3 font-medium">Subject</th>
+                    <th className="text-center px-3 py-3 font-medium">Total</th>
+                    <th className="text-center px-3 py-3 font-medium">Correct</th>
+                    <th className="text-center px-3 py-3 font-medium">Wrong</th>
+                    <th className="text-center px-3 py-3 font-medium">Skipped</th>
+                    <th className="text-center px-3 py-3 font-medium">Marks</th>
+                    <th className="text-center px-3 py-3 font-medium">Negative</th>
+                    <th className="text-center px-3 py-3 font-medium">Accuracy</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {subjectWise.map((s) => (
-                    <tr key={s.subjectCode} className="border-b last:border-0">
-                      <td className="py-3 pr-4 font-medium">{s.subjectCode}</td>
-                      <td className="text-center py-3 px-3">{s.total}</td>
-                      <td className="text-center py-3 px-3 text-green-600 font-medium">{s.correct}</td>
-                      <td className="text-center py-3 px-3 text-red-600 font-medium">{s.incorrect}</td>
-                      <td className="text-center py-3 px-3 text-muted-foreground">{s.unattempted}</td>
-                      <td className="text-center py-3 pl-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={cn("h-full rounded-full", s.accuracy >= 70 ? "bg-green-500" : s.accuracy >= 50 ? "bg-amber-500" : "bg-red-500")}
-                              style={{ width: `${s.accuracy}%` }}
-                            />
-                          </div>
-                          <span className={cn("text-xs font-semibold", s.accuracy >= 70 ? "text-green-600" : s.accuracy >= 50 ? "text-amber-600" : "text-red-600")}>
-                            {s.accuracy.toFixed(1)}%
-                          </span>
-                        </div>
+                  {a.subjectWise.map((s) => (
+                    <tr key={s.code} className="border-b last:border-0">
+                      <td className="px-4 py-3 font-medium">{s.code}</td>
+                      <td className="px-3 py-3 text-center">{s.total}</td>
+                      <td className="px-3 py-3 text-center text-green-600 font-medium">{s.correct}</td>
+                      <td className="px-3 py-3 text-center text-red-600 font-medium">{s.incorrect}</td>
+                      <td className="px-3 py-3 text-center text-muted-foreground">{s.unattempted}</td>
+                      <td className="px-3 py-3 text-center text-green-700">+{s.marksEarned.toFixed(1)}</td>
+                      <td className="px-3 py-3 text-center text-red-600">−{s.negativeMarks.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={cn("font-bold", s.accuracy >= 70 ? "text-green-600" : s.accuracy >= 50 ? "text-amber-600" : "text-red-600")}>
+                          {s.accuracy.toFixed(1)}%
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Placeholders */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-dashed border-2 opacity-70">
-          <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-            <TrendingUp className="h-8 w-8 text-muted-foreground/50" />
-            <p className="font-semibold text-muted-foreground">Rank & Leaderboard</p>
-            <p className="text-xs text-muted-foreground">Coming soon — compare your score with other aspirants</p>
-            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+      {/* Section-wise Tab */}
+      {activeTab === "sections" && (
+        <Card>
+          <CardContent className="p-0">
+            {a.sectionWise.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No section-wise data available</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground text-xs bg-muted/50">
+                    <th className="text-left px-4 py-3 font-medium">Section</th>
+                    <th className="text-center px-3 py-3 font-medium">Total</th>
+                    <th className="text-center px-3 py-3 font-medium">Correct</th>
+                    <th className="text-center px-3 py-3 font-medium">Wrong</th>
+                    <th className="text-center px-3 py-3 font-medium">Skipped</th>
+                    <th className="text-center px-3 py-3 font-medium">Marks</th>
+                    <th className="text-center px-3 py-3 font-medium">Accuracy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {a.sectionWise.map((s) => (
+                    <tr key={s.id} className="border-b last:border-0">
+                      <td className="px-4 py-3 font-medium">{s.name}</td>
+                      <td className="px-3 py-3 text-center">{s.total}</td>
+                      <td className="px-3 py-3 text-center text-green-600 font-medium">{s.correct}</td>
+                      <td className="px-3 py-3 text-center text-red-600 font-medium">{s.incorrect}</td>
+                      <td className="px-3 py-3 text-center text-muted-foreground">{s.unattempted}</td>
+                      <td className="px-3 py-3 text-center text-green-700">+{s.marksEarned.toFixed(1)} / −{s.negativeMarks.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={cn("font-bold", s.accuracy >= 70 ? "text-green-600" : s.accuracy >= 50 ? "text-amber-600" : "text-red-600")}>
+                          {s.accuracy.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </CardContent>
         </Card>
-        <Card className="border-dashed border-2 opacity-70">
-          <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-            <Brain className="h-8 w-8 text-muted-foreground/50" />
-            <p className="font-semibold text-muted-foreground">AI Analysis</p>
-            <p className="text-xs text-muted-foreground">Coming soon — personalized insights on your weak areas</p>
-            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
-      {/* Question Review */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Target className="h-4 w-4" /> Question Review
-            <span className="text-xs font-normal text-muted-foreground ml-1">
-              ({questionDetails.length} questions)
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {questionDetails.map((q, i) => (
-            <QuestionReviewItem key={q.orderNum} q={q} index={i} />
-          ))}
-        </CardContent>
-      </Card>
+      {/* Question Review Tab */}
+      {activeTab === "review" && (
+        <div className="space-y-3">
+          {/* Filter row */}
+          <div className="flex gap-2 flex-wrap text-xs">
+            <span className="text-muted-foreground">{data.questionDetails.length} questions total</span>
+            <span className="text-green-600">✓ {a.correctCount} correct</span>
+            <span className="text-red-600">✗ {a.incorrectCount} wrong</span>
+            <span className="text-muted-foreground">— {a.unattemptedCount} skipped</span>
+          </div>
+
+          {data.questionDetails.map((q) => {
+            const isExpanded = expandedQuestion === q.attemptQuestionId;
+            const statusIcon =
+              q.isCorrect === true ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" /> :
+              q.isCorrect === false ? <XCircle className="h-4 w-4 text-red-500 shrink-0" /> :
+              <MinusCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
+
+            return (
+              <Card
+                key={q.attemptQuestionId}
+                className={cn(
+                  "border",
+                  q.isCorrect === true && "border-green-200 bg-green-50/30",
+                  q.isCorrect === false && "border-red-200 bg-red-50/30",
+                )}
+              >
+                <CardContent className="p-4">
+                  <div
+                    className="flex items-start gap-3 cursor-pointer"
+                    onClick={() => setExpandedQuestion(isExpanded ? null : q.attemptQuestionId)}
+                  >
+                    {statusIcon}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-xs font-mono text-muted-foreground">Q{q.orderNum}</span>
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.sectionName}</span>
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{q.subjectCode}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{q.difficulty}</span>
+                        {q.isMarkedForReview && (
+                          <span className="text-xs flex items-center gap-0.5 text-amber-600">
+                            <Flag className="h-3 w-3" /> Marked
+                          </span>
+                        )}
+                        <span className="ml-auto text-xs font-medium text-muted-foreground">
+                          {parseFloat(q.marksAwarded) > 0 ? `+${q.marksAwarded}` : q.marksAwarded} marks
+                        </span>
+                        {q.timeSpentSeconds > 0 && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" /> {q.timeSpentSeconds}s
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-foreground line-clamp-2">{q.question}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-4 space-y-2 pl-7">
+                      {/* Question full text */}
+                      <p className="text-sm font-medium text-foreground mb-3">{q.question}</p>
+
+                      {/* Options */}
+                      {(["a", "b", "c", "d"] as const).map((opt) => {
+                        const isSelected = q.selectedOption === opt;
+                        const isCorrectOpt = q.correctAnswer === opt;
+                        return (
+                          <div
+                            key={opt}
+                            className={cn(
+                              "flex items-start gap-2 rounded-md px-3 py-2 text-sm border",
+                              isCorrectOpt ? "bg-green-50 border-green-300 text-green-900" :
+                              isSelected && !isCorrectOpt ? "bg-red-50 border-red-300 text-red-900" :
+                              "bg-muted/30 border-transparent",
+                            )}
+                          >
+                            <span className="font-bold w-5 shrink-0">{OPTION_LABELS[opt]}.</span>
+                            <span>{getOptionText(q, opt)}</span>
+                            {isCorrectOpt && <CheckCircle2 className="h-4 w-4 text-green-600 ml-auto shrink-0" />}
+                            {isSelected && !isCorrectOpt && <XCircle className="h-4 w-4 text-red-600 ml-auto shrink-0" />}
+                          </div>
+                        );
+                      })}
+
+                      {/* Your answer */}
+                      {q.selectedOption ? (
+                        <p className="text-xs text-muted-foreground pt-1">
+                          Your answer: <span className="font-medium text-foreground">{OPTION_LABELS[q.selectedOption]}</span>
+                          {" · "}Correct: <span className="font-medium text-green-700">{OPTION_LABELS[q.correctAnswer]}</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground pt-1">
+                          Not attempted · Correct: <span className="font-medium text-green-700">{OPTION_LABELS[q.correctAnswer]}</span>
+                        </p>
+                      )}
+
+                      {/* Explanation */}
+                      {q.explanation && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Explanation</p>
+                          <p className="text-sm text-foreground">{q.explanation}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

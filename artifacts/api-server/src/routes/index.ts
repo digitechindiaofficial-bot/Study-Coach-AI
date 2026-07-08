@@ -11,6 +11,7 @@ import adminRouter from "./admin";
 import questionBankAdminRouter from "./question-bank-admin";
 import mockTestsRouter from "./mock-tests";
 import mockTestsAdminRouter from "./mock-tests-admin";
+import examPatternsRouter from "./exam-patterns-admin";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(adminRouter);
 router.use(questionBankAdminRouter);
 router.use(mockTestsRouter);
 router.use(mockTestsAdminRouter);
+router.use(examPatternsRouter);
 
 export default router;

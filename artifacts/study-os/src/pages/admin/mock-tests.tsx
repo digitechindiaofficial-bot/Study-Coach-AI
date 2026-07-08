@@ -18,7 +18,7 @@ import {
 import {
   ClipboardList, Plus, Pencil, Trash2, Loader2, ChevronDown, ChevronUp,
   Settings, Database, Upload, Send, CheckCircle2, XCircle, Search,
-  SkipForward,
+  SkipForward, Globe, Archive, FileEdit, AlertTriangle, ShieldCheck,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -36,9 +36,27 @@ interface MockTest {
   totalMarks: number;
   isActive: boolean;
   version: number;
+  mockNumber: number;
+  status: "draft" | "published" | "archived";
   sectionCount: number;
   attemptCount: number;
   sections?: SectionWithRule[];
+}
+
+interface ValidationResult {
+  valid: boolean;
+  issues: { section: string; type: string; message: string }[];
+  warnings: { section: string; type: string; message: string }[];
+}
+
+interface ImportResult {
+  id: string;
+  name: string;
+  mockNumber: number;
+  status: string;
+  sectionCount: number;
+  totalMarks: number;
+  warnings?: { section: string; type: string; message: string }[];
 }
 
 interface SectionWithRule {
@@ -70,12 +88,6 @@ interface RuleData {
   fixedQuestions?: { id: string; questionBankId: string; orderNum: number }[];
 }
 
-interface ImportResult {
-  id: string;
-  name: string;
-  sectionCount: number;
-  totalMarks: number;
-}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -131,6 +143,8 @@ function MockForm({
     timeLimitMinutes: initial?.timeLimitMinutes ?? 60,
     difficulty: initial?.difficulty ?? "mixed",
     instructions: "",
+    status: (initial as any)?.status ?? "draft",
+    mockNumber: (initial as any)?.mockNumber ?? undefined,
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -173,6 +187,21 @@ function MockForm({
           <Select value={form.difficulty} onValueChange={(v) => setForm({ ...form, difficulty: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{DIFFICULTIES.map((d) => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Mock Number (auto if blank)</Label>
+          <Input type="number" min={1} value={form.mockNumber ?? ""} onChange={(e) => setForm({ ...form, mockNumber: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="Auto" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Status</Label>
+          <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         <div className="col-span-2 space-y-1.5">
@@ -474,6 +503,9 @@ export default function AdminMockTestsPage() {
   const [importJson, setImportJson] = useState("");
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -533,6 +565,44 @@ export default function AdminMockTestsPage() {
     setDeleteId(null);
     await load();
     toast({ title: "Mock test deleted" });
+  };
+
+  const changeStatus = async (id: string, status: "draft" | "published" | "archived") => {
+    setChangingStatusId(id);
+    try {
+      const r = await fetch(`/api/admin/mock-tests/${id}/status`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await r.json();
+      if (!r.ok) { toast({ title: data.error ?? "Status change failed", variant: "destructive" }); return; }
+      await load();
+      toast({ title: `Mock ${status === "published" ? "published" : status === "archived" ? "archived" : "set to draft"}` });
+    } catch { toast({ title: "Status change failed", variant: "destructive" }); }
+    finally { setChangingStatusId(null); }
+  };
+
+  const handleValidate = async () => {
+    if (!importJson.trim()) { toast({ title: "No JSON to validate", variant: "destructive" }); return; }
+    let parsed: any;
+    try { parsed = JSON.parse(importJson); }
+    catch { toast({ title: "Invalid JSON", variant: "destructive" }); return; }
+    setValidating(true);
+    setValidationResult(null);
+    try {
+      const r = await fetch("/api/admin/mock-tests/import/validate", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
+      const data = await r.json();
+      setValidationResult(data);
+      if (data.valid) toast({ title: "Validation passed" + (data.warnings?.length ? ` (${data.warnings.length} warnings)` : "") });
+      else toast({ title: `${data.issues.length} validation issue(s) found`, variant: "destructive" });
+    } catch { toast({ title: "Validation failed", variant: "destructive" }); }
+    finally { setValidating(false); }
   };
 
   const handleImport = async () => {
@@ -617,10 +687,14 @@ export default function AdminMockTestsPage() {
                   <div className="p-4 flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-muted-foreground">#{mock.mockNumber}</span>
                         <Badge variant="secondary" className="text-xs">{mock.mockType.replace(/_/g, " ")}</Badge>
                         <Badge className={cn("text-xs capitalize", DIFFICULTY_COLORS[mock.difficulty] ?? "bg-muted")}>{mock.difficulty}</Badge>
                         <Badge variant="outline" className="text-xs">{mock.examCode}</Badge>
-                        {!mock.isActive && <Badge variant="destructive" className="text-xs">Inactive</Badge>}
+                        {mock.status === "published" && <Badge className="text-xs bg-green-100 text-green-700 border-green-200"><Globe className="h-3 w-3 mr-0.5" /> Published</Badge>}
+                        {mock.status === "draft" && <Badge variant="outline" className="text-xs text-muted-foreground"><FileEdit className="h-3 w-3 mr-0.5" /> Draft</Badge>}
+                        {mock.status === "archived" && <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-200"><Archive className="h-3 w-3 mr-0.5" /> Archived</Badge>}
+                        {!mock.isActive && <Badge variant="destructive" className="text-xs">Deleted</Badge>}
                       </div>
                       <h3 className="font-semibold">{mock.name}</h3>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
@@ -628,33 +702,51 @@ export default function AdminMockTestsPage() {
                         <span>{mock.timeLimitMinutes}m</span>
                         <span>{mock.sectionCount} section{mock.sectionCount !== 1 ? "s" : ""}</span>
                         <span>{mock.attemptCount} attempt{mock.attemptCount !== 1 ? "s" : ""}</span>
-                        <span>v{mock.version}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 gap-1"
-                        onClick={() => toggleExpand(mock.id)}
-                      >
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                      {/* Status change shortcuts */}
+                      {mock.status === "draft" && (
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-8 gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                          disabled={changingStatusId === mock.id}
+                          onClick={() => changeStatus(mock.id, "published")}
+                        >
+                          {changingStatusId === mock.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+                          Publish
+                        </Button>
+                      )}
+                      {mock.status === "published" && (
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-8 gap-1 text-orange-700 border-orange-300 hover:bg-orange-50"
+                          disabled={changingStatusId === mock.id}
+                          onClick={() => changeStatus(mock.id, "archived")}
+                        >
+                          {changingStatusId === mock.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                          Archive
+                        </Button>
+                      )}
+                      {mock.status === "archived" && (
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-8 gap-1 text-xs"
+                          disabled={changingStatusId === mock.id}
+                          onClick={() => changeStatus(mock.id, "draft")}
+                        >
+                          {changingStatusId === mock.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileEdit className="h-3.5 w-3.5" />}
+                          Restore
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => toggleExpand(mock.id)}>
                         <Settings className="h-3.5 w-3.5" />
                         {expandedMock === mock.id ? "Close" : "Sections"}
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => setEditMock(mock)}
-                      >
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditMock(mock)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteId(mock.id)}
-                      >
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(mock.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -713,22 +805,72 @@ export default function AdminMockTestsPage() {
                     try { JSON.parse(importJson); return <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Valid JSON</p>; }
                     catch { return <p className="text-xs text-destructive flex items-center gap-1"><XCircle className="h-3.5 w-3.5" /> Invalid JSON</p>; }
                   })()}
-                  <Button
-                    onClick={handleImport}
-                    disabled={importing}
-                    className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
-                  >
-                    {importing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing...</> : <><Send className="mr-2 h-4 w-4" /> Import Mock Test</>}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleValidate}
+                      disabled={validating || importing}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {validating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Validating...</> : <><ShieldCheck className="mr-2 h-4 w-4" /> Validate</>}
+                    </Button>
+                    <Button
+                      onClick={handleImport}
+                      disabled={importing || validating}
+                      className="flex-1 bg-gradient-to-r from-red-600 to-orange-500 text-white hover:from-red-700 hover:to-orange-600"
+                    >
+                      {importing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing...</> : <><Send className="mr-2 h-4 w-4" /> Import</>}
+                    </Button>
+                  </div>
+
+                  {validationResult && (
+                    <Card className={validationResult.valid ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}>
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          {validationResult.valid
+                            ? <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                            : <XCircle className="h-5 w-5 text-red-600 shrink-0" />}
+                          <p className={cn("font-semibold text-sm", validationResult.valid ? "text-green-700" : "text-red-700")}>
+                            {validationResult.valid ? "Validation passed" : `${validationResult.issues.length} issue(s) found`}
+                            {validationResult.warnings.length > 0 && ` · ${validationResult.warnings.length} warning(s)`}
+                          </p>
+                        </div>
+                        {validationResult.issues.map((issue, i) => (
+                          <div key={i} className="flex gap-2 text-xs text-red-700">
+                            <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span><strong>{issue.section}:</strong> {issue.message}</span>
+                          </div>
+                        ))}
+                        {validationResult.warnings.map((w, i) => (
+                          <div key={i} className="flex gap-2 text-xs text-amber-700">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span><strong>{w.section}:</strong> {w.message}</span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {importResult && (
                     <Card className="border-green-200 bg-green-50/40">
-                      <CardContent className="p-4 flex items-center gap-3">
-                        <CheckCircle2 className="h-8 w-8 text-green-600 shrink-0" />
-                        <div>
-                          <p className="font-semibold text-green-700">"{importResult.name}" imported</p>
-                          <p className="text-sm text-green-600">{importResult.sectionCount} sections · {importResult.totalMarks} total marks</p>
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="h-8 w-8 text-green-600 shrink-0" />
+                          <div>
+                            <p className="font-semibold text-green-700">"{importResult.name}" imported</p>
+                            <p className="text-sm text-green-600">Mock #{importResult.mockNumber} · {importResult.sectionCount} sections · {importResult.totalMarks} marks · {importResult.status}</p>
+                          </div>
                         </div>
+                        {importResult.warnings && importResult.warnings.length > 0 && (
+                          <div className="space-y-1 pt-2 border-t border-green-200">
+                            {importResult.warnings.map((w, i) => (
+                              <div key={i} className="flex gap-2 text-xs text-amber-700">
+                                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                <span><strong>{w.section}:</strong> {w.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   )}
