@@ -9,6 +9,8 @@ import quizRouter from "./quiz";
 import progressRouter from "./progress";
 import adminRouter from "./admin";
 import questionBankAdminRouter from "./question-bank-admin";
+import mockTestsRouter from "./mock-tests";
+import mockTestsAdminRouter from "./mock-tests-admin";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(quizRouter);
 router.use(progressRouter);
 router.use(adminRouter);
 router.use(questionBankAdminRouter);
+router.use(mockTestsRouter);
+router.use(mockTestsAdminRouter);
 
 export default router;

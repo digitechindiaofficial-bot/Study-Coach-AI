@@ -26,6 +26,10 @@ import AdminUsersPage from "@/pages/admin/users";
 import AdminQuizPage from "@/pages/admin/quiz";
 import AdminSyllabusPage from "@/pages/admin/syllabus";
 import AdminQuestionBankPage from "@/pages/admin/question-bank";
+import AdminMockTestsPage from "@/pages/admin/mock-tests";
+import MockTestListPage from "@/pages/mock-tests/index";
+import MockTestSessionPage from "@/pages/mock-tests/session";
+import MockTestResultPage from "@/pages/mock-tests/result";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -240,6 +244,15 @@ function Router() {
       <Route path="/current-affairs">
         <ProtectedRoute component={CurrentAffairsPage} />
       </Route>
+      <Route path="/mock-tests">
+        <ProtectedRoute component={MockTestListPage} />
+      </Route>
+      <Route path="/mock-tests/:id/results/:attemptId">
+        {(params) => <ProtectedRoute component={MockTestResultPage} id={params.id} attemptId={params.attemptId} />}
+      </Route>
+      <Route path="/mock-tests/:id">
+        {(params) => <ProtectedRoute component={MockTestSessionPage} id={params.id} />}
+      </Route>
       <Route path="/quiz">
         <ProtectedRoute component={QuizHomePage} />
       </Route>
@@ -273,6 +286,9 @@ function Router() {
       </Route>
       <Route path="/admin/question-bank">
         <AdminRoute component={AdminQuestionBankPage} />
+      </Route>
+      <Route path="/admin/mock-tests">
+        <AdminRoute component={AdminMockTestsPage} />
       </Route>
 
       <Route component={NotFound} />

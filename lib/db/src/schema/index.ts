@@ -6,3 +6,4 @@ export * from "./syllabus";
 export * from "./current-affairs";
 export * from "./quiz";
 export * from "./question-bank";
+export * from "./mock-tests";

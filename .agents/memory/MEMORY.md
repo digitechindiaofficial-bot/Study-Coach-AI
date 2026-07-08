@@ -6,3 +6,4 @@
 - [IST date handling for streaks/activity](ist-date-handling.md) — server date/streak logic must use Asia/Kolkata, not UTC, or activity near midnight misattributes to the wrong day
 - [Syllabus system — dynamic JSON import](syllabus-system.md) — syllabus is DB-driven (syllabus_exams/subjects/topics + user_topic_progress); hardcoded syllabi.ts emptied; import via POST /api/admin/syllabus/import; zod must be added to api-server dependencies (not just libs) to use in esbuild-bundled routes
 - [Question Bank architecture](question-bank-arch.md) — canonical store is question_bank (not quiz_questions); quiz routes read question_bank + write dual to question_attempts+quiz_attempts; admin import at /admin/question-bank/import/{json,csv,bulk}
+- [Mock Test System](mock-test-system.md) — 7-table schema (mock_tests→sections→rules→fixed_questions + attempts→attempt_questions→responses); JSON import at POST /api/admin/mock-tests/import/json; lib rebuild needed after adding tables
