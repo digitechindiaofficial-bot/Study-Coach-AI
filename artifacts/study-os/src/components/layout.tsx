@@ -6,7 +6,7 @@ import {
   CalendarDays,
   BookOpen,
   Newspaper,
-  ClipboardList,
+  BrainCircuit,
   TrendingUp,
   Settings,
   LogOut,
@@ -24,7 +24,7 @@ const navItems = [
   { name: "Study Planner",   href: "/planner",          icon: CalendarDays,   badge: "AI" },
   { name: "Syllabus",        href: "/syllabus",         icon: BookOpen },
   { name: "Current Affairs", href: "/current-affairs",  icon: Newspaper },
-  { name: "Mock Tests",      href: "/mock-tests",       icon: ClipboardList },
+  { name: "Quiz Practice",   href: "/quiz",             icon: BrainCircuit },
   { name: "Progress",        href: "/progress",         icon: TrendingUp },
 ];
 
@@ -32,7 +32,7 @@ const mobileNavItems = [
   { name: "Home",     href: "/dashboard",      icon: LayoutDashboard },
   { name: "Plan",     href: "/planner",        icon: CalendarDays },
   { name: "News",     href: "/current-affairs", icon: Newspaper },
-  { name: "Tests",    href: "/mock-tests",     icon: ClipboardList },
+  { name: "Quiz",     href: "/quiz",           icon: BrainCircuit },
   { name: "Progress", href: "/progress",       icon: TrendingUp },
 ];
 

@@ -246,7 +246,7 @@ function Router() {
         <ProtectedRoute component={CurrentAffairsPage} />
       </Route>
       <Route path="/mock-tests">
-        <ProtectedRoute component={MockTestListPage} />
+        {() => { window.location.replace("/quiz"); return null; }}
       </Route>
       <Route path="/mock-tests/:id/results/:attemptId">
         {(params) => <ProtectedRoute component={MockTestResultPage} id={params.id} attemptId={params.attemptId} />}

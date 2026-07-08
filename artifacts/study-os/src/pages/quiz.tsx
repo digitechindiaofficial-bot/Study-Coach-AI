@@ -30,8 +30,19 @@ export default function QuizHomePage() {
 
   // Exam subjects from syllabus — shown as practice cards
   const examData = (syllabusData as any[]).find((e: any) => e.code === examCode);
-  const subjects: Array<{ id: string; name: string; subjectCode: string }> =
+  const syllabusSubjects: Array<{ id: string; name: string; subjectCode: string }> =
     examData?.subjects ?? [];
+
+  // Fallback subjects shown when no syllabus is loaded yet
+  const FALLBACK_SUBJECTS = [
+    { id: "qa",       name: "Quantitative Aptitude", subjectCode: "QA" },
+    { id: "reas",     name: "Reasoning",             subjectCode: "REASONING" },
+    { id: "eng",      name: "English",               subjectCode: "ENGLISH" },
+    { id: "ga",       name: "General Awareness",     subjectCode: "GA" },
+    { id: "comp",     name: "Computer Awareness",    subjectCode: "COMPUTER" },
+  ];
+
+  const subjects = syllabusSubjects.length > 0 ? syllabusSubjects : FALLBACK_SUBJECTS;
 
   // Map stats by subjectCode and by name for quick lookup
   const statsByCode = new Map((stats as any[]).map((s: any) => [s.subjectCode, s]));
@@ -64,7 +75,7 @@ export default function QuizHomePage() {
           Quiz Practice
         </h1>
         <p className="text-muted-foreground mt-1">
-          Practice MCQs. Track your accuracy. Identify weak areas.
+          Practice questions by subject and topic. Track your accuracy. Identify weak areas.
         </p>
       </div>
 
@@ -123,62 +134,60 @@ export default function QuizHomePage() {
         </CardContent>
       </Card>
 
-      {/* By subject — dynamic from user's exam syllabus */}
-      {subjects.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Practice by Subject</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {subjects.map(sub => {
-              const stat = getStat(sub) as any;
-              const available = stat?.questionsAvailable ?? 0;
-              const accuracy = stat?.accuracy ?? 0;
-              return (
-                <Card key={sub.id} className="hover:border-primary/40 transition-colors">
-                  <CardContent className="p-4 flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm mb-1 truncate">{sub.name}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {available} questions
-                        </Badge>
-                        {stat && (
-                          <span className="text-xs text-muted-foreground">
-                            Accuracy:{" "}
-                            <span
-                              className={
-                                accuracy >= 70
-                                  ? "text-green-600"
-                                  : accuracy >= 50
-                                    ? "text-amber-600"
-                                    : "text-red-600"
-                              }
-                            >
-                              {accuracy}%
-                            </span>
-                          </span>
-                        )}
-                      </div>
+      {/* By subject — dynamic from exam syllabus, with fallback */}
+      <div>
+        <h2 className="text-xl font-bold mb-4">Practice by Subject</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {subjects.map(sub => {
+            const stat = getStat(sub) as any;
+            const available = stat?.questionsAvailable ?? 0;
+            const accuracy = stat?.accuracy ?? 0;
+            return (
+              <Card key={sub.id} className="hover:border-primary/40 transition-colors">
+                <CardContent className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm mb-1 truncate">{sub.name}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs">
+                        {available > 0 ? `${available} questions` : "Questions available"}
+                      </Badge>
                       {stat && (
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
-                          <div
-                            className={`h-full rounded-full ${accuracy >= 70 ? "bg-green-500" : accuracy >= 50 ? "bg-amber-500" : "bg-red-500"}`}
-                            style={{ width: `${accuracy}%` }}
-                          />
-                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Accuracy:{" "}
+                          <span
+                            className={
+                              accuracy >= 70
+                                ? "text-green-600"
+                                : accuracy >= 50
+                                  ? "text-amber-600"
+                                  : "text-red-600"
+                            }
+                          >
+                            {accuracy}%
+                          </span>
+                        </span>
                       )}
                     </div>
-                    <Link href={`/quiz/${encodeURIComponent(sub.subjectCode)}`}>
-                      <Button variant="outline" size="sm">
-                        Practice
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    {stat && (
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
+                        <div
+                          className={`h-full rounded-full ${accuracy >= 70 ? "bg-green-500" : accuracy >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+                          style={{ width: `${accuracy}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <Link href={`/quiz/${encodeURIComponent(sub.subjectCode)}`}>
+                    <Button size="sm" className="shrink-0">
+                      Start Quiz
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Weak area drill */}
       <Card>
