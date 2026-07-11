@@ -3,7 +3,6 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import {
   profilesTable,
-  quizQuestionsTable,
   quizAttemptsTable,
   questionBankTable,
   questionAttemptsTable,
@@ -162,6 +161,7 @@ router.get("/quiz/questions", async (req, res) => {
     );
   }
 
+  res.setHeader("Cache-Control", "no-store");
   res.json(questions);
 });
 
@@ -205,25 +205,13 @@ router.post("/quiz/attempts", async (req, res) => {
     .where(eq(questionBankTable.id, parsed.data.questionId))
     .limit(1);
 
-  if (bankRows[0]) {
-    const q = bankRows[0];
-    isCorrect = q.correctAnswer === parsed.data.selectedOption;
-    examCode = q.examCode;
-    subjectCode = q.subjectCode;
-    topicCode = q.topicCode;
-  } else {
-    // Fallback: legacy quiz_questions table
-    const legacyRows = await db
-      .select()
-      .from(quizQuestionsTable)
-      .where(eq(quizQuestionsTable.id, parsed.data.questionId))
-      .limit(1);
-    if (!legacyRows[0]) return res.status(404).json({ error: "Question not found" });
-    isCorrect = legacyRows[0].correctOption === parsed.data.selectedOption;
-    examCode = legacyRows[0].examCode;
-    subjectCode = legacyRows[0].subjectCode;
-    topicCode = legacyRows[0].topicCode;
-  }
+  if (!bankRows[0]) return res.status(404).json({ error: "Question not found" });
+
+  const q = bankRows[0];
+  isCorrect = q.correctAnswer === parsed.data.selectedOption;
+  examCode = q.examCode;
+  subjectCode = q.subjectCode;
+  topicCode = q.topicCode;
 
   // Write to question_attempts (new, canonical)
   const [attempt] = await db.insert(questionAttemptsTable).values({
