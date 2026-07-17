@@ -8,17 +8,9 @@ import { Slider } from "@/components/ui/slider";
 import { Loader2, ArrowLeft, CheckCircle2, Target, Calendar, Clock, Zap, Phone } from "lucide-react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
+import { useExams } from "@/hooks/use-exams";
 
-const EXAMS = [
-  { label: "SSC CGL",    value: "SSC_CGL",    icon: "📋", desc: "Combined Graduate Level" },
-  { label: "SSC CHSL",   value: "SSC_CHSL",   icon: "📄", desc: "Higher Secondary Level" },
-  { label: "IBPS PO",    value: "IBPS_PO",    icon: "🏦", desc: "Probationary Officer" },
-  { label: "IBPS Clerk", value: "IBPS_CLERK", icon: "💼", desc: "Clerical Cadre" },
-  { label: "SBI PO",     value: "SBI_PO",     icon: "🏛️", desc: "State Bank of India" },
-  { label: "RRB NTPC",   value: "RRB_NTPC",   icon: "🚂", desc: "Railway Non-Technical" },
-  { label: "UPPSC",      value: "UPPSC",       icon: "⚖️", desc: "UP State PSC" },
-  { label: "Other",      value: "OTHER",       icon: "🎯", desc: "Other government exam" },
-];
+const OTHER_EXAM = { label: "Other", value: "OTHER", icon: "🎯", desc: "Other government exam" };
 
 const STEP_LABELS = ["Choose Exam", "Set Schedule", "You're All Set!"];
 
@@ -26,6 +18,7 @@ export default function OnboardingPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const upsert = useUpsertProfile();
+  const { exams: fetchedExams, loading: examsLoading } = useExams();
 
   const [step, setStep] = useState(1);
   const [examType, setExamType] = useState("");
@@ -33,6 +26,17 @@ export default function OnboardingPage() {
   const [dailyHours, setDailyHours] = useState([4]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
+
+  // Build display list from API + hardcoded "Other" at end
+  const EXAMS = [
+    ...fetchedExams.map(e => ({
+      label: e.name,
+      value: e.code,
+      icon: e.icon_emoji,
+      desc: e.exam_full_name ?? e.name,
+    })),
+    OTHER_EXAM,
+  ];
 
   const selectedExam = EXAMS.find(e => e.value === examType);
   const isPhoneValid = /^\d{10}$/.test(phoneNumber);
@@ -98,7 +102,10 @@ export default function OnboardingPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {EXAMS.map(exam => (
+              {examsLoading && Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-[88px] rounded-xl border-2 border-border bg-muted animate-pulse" />
+              ))}
+              {!examsLoading && EXAMS.map(exam => (
                 <button
                   key={exam.value}
                   onClick={() => setExamType(exam.value)}

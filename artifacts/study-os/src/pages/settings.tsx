@@ -21,8 +21,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { usePlan } from "@/hooks/use-plan";
-
-const EXAMS = ["SSC_CGL","SSC_CHSL","IBPS_PO","IBPS_CLERK","SBI_PO","RRB_NTPC","UPPSC","BPSC","OTHER"];
+import { useExams } from "@/hooks/use-exams";
 
 async function setPlanType(planType: "free" | "pro"): Promise<void> {
   const resp = await fetch("/api/profiles/plan", {
@@ -43,6 +42,7 @@ export default function SettingsPage() {
 
   const { data: profile, isLoading } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
   const upsert = useUpsertProfile();
+  const { exams, loading: examsLoading } = useExams();
 
   const [examType, setExamType] = useState("");
   const [examDate, setExamDate] = useState<Date|undefined>();
@@ -233,10 +233,17 @@ export default function SettingsPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>Target Exam</Label>
-            <Select value={examType} onValueChange={setExamType}>
-              <SelectTrigger><SelectValue placeholder="Select exam"/></SelectTrigger>
+            <Select value={examType} onValueChange={setExamType} disabled={examsLoading}>
+              <SelectTrigger>
+                <SelectValue placeholder={examsLoading ? "Loading exams…" : "Select exam"} />
+              </SelectTrigger>
               <SelectContent>
-                {EXAMS.map(e=><SelectItem key={e} value={e}>{e.replace(/_/g,' ')}</SelectItem>)}
+                {exams.map(e => (
+                  <SelectItem key={e.code} value={e.code}>
+                    {e.icon_emoji} {e.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="OTHER">🎯 Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
