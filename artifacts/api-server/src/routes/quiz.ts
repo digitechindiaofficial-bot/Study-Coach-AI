@@ -351,7 +351,24 @@ router.get("/quiz/stats", async (req, res) => {
     accuracy: s.totalQuestions > 0 ? Math.round((s.correct / s.totalQuestions) * 100) : 0,
   }));
 
-  res.json(stats);
+  // Enrich with human-readable subject names from syllabus_subjects
+  const subjectNameResult = await db.execute(sql`
+    SELECT s.subject_code, s.name AS subject_name
+    FROM syllabus_subjects s
+    JOIN syllabus_exams e ON e.id = s.exam_id
+    ${activeExamCode ? sql`WHERE e.code = ${activeExamCode}` : sql``}
+  `);
+  const subjectNameMap = new Map<string, string>(
+    (subjectNameResult.rows as any[]).map((r) => [r.subject_code, r.subject_name])
+  );
+
+  const enriched = stats.map((s) => ({
+    ...s,
+    subject: subjectNameMap.get(s.subjectCode) ?? s.subjectCode,
+    examCode: activeExamCode ?? null,
+  }));
+
+  res.json(enriched);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

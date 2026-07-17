@@ -1,0 +1,124 @@
+In my GovtGuru app, the Progress page (/progress) has a 
+"Quiz Performance by Subject" panel that shows progress 
+bars with percentages but the subject NAMES are not 
+displaying — they appear blank/empty above each bar.
+
+Please fix this issue by doing the following:
+
+STEP 1 — Find the Progress page component
+Look for the file that renders "Quiz Performance by Subject" 
+section. It could be in:
+- app/progress/page.jsx
+- pages/progress.jsx  
+- components/Progress.jsx
+- components/ProgressPage.jsx
+
+STEP 2 — Find how subject data is being fetched
+The component is likely querying either:
+- question_attempts table (which has examCode, subjectCode columns)
+- quiz_attempts table
+- subjects table
+
+STEP 3 — Identify the bug
+The subject name is probably missing because:
+
+Possibility A: The query fetches subjectCode (like "QA", "ENG") 
+but the display code tries to show subject_name which is 
+undefined/null
+
+Possibility B: The join with subjects table is failing or 
+subjects table does not have data yet
+
+Possibility C: The field name mismatch — database has 
+"subjectCode" but code looks for "subject_code" (camelCase 
+vs snake_case mismatch)
+
+STEP 4 — Fix the subject name display using this approach:
+
+First try to join with the subjects table:
+const { data } = await supabase
+  .from('question_attempts')
+  .select('subjectCode, is_correct, subjects!inner(subject_name)')
+  .eq('user_id', userId)
+
+If that does not work, use this fallback mapping object 
+to convert subject codes to readable names, and apply it 
+wherever subject names are displayed:
+
+const SUBJECT_NAME_MAP = {
+  // SSC CGL
+  'QA': 'Quantitative Aptitude',
+  'ENG': 'English Language',
+  'GIR': 'General Intelligence & Reasoning',
+  'GA': 'General Awareness',
+  // SSC CHSL
+  'DESC': 'Descriptive Paper',
+  // IBPS PO / SBI PO
+  'BANK': 'Banking & Financial Awareness',
+  'COMP': 'Computer & Digital Banking',
+  'RCA': 'Reasoning & Computer Aptitude',
+  // RRB NTPC
+  'MATH': 'Mathematics',
+  // UPPSC
+  'HIST': 'History & Culture',
+  'POL': 'Indian Polity & Governance',
+  'SCI': 'Science & Technology',
+  'HINDI': 'General Hindi',
+  // BPSC
+  'GEO': 'Geography & Environment',
+  'BIHAR': 'Bihar Special',
+  'MREAS': 'Mathematics & Reasoning',
+  'ECO': 'Economy',
+  // SBI Clerk / IBPS Clerk
+  'NUM': 'Numerical Ability',
+  'REAS': 'Reasoning Ability',
+  // Generic
+  'GK': 'General Knowledge',
+  'CA': 'Current Affairs',
+};
+
+function getSubjectName(subjectCode) {
+  return SUBJECT_NAME_MAP[subjectCode] || subjectCode || 'Unknown Subject';
+}
+
+STEP 5 — Apply the fix
+Wherever the subject name is rendered in the 
+"Quiz Performance by Subject" section, replace the 
+broken display with:
+
+{getSubjectName(item.subjectCode || item.subject_code)}
+
+Also make sure the exam name shows alongside the subject 
+name for clarity. Use this exam name map too:
+
+const EXAM_NAME_MAP = {
+  'SSC_CGL': 'SSC CGL',
+  'SSC_CHSL': 'SSC CHSL', 
+  'IBPS_PO': 'IBPS PO',
+  'IBPS_CLERK': 'IBPS Clerk',
+  'SBI_PO': 'SBI PO',
+  'SBI_CLERK': 'SBI Clerk',
+  'RRB_NTPC': 'RRB NTPC',
+  'UPPSC': 'UPPSC',
+  'BPSC': 'BPSC',
+  'UPSC': 'UPSC',
+};
+
+STEP 6 — Also fix the Weak Areas panel
+The "Weak Areas" panel currently shows "No weak areas 
+detected yet" even after quiz attempts. Fix it to:
+- Show subjects where score is below 50% as weak areas
+- Display subject name, exam name, and score percentage
+- Show a suggestion like "Practice more questions"
+
+STEP 7 — Test the fix
+After fixing, the Quiz Performance by Subject section 
+should display like:
+
+[Subject Name]          [Exam Name]      [Score%]
+Quantitative Aptitude   SSC CGL          40%  ████░░░░
+English Language        IBPS PO          20%  ██░░░░░░
+General Awareness       BPSC             20%  ██░░░░░░
+
+Do not break any existing functionality. Only fix the 
+subject name display issue.

@@ -214,24 +214,37 @@ export default function ProgressPage() {
               <CardHeader><CardTitle className="text-base">Quiz Performance by Subject</CardTitle></CardHeader>
               <CardContent>
                 {(quizStats as any[]).length > 0 ? (
-                  <div className="space-y-3">
-                    {(quizStats as any[]).map((st: any) => (
-                      <div key={st.subject} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium truncate pr-2">{st.subject}</span>
-                          <span className={`font-bold shrink-0 ${st.accuracy >= 70 ? "text-green-600" : st.accuracy >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                            {st.accuracy}%
-                          </span>
+                  <div className="space-y-4">
+                    {(quizStats as any[]).map((st: any) => {
+                      const name = st.subject ?? st.subjectCode ?? "Unknown";
+                      const pct = st.accuracy ?? 0;
+                      return (
+                        <div key={st.subjectCode ?? st.subject} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm gap-2">
+                            <div className="min-w-0 flex items-center gap-2 flex-1">
+                              <span className="font-medium truncate">{name}</span>
+                              {st.examCode && (
+                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded shrink-0">
+                                  {st.examCode.replace(/_/g, " ")}
+                                </span>
+                              )}
+                            </div>
+                            <span className={`font-bold shrink-0 ${pct >= 70 ? "text-green-600" : pct >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {st.totalQuestions} attempted · {st.questionsAvailable} available
+                          </p>
                         </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${st.accuracy >= 70 ? "bg-green-500" : st.accuracy >= 50 ? "bg-amber-500" : "bg-red-500"}`}
-                            style={{ width: `${st.accuracy}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground">{st.totalQuestions} questions attempted</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground text-sm">Take some quizzes to see your performance.</div>
@@ -247,25 +260,37 @@ export default function ProgressPage() {
               </CardHeader>
               <CardContent>
                 {(weakAreas as any[]).length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {(weakAreas as any[]).map((wa: any, i: number) => (
                       <div key={i} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <div className="min-w-0 pr-2">
-                            <span className="font-medium">{wa.topic}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({wa.subject})</span>
+                        <div className="flex items-center justify-between text-sm gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium truncate">{wa.subject}</span>
+                              {wa.examCode && (
+                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded shrink-0">
+                                  {wa.examCode.replace(/_/g, " ")}
+                                </span>
+                              )}
+                            </div>
+                            {wa.topic !== wa.subject && (
+                              <span className="text-xs text-muted-foreground">{wa.topic}</span>
+                            )}
                           </div>
                           <span className="font-bold text-destructive shrink-0">{wa.accuracy}%</span>
                         </div>
                         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-destructive rounded-full" style={{ width: `${wa.accuracy}%` }}/>
                         </div>
-                        <p className="text-xs text-muted-foreground">{wa.attempts} attempts</p>
+                        <p className="text-xs text-muted-foreground">{wa.attempts} attempt{wa.attempts !== 1 ? "s" : ""} · Practice more questions</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">No weak areas detected yet.</div>
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <BrainCircuit className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                    No weak areas yet — keep practising to see where to improve!
+                  </div>
                 )}
               </CardContent>
             </Card>

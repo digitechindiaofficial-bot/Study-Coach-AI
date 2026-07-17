@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { profilesTable, dailyTasksTable, syllabusProgressTable, quizAttemptsTable, quizQuestionsTable } from "@workspace/db";
+import { profilesTable, dailyTasksTable, syllabusProgressTable, quizAttemptsTable } from "@workspace/db";
 import { eq, and, gte } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getISTDateString } from "../lib/date";
 import { resetStreakIfBroken } from "../lib/streak";
 
@@ -78,31 +79,43 @@ router.get("/progress/weak-areas", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json([]);
 
-  const attempts = await db.select().from(quizAttemptsTable).where(eq(quizAttemptsTable.userId, profile.id));
-  const questions = await db.select().from(quizQuestionsTable);
-  const qMap = new Map(questions.map(q => [q.id, q]));
+  // Use question_attempts joined with question_bank (question_bank is the canonical store)
+  const result = await db.execute(sql`
+    SELECT
+      qa.subject_code,
+      qa.exam_code,
+      qb.topic_code,
+      ss.name                                          AS subject_name,
+      COUNT(qa.id)::int                               AS total,
+      COUNT(CASE WHEN qa.is_correct THEN 1 END)::int  AS correct
+    FROM question_attempts qa
+    LEFT JOIN question_bank qb ON qb.id = qa.question_id
+    LEFT JOIN syllabus_subjects ss
+      ON ss.subject_code = qa.subject_code
+      AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = qa.exam_code LIMIT 1)
+    WHERE qa.user_id = ${profile.id}
+    GROUP BY qa.subject_code, qa.exam_code, qb.topic_code, ss.name
+    HAVING COUNT(qa.id) >= 1
+  `);
 
-  const topicStats: Record<string, { correct: number; total: number; subject: string }> = {};
-  for (const attempt of attempts) {
-    const q = qMap.get(attempt.questionId);
-    if (!q?.topic || !q?.subject) continue;
-    const key = `${q.subject}::${q.topic}`;
-    if (!topicStats[key]) topicStats[key] = { correct: 0, total: 0, subject: q.subject };
-    topicStats[key].total++;
-    if (attempt.isCorrect) topicStats[key].correct++;
-  }
+  type WeakRow = {
+    subject_code: string;
+    exam_code: string;
+    topic_code: string | null;
+    subject_name: string | null;
+    total: number;
+    correct: number;
+  };
 
-  const weakAreas = Object.entries(topicStats)
-    .filter(([_, v]) => v.total >= 2 && v.correct / v.total < 0.6)
-    .map(([key, v]) => {
-      const [subject, topic] = key.split("::");
-      return {
-        topic,
-        subject,
-        accuracy: Math.round((v.correct / v.total) * 100),
-        attempts: v.total,
-      };
-    })
+  const weakAreas = (result.rows as WeakRow[])
+    .map(r => ({
+      topic: r.topic_code ?? r.subject_code,
+      subject: r.subject_name ?? r.subject_code,
+      examCode: r.exam_code,
+      accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
+      attempts: r.total,
+    }))
+    .filter(w => w.accuracy < 50)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 10);
 
