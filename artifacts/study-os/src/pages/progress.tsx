@@ -4,8 +4,10 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { TrendingUp, Flame, BookOpen, BrainCircuit, Clock, AlertCircle, Sparkles, CalendarDays } from "lucide-react";
+import { TrendingUp, Flame, BookOpen, BrainCircuit, Clock, AlertCircle, Sparkles, CalendarDays, Settings } from "lucide-react";
 import { format, parseISO, startOfDay } from "date-fns";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -209,92 +211,120 @@ export default function ProgressPage() {
           </Card>
 
           {/* Quiz performance & weak areas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Quiz Performance by Subject</CardTitle></CardHeader>
-              <CardContent>
-                {(quizStats as any[]).length > 0 ? (
-                  <div className="space-y-4">
-                    {(quizStats as any[]).map((st: any) => {
-                      const name = st.subject ?? st.subjectCode ?? "Unknown";
-                      const pct = st.accuracy ?? 0;
-                      return (
-                        <div key={st.subjectCode ?? st.subject} className="space-y-1">
-                          <div className="flex items-center justify-between text-sm gap-2">
-                            <div className="min-w-0 flex items-center gap-2 flex-1">
-                              <span className="font-medium truncate">{name}</span>
-                              {st.examCode && (
-                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded shrink-0">
-                                  {st.examCode.replace(/_/g, " ")}
-                                </span>
-                              )}
-                            </div>
-                            <span className={`font-bold shrink-0 ${pct >= 70 ? "text-green-600" : pct >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                              {pct}%
-                            </span>
-                          </div>
-                          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {st.totalQuestions} attempted · {st.questionsAvailable} available
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">Take some quizzes to see your performance.</div>
-                )}
-              </CardContent>
-            </Card>
+          {(() => {
+            const statList = quizStats as any[];
+            const weakList = weakAreas as any[];
+            const examCode: string | null = statList[0]?.examCode ?? null;
+            const examLabel = examCode ? examCode.replace(/_/g, " ") : null;
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-destructive"/>Weak Areas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(weakAreas as any[]).length > 0 ? (
-                  <div className="space-y-4">
-                    {(weakAreas as any[]).map((wa: any, i: number) => (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium truncate">{wa.subject}</span>
-                              {wa.examCode && (
-                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded shrink-0">
-                                  {wa.examCode.replace(/_/g, " ")}
+            const noExamState = (
+              <div className="text-center py-8 space-y-3">
+                <Settings className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  Set your target exam in Settings to see subject-wise performance.
+                </p>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/settings">Go to Settings</Link>
+                </Button>
+              </div>
+            );
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quiz Performance by Subject */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base">Quiz Performance by Subject</CardTitle>
+                      {examLabel && (
+                        <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
+                          {examLabel}
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {statList.length === 0 ? noExamState : (
+                      <div className="space-y-4">
+                        {statList.map((st: any) => {
+                          const name = st.subject ?? st.subjectCode ?? "Unknown";
+                          const pct = st.accuracy ?? 0;
+                          return (
+                            <div key={st.subjectCode} className="space-y-1">
+                              <div className="flex items-center justify-between text-sm gap-2">
+                                <span className="font-medium truncate">{name}</span>
+                                <span className={`font-bold shrink-0 tabular-nums ${pct >= 70 ? "text-green-600" : pct >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                                  {pct}%
                                 </span>
-                              )}
+                              </div>
+                              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : pct > 0 ? "bg-red-500" : "bg-muted-foreground/20"}`}
+                                  style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {st.totalQuestions} attempted · {st.questionsAvailable > 0 ? `${st.questionsAvailable} available` : "questions coming soon"}
+                              </p>
                             </div>
-                            {wa.topic !== wa.subject && (
-                              <span className="text-xs text-muted-foreground">{wa.topic}</span>
-                            )}
-                          </div>
-                          <span className="font-bold text-destructive shrink-0">{wa.accuracy}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-destructive rounded-full" style={{ width: `${wa.accuracy}%` }}/>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{wa.attempts} attempt{wa.attempts !== 1 ? "s" : ""} · Practice more questions</p>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <BrainCircuit className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                    No weak areas yet — keep practising to see where to improve!
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Weak Areas */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-destructive" />Weak Areas
+                      </CardTitle>
+                      {examLabel && (
+                        <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
+                          {examLabel}
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {statList.length === 0 ? noExamState : weakList.length > 0 ? (
+                      <div className="space-y-4">
+                        {weakList.map((wa: any, i: number) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-start justify-between text-sm gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium leading-tight">{wa.topic}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{wa.subject}</p>
+                              </div>
+                              <span className="font-bold text-destructive shrink-0 tabular-nums">{wa.accuracy}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-destructive rounded-full"
+                                style={{ width: `${Math.max(wa.accuracy, wa.accuracy > 0 ? 2 : 0)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {wa.attempts} attempt{wa.attempts !== 1 ? "s" : ""} · Keep practising to improve
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 space-y-2">
+                        <BrainCircuit className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">
+                          Keep practising! Weak areas will appear here after you attempt more questions.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

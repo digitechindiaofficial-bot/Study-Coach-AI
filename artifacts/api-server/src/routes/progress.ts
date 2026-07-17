@@ -9,6 +9,34 @@ import { resetStreakIfBroken } from "../lib/streak";
 
 const router = Router();
 
+// Known subject codes used in topic_code prefixes (e.g. "IBPS_PO_QA_NUMBER_SERIES_014")
+const SUBJECT_CODES = new Set([
+  "QA", "ENG", "GIR", "GA", "DESC", "BANK", "COMP", "RCA", "MATH",
+  "HIST", "POL", "SCI", "HINDI", "GEO", "BIHAR", "MREAS", "NUM",
+  "REAS", "ECON", "ETHICS", "APT", "NA",
+]);
+
+/** Parse a human-readable topic name from a topic code.
+ *  e.g. "IBPS_PO_QA_NUMBER_SERIES_014" → "Number Series"
+ *       "SSC_CGL_ENG_READING_COMP_007"  → "Reading Comp"
+ *       "IBPS_PO_QA_STATISTICS_003"     → "Statistics"
+ */
+function parseTopicName(topicCode: string | null): string {
+  if (!topicCode) return "Unknown Topic";
+  const parts = topicCode.split("_");
+  // Find the first part that matches a known subject code
+  let startIdx = -1;
+  for (let i = 0; i < parts.length; i++) {
+    if (SUBJECT_CODES.has(parts[i])) { startIdx = i + 1; break; }
+  }
+  if (startIdx === -1 || startIdx >= parts.length) return topicCode;
+  const topicParts = [...parts.slice(startIdx)];
+  // Remove trailing numeric suffix (e.g. "014")
+  if (topicParts.length > 0 && /^\d+$/.test(topicParts[topicParts.length - 1])) topicParts.pop();
+  if (topicParts.length === 0) return topicCode;
+  return topicParts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(" ");
+}
+
 async function getProfileByClerkId(clerkUserId: string) {
   const rows = await db.select().from(profilesTable).where(eq(profilesTable.clerkUserId, clerkUserId)).limit(1);
   return rows[0] ?? null;
@@ -79,7 +107,10 @@ router.get("/progress/weak-areas", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json([]);
 
-  // Use question_attempts joined with question_bank (question_bank is the canonical store)
+  // Use question_attempts grouped by topic_code, filtered by user's target exam
+  const activeExamCode = profile.examType ?? null;
+  if (!activeExamCode) return res.json([]);
+
   const result = await db.execute(sql`
     SELECT
       qa.subject_code,
@@ -92,8 +123,9 @@ router.get("/progress/weak-areas", async (req, res) => {
     LEFT JOIN question_bank qb ON qb.id = qa.question_id
     LEFT JOIN syllabus_subjects ss
       ON ss.subject_code = qa.subject_code
-      AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = qa.exam_code LIMIT 1)
+      AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = ${activeExamCode} LIMIT 1)
     WHERE qa.user_id = ${profile.id}
+      AND qa.exam_code = ${activeExamCode}
     GROUP BY qa.subject_code, qa.exam_code, qb.topic_code, ss.name
     HAVING COUNT(qa.id) >= 1
   `);
@@ -109,8 +141,10 @@ router.get("/progress/weak-areas", async (req, res) => {
 
   const weakAreas = (result.rows as WeakRow[])
     .map(r => ({
-      topic: r.topic_code ?? r.subject_code,
+      topicCode: r.topic_code ?? null,
+      topic: parseTopicName(r.topic_code),
       subject: r.subject_name ?? r.subject_code,
+      subjectCode: r.subject_code,
       examCode: r.exam_code,
       accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
       attempts: r.total,

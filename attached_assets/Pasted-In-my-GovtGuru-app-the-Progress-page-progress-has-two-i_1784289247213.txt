@@ -1,0 +1,209 @@
+In my GovtGuru app, the Progress page (/progress) has 
+two issues that need to be fixed:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE 1 — Quiz Performance by Subject
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CURRENT PROBLEM:
+- Shows subjects from ALL exams mixed together 
+  (SSC CHSL subjects showing even when user's target 
+  exam is IBPS PO)
+- Shows abbreviations like "EL" and "REASONING" 
+  instead of proper full names
+- Subject list is not filtered by the user's 
+  selected target exam from their profile/settings
+
+WHAT I WANT:
+- Show ONLY the subjects belonging to the user's 
+  target exam (stored in their profile as exam_code 
+  or target_exam field)
+- Each subject should show:
+  * Full subject name (from subjects table or name map)
+  * Exam badge
+  * Questions attempted out of total available
+  * Score percentage with progress bar
+
+HOW TO FIX:
+
+Step 1: Get the user's target exam from their profile:
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('exam_code, target_exam')
+  .eq('user_id', userId)
+  .single()
+
+const targetExam = profile?.exam_code || profile?.target_exam
+
+Step 2: Get subjects for ONLY that exam:
+const { data: subjects } = await supabase
+  .from('subjects')
+  .select('subject_code, subject_name, total_questions')
+  .eq('exam_code', targetExam)
+  .eq('is_active', true)
+  .order('display_order')
+
+Step 3: Get quiz attempts filtered by target exam:
+const { data: attempts } = await supabase
+  .from('question_attempts')
+  .select('subjectCode, is_correct, topicCode')
+  .eq('user_id', userId)
+  .eq('examCode', targetExam)
+
+Step 4: For each subject, calculate:
+- totalAttempted = attempts where subjectCode matches
+- correctAnswers = attempts where is_correct = true
+- scorePercent = (correctAnswers / totalAttempted) * 100
+- totalAvailable = subject.total_questions
+
+Step 5: Use this subject name fallback map if 
+subjects table is empty:
+const SUBJECT_NAME_MAP = {
+  'QA': 'Quantitative Aptitude',
+  'ENG': 'English Language',
+  'GIR': 'General Intelligence & Reasoning',
+  'GA': 'General Awareness',
+  'DESC': 'Descriptive Paper',
+  'BANK': 'Banking & Financial Awareness',
+  'COMP': 'Computer & Digital Banking',
+  'RCA': 'Reasoning & Computer Aptitude',
+  'MATH': 'Mathematics',
+  'HIST': 'History & Culture',
+  'POL': 'Indian Polity & Governance',
+  'SCI': 'Science & Technology',
+  'HINDI': 'General Hindi',
+  'GEO': 'Geography & Environment',
+  'BIHAR': 'Bihar Special',
+  'MREAS': 'Mathematics & Reasoning',
+  'NUM': 'Numerical Ability',
+  'REAS': 'Reasoning Ability',
+  'ECO': 'Economy',
+  'GK': 'General Knowledge',
+  'CA': 'Current Affairs',
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE 2 — Weak Areas Panel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CURRENT PROBLEM:
+- Shows individual topic codes like "IBPS_PO_REAS_051",
+  "IBPS_PO_QA_STATISTICS_003" — these are raw database 
+  topic codes, not readable topic names
+- Should show TOPIC names, not topic codes
+- Should be grouped by topic, not individual questions
+
+WHAT I WANT:
+- Group attempts by topicCode
+- Extract the readable topic name from topicCode by 
+  parsing it (e.g. "IBPS_PO_QA_STATISTICS_003" → 
+  "Statistics", "IBPS_PO_REAS_NUMBER_SERIES_014" → 
+  "Number Series")
+- Show only subjects/topics where score < 50%
+- Filter by user's target exam only
+
+HOW TO FIX:
+
+Step 1: Group question_attempts by topicCode:
+const topicStats = {}
+attempts.forEach(attempt => {
+  const topic = attempt.topicCode
+  if (!topicStats[topic]) {
+    topicStats[topic] = { total: 0, correct: 0 }
+  }
+  topicStats[topic].total++
+  if (attempt.is_correct) topicStats[topic].correct++
+})
+
+Step 2: Parse topic name from topicCode:
+function parseTopicName(topicCode) {
+  if (!topicCode) return 'Unknown Topic'
+  // topicCode format: EXAM_SUBJ_TOPICNAME_NUM
+  // e.g. "IBPS_PO_QA_NUMBER_SERIES_014"
+  // Remove exam prefix and number suffix
+  const parts = topicCode.split('_')
+  // Remove first 3 parts (exam+subject) and last part (number)
+  // IBPS_PO_QA_NUMBER_SERIES_014
+  // parts: ['IBPS','PO','QA','NUMBER','SERIES','014']
+  // Keep middle parts: NUMBER_SERIES → "Number Series"
+  
+  // Find where topic name starts (after subject code)
+  // by checking known subject codes
+  const subjectCodes = ['QA','ENG','GIR','GA','DESC',
+    'BANK','COMP','RCA','MATH','HIST','POL','SCI',
+    'HINDI','GEO','BIHAR','MREAS','NUM','REAS']
+  
+  let startIndex = -1
+  for (let i = 0; i < parts.length; i++) {
+    if (subjectCodes.includes(parts[i])) {
+      startIndex = i + 1
+      break
+    }
+  }
+  
+  if (startIndex === -1) return topicCode
+  
+  // Get topic parts, remove last numeric part
+  const topicParts = parts.slice(startIndex)
+  const lastPart = topicParts[topicParts.length - 1]
+  const isNumeric = /^\d+$/.test(lastPart)
+  if (isNumeric) topicParts.pop()
+  
+  // Convert to readable: NUMBER_SERIES → Number Series
+  return topicParts
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ')
+}
+
+Step 3: Show weak areas as topic-level items:
+Filter topics where (correct/total)*100 < 50%
+Sort by score ascending (worst first)
+Show max 10 weak topics
+
+Display format for each weak topic:
+[Topic Name]     [Subject Name]    [Score%]
+Number Series    Quantitative      0% (1 attempt)
+                 Aptitude
+[Practice button → goes to quiz with that topic]
+
+Step 4: If no weak areas (all > 50% or no attempts):
+Show message: "Keep practicing! Weak areas will 
+appear here after you attempt more questions."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Both panels must be filtered by the user's 
+   target exam — do NOT show data from other exams
+
+2. If user has not set a target exam in settings,
+   show a message: "Please set your target exam 
+   in Settings to see subject-wise performance"
+   with a link to /settings
+
+3. Add a small "Your Exam:" badge at the top of 
+   the Quiz Performance panel showing which exam 
+   data is being displayed
+
+4. Do not break any existing functionality
+
+5. After the fix, the Quiz Performance section 
+   should look like this for an IBPS PO user:
+
+   Your Exam: IBPS PO
+   
+   Quantitative Aptitude    IBPS PO    20%  ██░░░░░░
+   10 attempted · 100 available
+   
+   English Language         IBPS PO     0%
+   0 attempted · 100 available
+   
+   Banking Awareness        IBPS PO    40%  ████░░░░
+   10 attempted · 100 available
+
+   And Weak Areas should show:
+   
+   Number Series      Quantitative Aptitude    0%
+   Statistics         Quantitative Aptitude    0%
+   Reading Comp       English Language         20%

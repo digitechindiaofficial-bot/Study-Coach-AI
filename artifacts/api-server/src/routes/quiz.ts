@@ -261,111 +261,97 @@ router.get("/quiz/stats", async (req, res) => {
 
   const activeExamCode = examCode || profile.examType || null;
 
-  // Count available questions per subject from question_bank
+  // No target exam — return empty so the frontend can prompt the user to set one
+  if (!activeExamCode) return res.json([]);
+
+  type StatEntry = {
+    subjectCode: string;
+    subjectName: string;
+    totalQuestions: number;
+    correct: number;
+    lastPracticed: string | null;
+    questionsAvailable: number;
+  };
+
+  // Step 1: Seed from syllabus_subjects — ALL subjects for this exam appear,
+  // even if the user has never attempted any questions in them.
+  const subjectsResult = await db.execute(sql`
+    SELECT s.subject_code, s.name AS subject_name
+    FROM syllabus_subjects s
+    JOIN syllabus_exams e ON e.id = s.exam_id
+    WHERE e.code = ${activeExamCode}
+    ORDER BY s.display_order NULLS LAST, s.subject_code
+  `);
+
+  const statMap = new Map<string, StatEntry>();
+  for (const row of subjectsResult.rows as any[]) {
+    statMap.set(row.subject_code, {
+      subjectCode: row.subject_code,
+      subjectName: row.subject_name ?? row.subject_code,
+      totalQuestions: 0,
+      correct: 0,
+      lastPracticed: null,
+      questionsAvailable: 0,
+    });
+  }
+
+  // Step 2: Overlay question_bank counts
   const countsResult = await db.execute(sql`
     SELECT subject_code, COUNT(*)::int AS questions_available
     FROM question_bank
-    WHERE is_active = true
-      ${activeExamCode ? sql`AND exam_code = ${activeExamCode}` : sql``}
+    WHERE is_active = true AND exam_code = ${activeExamCode}
     GROUP BY subject_code
   `);
+  for (const row of countsResult.rows as any[]) {
+    const key = row.subject_code ?? "Unknown";
+    const e = statMap.get(key);
+    if (e) { e.questionsAvailable = row.questions_available ?? 0; }
+    else { statMap.set(key, { subjectCode: key, subjectName: key, totalQuestions: 0, correct: 0, lastPracticed: null, questionsAvailable: row.questions_available ?? 0 }); }
+  }
 
-  // Attempt stats from question_attempts (new table)
+  // Step 3: Overlay question_attempts stats (primary attempt store)
   const newAttemptsResult = await db.execute(sql`
-    SELECT
-      subject_code,
+    SELECT subject_code,
       COUNT(id)::int                                              AS total,
       COUNT(CASE WHEN is_correct THEN 1 END)::int                AS correct,
       MAX(attempted_at)::text                                     AS last_practiced
     FROM question_attempts
-    WHERE user_id = ${profile.id}
-      ${activeExamCode ? sql`AND exam_code = ${activeExamCode}` : sql``}
+    WHERE user_id = ${profile.id} AND exam_code = ${activeExamCode}
     GROUP BY subject_code
   `);
+  for (const row of newAttemptsResult.rows as any[]) {
+    const key = row.subject_code ?? "Unknown";
+    const e = statMap.get(key) ?? { subjectCode: key, subjectName: key, totalQuestions: 0, correct: 0, lastPracticed: null, questionsAvailable: 0 };
+    statMap.set(key, { ...e, totalQuestions: e.totalQuestions + (row.total ?? 0), correct: e.correct + (row.correct ?? 0), lastPracticed: row.last_practiced ?? e.lastPracticed });
+  }
 
-  // Legacy attempt stats from quiz_attempts (for historical data pre-migration)
+  // Step 4: Overlay legacy quiz_attempts (historical data)
   const legacyAttemptsResult = await db.execute(sql`
-    SELECT
-      q.subject_code,
+    SELECT q.subject_code,
       COUNT(qa.id)::int                                           AS total,
       COUNT(CASE WHEN qa.is_correct THEN 1 END)::int             AS correct,
       MAX(qa.attempted_at)::text                                  AS last_practiced
     FROM quiz_attempts qa
     JOIN quiz_questions q ON q.id = qa.question_id
-    WHERE qa.user_id = ${profile.id}
-      ${activeExamCode ? sql`AND q.exam_code = ${activeExamCode}` : sql``}
+    WHERE qa.user_id = ${profile.id} AND q.exam_code = ${activeExamCode}
     GROUP BY q.subject_code
   `);
-
-  type StatEntry = {
-    subjectCode: string;
-    totalQuestions: number;
-    correct: number;
-    accuracy: number;
-    lastPracticed: string | null;
-    questionsAvailable: number;
-  };
-
-  const statMap = new Map<string, StatEntry>();
-
-  // Seed from counts
-  for (const row of countsResult.rows as any[]) {
-    const key = row.subject_code ?? "Unknown";
-    statMap.set(key, {
-      subjectCode: key,
-      totalQuestions: 0,
-      correct: 0,
-      accuracy: 0,
-      lastPracticed: null,
-      questionsAvailable: row.questions_available ?? 0,
-    });
-  }
-
-  // Apply new attempt stats
-  for (const row of newAttemptsResult.rows as any[]) {
-    const key = row.subject_code ?? "Unknown";
-    const existing = statMap.get(key) ?? { subjectCode: key, totalQuestions: 0, correct: 0, accuracy: 0, lastPracticed: null, questionsAvailable: 0 };
-    statMap.set(key, {
-      ...existing,
-      totalQuestions: existing.totalQuestions + (row.total ?? 0),
-      correct: existing.correct + (row.correct ?? 0),
-      lastPracticed: row.last_practiced ?? existing.lastPracticed,
-    });
-  }
-
-  // Merge legacy attempt stats (add to totals without double-counting subjects already counted above)
   for (const row of legacyAttemptsResult.rows as any[]) {
     const key = row.subject_code ?? "Unknown";
-    const existing = statMap.get(key) ?? { subjectCode: key, totalQuestions: 0, correct: 0, accuracy: 0, lastPracticed: null, questionsAvailable: 0 };
-    statMap.set(key, {
-      ...existing,
-      totalQuestions: existing.totalQuestions + (row.total ?? 0),
-      correct: existing.correct + (row.correct ?? 0),
-      lastPracticed: row.last_practiced ?? existing.lastPracticed,
-    });
+    const e = statMap.get(key) ?? { subjectCode: key, subjectName: key, totalQuestions: 0, correct: 0, lastPracticed: null, questionsAvailable: 0 };
+    statMap.set(key, { ...e, totalQuestions: e.totalQuestions + (row.total ?? 0), correct: e.correct + (row.correct ?? 0), lastPracticed: row.last_practiced ?? e.lastPracticed });
   }
 
-  // Compute accuracy
-  const stats = [...statMap.values()].map((s) => ({
-    ...s,
+  // Step 5: Compute accuracy + shape final response (preserve syllabus order)
+  const enriched = [...statMap.values()].map((s) => ({
+    subjectCode: s.subjectCode,
+    subject: s.subjectName,
+    examCode: activeExamCode,
+    totalQuestions: s.totalQuestions,
+    correct: s.correct,
+    questionsAvailable: s.questionsAvailable,
+    lastPracticed: s.lastPracticed,
     accuracy: s.totalQuestions > 0 ? Math.round((s.correct / s.totalQuestions) * 100) : 0,
-  }));
-
-  // Enrich with human-readable subject names from syllabus_subjects
-  const subjectNameResult = await db.execute(sql`
-    SELECT s.subject_code, s.name AS subject_name
-    FROM syllabus_subjects s
-    JOIN syllabus_exams e ON e.id = s.exam_id
-    ${activeExamCode ? sql`WHERE e.code = ${activeExamCode}` : sql``}
-  `);
-  const subjectNameMap = new Map<string, string>(
-    (subjectNameResult.rows as any[]).map((r) => [r.subject_code, r.subject_name])
-  );
-
-  const enriched = stats.map((s) => ({
-    ...s,
-    subject: subjectNameMap.get(s.subjectCode) ?? s.subjectCode,
-    examCode: activeExamCode ?? null,
   }));
 
   res.json(enriched);
