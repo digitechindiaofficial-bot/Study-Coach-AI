@@ -1,0 +1,191 @@
+In my GovtGuru app, the Progress page Weak Areas 
+panel shows raw topic codes like "BPSC_SCI_008" 
+instead of readable topic names.
+
+Fix this by fetching topic names from the tags 
+field in the question_bank table.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE COMPLETE FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Find the Progress page component and in the section 
+that fetches data for Weak Areas, add this logic:
+
+STEP 1 — After fetching user's question_attempts,
+get all unique topicCodes:
+
+const uniqueTopicCodes = [
+  ...new Set(
+    attempts.map(a => a.topicCode).filter(Boolean)
+  )
+]
+
+STEP 2 — Fetch one question per topicCode from 
+question_bank to get the tags:
+
+const { data: topicQuestions } = await supabase
+  .from('question_bank')
+  .select('topicCode, tags')
+  .in('topicCode', uniqueTopicCodes)
+
+STEP 3 — Build a topicCode to name map using tags:
+
+function getTopicNameFromTags(tags) {
+  if (!tags || tags.length === 0) return null
+
+  // Tags to skip — too generic
+  const skipTags = [
+    'easy', 'medium', 'hard', 'mcq',
+    'banking', 'general', 'india', 'bihar',
+    'history', 'geography', 'science', 'polity',
+    'environment', 'economy', 'reasoning',
+    'maths', 'mathematics', 'english', 'hindi',
+    'ancient', 'medieval', 'modern',
+    'physics', 'chemistry', 'biology',
+    'technology', 'current-affairs',
+    'sahitya', 'vyakaran', 'sahitya-itihas'
+  ]
+
+  // Find most specific tag (not in skip list)
+  const bestTag = tags.find(
+    t => !skipTags.includes(t.toLowerCase())
+  )
+
+  const tagToUse = bestTag || tags[0]
+  if (!tagToUse) return null
+
+  // Convert kebab-case or underscore to Title Case
+  // "cell-biology" → "Cell Biology"
+  // "number_series" → "Number Series"
+  return tagToUse
+    .replace(/_/g, '-')
+    .split('-')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+// Build the cache map
+const topicNameMap = {}
+topicQuestions?.forEach(q => {
+  if (q.topicCode && !topicNameMap[q.topicCode]) {
+    topicNameMap[q.topicCode] = getTopicNameFromTags(q.tags)
+  }
+})
+
+STEP 4 — Group attempts by topicCode and 
+calculate score per topic:
+
+const topicStats = {}
+
+attempts.forEach(attempt => {
+  const code = attempt.topicCode
+  if (!code) return
+  
+  if (!topicStats[code]) {
+    topicStats[code] = {
+      topicCode: code,
+      topicName: topicNameMap[code] || code,
+      subjectCode: attempt.subjectCode,
+      examCode: attempt.examCode,
+      total: 0,
+      correct: 0
+    }
+  }
+  topicStats[code].total++
+  if (attempt.is_correct) topicStats[code].correct++
+})
+
+STEP 5 — Filter weak topics (score below 60%):
+
+const weakTopics = Object.values(topicStats)
+  .map(t => ({
+    ...t,
+    score: t.total > 0 
+      ? Math.round((t.correct / t.total) * 100) 
+      : 0
+  }))
+  .filter(t => t.total > 0 && t.score < 60)
+  .sort((a, b) => a.score - b.score)
+  .slice(0, 10)
+
+STEP 6 — Display each weak topic card like this:
+
+{weakTopics.map(topic => (
+  <div key={topic.topicCode}>
+    <div>
+      <span>{topic.topicName}</span>
+      <span>{SUBJECT_NAME_MAP[topic.subjectCode]}</span>
+    </div>
+    <span>{topic.score}%</span>
+    <div>{topic.total} attempted · Keep practising</div>
+  </div>
+))}
+
+Use this SUBJECT_NAME_MAP for subject labels:
+const SUBJECT_NAME_MAP = {
+  'QA': 'Quantitative Aptitude',
+  'ENG': 'English Language',
+  'GIR': 'General Intelligence & Reasoning',
+  'GA': 'General Awareness',
+  'DESC': 'Descriptive Paper',
+  'BANK': 'Banking & Financial Awareness',
+  'COMP': 'Computer & Digital Banking',
+  'RCA': 'Reasoning & Computer Aptitude',
+  'MATH': 'Mathematics',
+  'HIST': 'History & Culture',
+  'POL': 'Indian Polity & Governance',
+  'SCI': 'Science & Technology',
+  'HINDI': 'General Hindi',
+  'GEO': 'Geography & Environment',
+  'BIHAR': 'Bihar Special',
+  'MREAS': 'Mathematics & Reasoning',
+  'NUM': 'Numerical Ability',
+  'REAS': 'Reasoning Ability',
+  'ECO': 'Economy',
+  'GK': 'General Knowledge',
+  'CA': 'Current Affairs',
+}
+
+STEP 7 — If no weak topics found show:
+"Great job! No weak areas detected yet. 
+Keep practising to maintain your score! 🎉"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPECTED FINAL OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Weak Areas panel should look like:
+
+⚠️ Weak Areas               BPSC
+
+Cell Biology                          0%
+General Science · 8 attempted
+Keep practising to improve
+
+Laws of Motion                        0%
+General Science · 4 attempted
+Keep practising to improve
+
+Magnetism                            25%  ██░░
+General Science · 8 attempted
+Keep practising to improve
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Do NOT show raw topic codes like BPSC_SCI_008 
+   anywhere in the UI
+
+2. If topicName could not be resolved from tags,
+   show the subject name instead as fallback:
+   topicName || SUBJECT_NAME_MAP[subjectCode] || subjectCode
+
+3. All data must be filtered by user's target exam
+   (already working — do not break this)
+
+4. Do not break Quiz Performance by Subject panel
+   which is already working correctly
+
+5. This fix should work for ALL exams not just BPSC

@@ -16,24 +16,48 @@ const SUBJECT_CODES = new Set([
   "REAS", "ECON", "ETHICS", "APT", "NA",
 ]);
 
+// Tags that are too broad to use as topic names
+const SKIP_TAGS = new Set([
+  "easy", "medium", "hard", "mcq", "banking", "general", "india", "bihar",
+  "history", "geography", "science", "polity", "environment", "economy",
+  "reasoning", "maths", "mathematics", "english", "hindi", "ancient",
+  "medieval", "modern", "physics", "chemistry", "biology", "technology",
+  "current-affairs", "sahitya", "vyakaran", "sahitya-itihas",
+]);
+
+/** Derive a readable topic name from the tags JSON array string returned by PostgreSQL.
+ *  Picks the most specific tag (not in SKIP_TAGS), falling back to the first tag.
+ *  e.g. '["ancient india","harappan civilization"]' → "Harappan Civilization"
+ *       '["chemistry"]'                             → "Chemistry"
+ */
+function getTopicNameFromTags(tagsJson: string | null): string | null {
+  if (!tagsJson) return null;
+  let tags: string[] = [];
+  try { tags = JSON.parse(tagsJson); } catch { return null; }
+  if (!Array.isArray(tags) || tags.length === 0) return null;
+  const best = tags.find(t => !SKIP_TAGS.has(t.toLowerCase())) ?? tags[0];
+  if (!best) return null;
+  return best.replace(/_/g, " ").split(/[\s-]+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 /** Parse a human-readable topic name from a topic code.
  *  e.g. "IBPS_PO_QA_NUMBER_SERIES_014" → "Number Series"
  *       "SSC_CGL_ENG_READING_COMP_007"  → "Reading Comp"
- *       "IBPS_PO_QA_STATISTICS_003"     → "Statistics"
+ *  Returns null when the code has no topic words embedded (e.g. "BPSC_SCI_008").
  */
-function parseTopicName(topicCode: string | null): string {
-  if (!topicCode) return "Unknown Topic";
+function parseTopicName(topicCode: string | null): string | null {
+  if (!topicCode) return null;
   const parts = topicCode.split("_");
-  // Find the first part that matches a known subject code
   let startIdx = -1;
   for (let i = 0; i < parts.length; i++) {
     if (SUBJECT_CODES.has(parts[i])) { startIdx = i + 1; break; }
   }
-  if (startIdx === -1 || startIdx >= parts.length) return topicCode;
+  if (startIdx === -1 || startIdx >= parts.length) return null;
   const topicParts = [...parts.slice(startIdx)];
-  // Remove trailing numeric suffix (e.g. "014")
   if (topicParts.length > 0 && /^\d+$/.test(topicParts[topicParts.length - 1])) topicParts.pop();
-  if (topicParts.length === 0) return topicCode;
+  if (topicParts.length === 0) return null;
   return topicParts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(" ");
 }
 
@@ -111,22 +135,35 @@ router.get("/progress/weak-areas", async (req, res) => {
   const activeExamCode = profile.examType ?? null;
   if (!activeExamCode) return res.json([]);
 
+  // CTE picks one representative set of tags per topic_code (for name resolution)
   const result = await db.execute(sql`
+    WITH topic_tags_cte AS (
+      SELECT DISTINCT ON (topic_code)
+        topic_code,
+        array_to_json(tags)::text AS tags_json
+      FROM question_bank
+      WHERE topic_code IS NOT NULL
+        AND tags IS NOT NULL
+        AND exam_code = ${activeExamCode}
+      ORDER BY topic_code, id
+    )
     SELECT
       qa.subject_code,
       qa.exam_code,
       qb.topic_code,
+      tt.tags_json                                     AS topic_tags,
       ss.name                                          AS subject_name,
       COUNT(qa.id)::int                               AS total,
       COUNT(CASE WHEN qa.is_correct THEN 1 END)::int  AS correct
     FROM question_attempts qa
     LEFT JOIN question_bank qb ON qb.id = qa.question_id
+    LEFT JOIN topic_tags_cte tt ON tt.topic_code = qb.topic_code
     LEFT JOIN syllabus_subjects ss
       ON ss.subject_code = qa.subject_code
       AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = ${activeExamCode} LIMIT 1)
     WHERE qa.user_id = ${profile.id}
       AND qa.exam_code = ${activeExamCode}
-    GROUP BY qa.subject_code, qa.exam_code, qb.topic_code, ss.name
+    GROUP BY qa.subject_code, qa.exam_code, qb.topic_code, tt.tags_json, ss.name
     HAVING COUNT(qa.id) >= 1
   `);
 
@@ -134,22 +171,31 @@ router.get("/progress/weak-areas", async (req, res) => {
     subject_code: string;
     exam_code: string;
     topic_code: string | null;
+    topic_tags: string | null;
     subject_name: string | null;
     total: number;
     correct: number;
   };
 
   const weakAreas = (result.rows as WeakRow[])
-    .map(r => ({
-      topicCode: r.topic_code ?? null,
-      topic: parseTopicName(r.topic_code),
-      subject: r.subject_name ?? r.subject_code,
-      subjectCode: r.subject_code,
-      examCode: r.exam_code,
-      accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
-      attempts: r.total,
-    }))
-    .filter(w => w.accuracy < 50)
+    .map(r => {
+      // Priority: tags-derived name → parsed topic code → subject name
+      const subjectDisplay = r.subject_name ?? r.subject_code;
+      const topicName =
+        getTopicNameFromTags(r.topic_tags) ??
+        parseTopicName(r.topic_code) ??
+        subjectDisplay;
+      return {
+        topicCode: r.topic_code ?? null,
+        topic: topicName,
+        subject: subjectDisplay,
+        subjectCode: r.subject_code,
+        examCode: r.exam_code,
+        accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
+        attempts: r.total,
+      };
+    })
+    .filter(w => w.accuracy < 60)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 10);
 
