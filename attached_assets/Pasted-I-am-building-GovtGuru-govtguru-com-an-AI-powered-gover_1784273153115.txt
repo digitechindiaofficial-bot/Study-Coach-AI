@@ -1,0 +1,147 @@
+I am building GovtGuru (govtguru.com) — an AI-powered government exam prep SaaS app built with Next.js, Supabase, Clerk Auth, and Tailwind CSS.
+
+My app already has:
+- Clerk authentication with onboarding flow
+- Supabase database with tables: question_bank, question_attempts, quiz_attempts, profiles, study_plans
+- Admin panel at /admin with question bank upload functionality
+- 8 exams currently hardcoded: SSC_CGL, SSC_CHSL, IBPS_PO, SBI_PO, RRB_NTPC, UPPSC, BPSC, UPSC
+- question_bank table columns: examCode, subjectCode, topicCode, difficulty, question, optionA, optionB, optionC, optionD, correctAnswer, explanation, source, examYear, language, tags
+
+I need you to build an "Exam & Subject Manager" feature so that in the future, new exams can be added directly from the admin portal without any code changes.
+
+---
+
+TASK 1 — SUPABASE MIGRATION
+Run this SQL in Supabase:
+
+CREATE TABLE IF NOT EXISTS exams (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  exam_code TEXT UNIQUE NOT NULL,
+  exam_name TEXT NOT NULL,
+  exam_full_name TEXT,
+  category TEXT NOT NULL DEFAULT 'central',
+  conducting_body TEXT,
+  description TEXT,
+  eligibility TEXT,
+  exam_level TEXT DEFAULT 'national',
+  target_state TEXT,
+  is_active BOOLEAN DEFAULT true,
+  is_featured BOOLEAN DEFAULT false,
+  icon_emoji TEXT DEFAULT '📝',
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  exam_code TEXT NOT NULL REFERENCES exams(exam_code) ON DELETE CASCADE,
+  subject_code TEXT NOT NULL,
+  subject_name TEXT NOT NULL,
+  subject_full_name TEXT,
+  syllabus_topics JSONB DEFAULT '[]',
+  total_questions INTEGER DEFAULT 0,
+  total_marks INTEGER,
+  duration_minutes INTEGER,
+  difficulty_level TEXT DEFAULT 'medium',
+  is_active BOOLEAN DEFAULT true,
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(exam_code, subject_code)
+);
+
+ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read exams" ON exams FOR SELECT USING (true);
+CREATE POLICY "Public read subjects" ON subjects FOR SELECT USING (true);
+CREATE POLICY "Service role full access exams" ON exams FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access subjects" ON subjects FOR ALL USING (auth.role() = 'service_role');
+
+-- Seed existing 8 exams
+INSERT INTO exams (exam_code, exam_name, exam_full_name, category, conducting_body, icon_emoji, display_order, is_active, is_featured)
+VALUES
+  ('SSC_CGL',  'SSC CGL',  'Staff Selection Commission Combined Graduate Level', 'central', 'SSC', '📝', 1, true, true),
+  ('SSC_CHSL', 'SSC CHSL', 'Staff Selection Commission Combined Higher Secondary Level', 'central', 'SSC', '📋', 2, true, true),
+  ('IBPS_PO',  'IBPS PO',  'Institute of Banking Personnel Selection Probationary Officer', 'banking', 'IBPS', '🏦', 3, true, true),
+  ('SBI_PO',   'SBI PO',   'State Bank of India Probationary Officer', 'banking', 'SBI', '💼', 4, true, true),
+  ('RRB_NTPC', 'RRB NTPC', 'Railway Recruitment Board Non-Technical Popular Categories', 'railway', 'RRB', '🚂', 5, true, true),
+  ('UPPSC',    'UPPSC',    'Uttar Pradesh Public Service Commission', 'state', 'UPPSC', '🗺️', 6, true, true),
+  ('BPSC',     'BPSC',     'Bihar Public Service Commission', 'state', 'BPSC', '🎯', 7, true, true),
+  ('UPSC',     'UPSC',     'Union Public Service Commission Civil Services', 'central', 'UPSC', '🏛️', 8, true, false)
+ON CONFLICT (exam_code) DO NOTHING;
+
+---
+
+TASK 2 — CREATE FILE: hooks/useExams.js
+Create this custom hook file that replaces all hardcoded exam lists in the app:
+
+- useExams({ category, featured }) — fetch all active exams with optional filters
+- useExamByCode(examCode) — fetch single exam
+- useSubjects(examCode) — fetch all active subjects for an exam
+- useExamsWithSubjects() — fetch exams with their subjects nested
+- useExamsByCategory() — returns exams grouped by category object
+- fetchExamsServer() — async function for getServerSideProps / server components
+- Export CATEGORY_META constant with label, emoji, color for each category
+
+Use the existing Supabase client from @/lib/supabase (or wherever it is in this project).
+
+---
+
+TASK 3 — CREATE FILE: components/admin/ExamSubjectManager.jsx
+Build a full Admin UI page component with:
+
+LEFT PANEL — Exam List:
+- Search bar to filter exams by name or code
+- Category filter dropdown (All, Central, State, Banking, Railway, Defence, Teaching, Other)
+- "Add New Exam" button at top
+- Scrollable list of exam cards showing: emoji, name, code, category badge, featured star, active/inactive status
+- Each card has action buttons: Edit (pencil), Toggle Active (green/red dot), Toggle Featured (star), Delete (trash)
+- Clicking a card selects it and shows its subjects on the right
+
+RIGHT PANEL — Subject Manager (shows when exam is selected):
+- Header with exam name, full name, subject count
+- Shows exam meta chips: eligibility, exam level, target state
+- "Add Subject" button
+- Grid of subject cards, each showing:
+  - Subject name and code
+  - Full name if available
+  - Stats chips: question count, total marks, duration, difficulty
+  - Syllabus topics as small chips (show max 6, then "+N more")
+  - Active/inactive status
+  - Edit and Delete buttons
+  - "Sync Count" button that queries question_bank table to update total_questions
+
+EXAM MODAL (Add/Edit):
+Fields: exam_code (disabled on edit, auto-uppercase), icon_emoji (emoji picker grid with 14 emojis), exam_name, exam_full_name, category (dropdown), exam_level (dropdown), conducting_body, target_state (dropdown of Indian states), eligibility, display_order, description (textarea), is_active toggle, is_featured toggle
+
+SUBJECT MODAL (Add/Edit):
+Fields: subject_code (disabled on edit, auto-uppercase), subject_name, subject_full_name, total_marks, duration_minutes, difficulty_level (dropdown), is_active toggle, display_order
+SYLLABUS EDITOR section: text input + "Add" button (Enter key also works), shows numbered list of added topics, each with an X remove button, scrollable list
+
+DELETE CONFIRMATION: modal with warning that deleting an exam also deletes all its subjects
+
+STYLING: Dark theme matching a professional admin dashboard. Use inline styles only (no Tailwind, no CSS modules). Colors: background #0f172a, cards #1e293b, borders #334155, text #f1f5f9, muted #64748b, primary blue #3b82f6, success green #10b981, danger red #ef4444. Rounded corners, clean layout.
+
+Toast notifications: show success/error messages for 3 seconds in top-right corner.
+
+---
+
+TASK 4 — ADD TO ADMIN PANEL
+Add a new tab or menu item called "Exam Manager" (with icon ⚙️) in the existing admin panel navigation that renders the ExamSubjectManager component. The route should be /admin/exams.
+
+---
+
+TASK 5 — REPLACE HARDCODED EXAM LISTS
+Search the entire codebase for any hardcoded arrays or constants that list exam codes or exam names (like ['SSC_CGL', 'BPSC', ...] or similar). Replace them with the useExams() hook or fetchExamsServer() function from hooks/useExams.js. Make sure the app's exam selection dropdowns, quiz pages, study plan pages, and dashboard all pull exam data dynamically from the Supabase exams table instead of hardcoded values.
+
+---
+
+IMPORTANT NOTES:
+- Use the project's existing Supabase client (check lib/supabase.js or utils/supabase.js)
+- Use the project's existing Clerk auth for admin authentication check
+- Do not break any existing functionality — the question_bank table and its queries remain unchanged
+- The exams and subjects tables are purely for configuration/display, not for storing questions
+- All Supabase operations in the admin component should use the service role key (SUPABASE_SERVICE_ROLE_KEY from env) for write operations so RLS doesn't block admin actions
+- Make sure to handle loading states and errors gracefully
+- After implementing, test by adding a new dummy exam "TEST_EXAM" from the admin panel and verify it appears in the app's exam list

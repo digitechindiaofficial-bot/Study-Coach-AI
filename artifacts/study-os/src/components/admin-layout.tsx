@@ -13,6 +13,7 @@ import {
   Database,
   ClipboardList,
   Layers,
+  Settings2,
 } from "lucide-react";
 import { useClerk } from "@clerk/react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Exam Manager", href: "/admin/exams", icon: Settings2 },
   { name: "Exam Patterns", href: "/admin/exam-patterns", icon: Layers },
   { name: "Syllabus", href: "/admin/syllabus", icon: BookOpen },
   { name: "Question Bank", href: "/admin/question-bank", icon: Database },

@@ -28,6 +28,7 @@ import AdminSyllabusPage from "@/pages/admin/syllabus";
 import AdminQuestionBankPage from "@/pages/admin/question-bank";
 import AdminMockTestsPage from "@/pages/admin/mock-tests";
 import AdminExamPatternsPage from "@/pages/admin/exam-patterns";
+import AdminExamManagerPage from "@/pages/admin/exam-manager";
 import MockTestListPage from "@/pages/mock-tests/index";
 import MockTestSessionPage from "@/pages/mock-tests/session";
 import MockTestResultPage from "@/pages/mock-tests/result";
@@ -293,6 +294,9 @@ function Router() {
       </Route>
       <Route path="/admin/exam-patterns">
         <AdminRoute component={AdminExamPatternsPage} />
+      </Route>
+      <Route path="/admin/exams">
+        <AdminRoute component={AdminExamManagerPage} />
       </Route>
 
       <Route component={NotFound} />
