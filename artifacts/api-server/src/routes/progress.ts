@@ -16,13 +16,14 @@ const SUBJECT_CODES = new Set([
   "REAS", "ECON", "ETHICS", "APT", "NA",
 ]);
 
-// Tags that are too broad to use as topic names
+// Tags that are too broad / generic to use as topic names
 const SKIP_TAGS = new Set([
   "easy", "medium", "hard", "mcq", "banking", "general", "india", "bihar",
   "history", "geography", "science", "polity", "environment", "economy",
   "reasoning", "maths", "mathematics", "english", "hindi", "ancient",
   "medieval", "modern", "physics", "chemistry", "biology", "technology",
-  "current-affairs", "sahitya", "vyakaran", "sahitya-itihas",
+  "current-affairs", "sahitya", "vyakaran", "sahitya-itihas", "alankar",
+  "rivers", "mountains", "climate", "computer",
 ]);
 
 /** Derive a readable topic name from the tags JSON array string returned by PostgreSQL.
@@ -159,45 +160,63 @@ router.get("/progress/weak-areas", async (req, res) => {
   const activeExamCode = profile.examType ?? null;
   if (!activeExamCode) return res.json([]);
 
-  // Group by subject_code only — topic-level grouping caused duplicate entries
-  // (e.g. BPSC_GEO_001..006 all resolved to "Bihar Geography", showing 6 cards)
+  // Group by topic_code — one card per topic.
+  // CTE picks one representative tags array per topic_code for name resolution.
   const result = await db.execute(sql`
+    WITH topic_tags_cte AS (
+      SELECT DISTINCT ON (topic_code)
+        topic_code,
+        array_to_json(tags)::text AS tags_json,
+        subject_code              AS qb_subject_code
+      FROM question_bank
+      WHERE topic_code IS NOT NULL
+        AND exam_code = ${activeExamCode}
+      ORDER BY topic_code, id
+    )
     SELECT
-      qa.subject_code,
+      qb.topic_code,
+      tt.tags_json,
+      COALESCE(qa.subject_code, tt.qb_subject_code)   AS subject_code,
       qa.exam_code,
-      ss.name                                          AS subject_name,
       COUNT(qa.id)::int                               AS total,
       COUNT(CASE WHEN qa.is_correct THEN 1 END)::int  AS correct
     FROM question_attempts qa
-    LEFT JOIN syllabus_subjects ss
-      ON ss.subject_code = qa.subject_code
-      AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = ${activeExamCode} LIMIT 1)
+    LEFT JOIN question_bank qb ON qb.id = qa.question_id
+    LEFT JOIN topic_tags_cte tt ON tt.topic_code = qb.topic_code
     WHERE qa.user_id = ${profile.id}
       AND qa.exam_code = ${activeExamCode}
-    GROUP BY qa.subject_code, qa.exam_code, ss.name
+      AND qb.topic_code IS NOT NULL
+    GROUP BY qb.topic_code, tt.tags_json, COALESCE(qa.subject_code, tt.qb_subject_code), qa.exam_code
     HAVING COUNT(qa.id) >= 1
   `);
 
   type WeakRow = {
-    subject_code: string;
+    topic_code: string;
+    tags_json: string | null;
+    subject_code: string | null;
     exam_code: string;
-    subject_name: string | null;
     total: number;
     correct: number;
   };
 
   const weakAreas = (result.rows as WeakRow[])
-    .map(r => ({
-      subjectCode: r.subject_code,
-      subjectName:
-        SUBJECT_NAME_MAP[r.subject_code] ??
-        r.subject_name ??
-        r.subject_code,
-      examCode: r.exam_code,
-      accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
-      attempts: r.total,
-    }))
-    .filter(w => w.accuracy < 60)
+    .map(r => {
+      const subjectCode = r.subject_code ?? "";
+      const topicName =
+        getTopicNameFromTags(r.tags_json) ??
+        parseTopicName(r.topic_code) ??
+        r.topic_code;
+      return {
+        topicCode: r.topic_code,
+        topicName,
+        subjectCode,
+        subjectName: SUBJECT_NAME_MAP[subjectCode] ?? subjectCode,
+        examCode: r.exam_code,
+        accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
+        attempts: r.total,
+      };
+    })
+    .filter(w => w.accuracy < 50)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 10);
 

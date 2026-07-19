@@ -1,0 +1,256 @@
+In my GovtGuru app Progress page, the Weak Areas 
+panel currently shows SUBJECT names (like 
+"Geography & Environment"). 
+
+I want it to show TOPIC names instead — specific 
+topics where the user is weak, not just subjects.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW IT SHOULD WORK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Instead of:
+  Geography & Environment   31%
+
+Show:
+  Rivers of Bihar           0%   (Geography)
+  Flood Management          0%   (Geography)  
+  Ancient History           20%  (History)
+  Kalinga War               0%   (History)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPLETE IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — Fetch user attempts WITH topicCode:
+
+const { data: attempts } = await supabase
+  .from('question_attempts')
+  .select('topicCode, subjectCode, examCode, is_correct')
+  .eq('user_id', userId)
+  .eq('examCode', targetExam)
+
+STEP 2 — Get all unique topicCodes:
+
+const uniqueTopicCodes = [
+  ...new Set(
+    attempts
+      .map(a => a.topicCode)
+      .filter(Boolean)
+  )
+]
+
+STEP 3 — Fetch topic info from question_bank
+(one question per topicCode to get tags):
+
+const { data: topicQuestions } = await supabase
+  .from('question_bank')
+  .select('topicCode, tags, subjectCode')
+  .in('topicCode', uniqueTopicCodes)
+
+// Deduplicate — one entry per topicCode
+const topicInfoMap = {}
+topicQuestions?.forEach(q => {
+  if (!topicInfoMap[q.topicCode]) {
+    topicInfoMap[q.topicCode] = {
+      tags: q.tags || [],
+      subjectCode: q.subjectCode
+    }
+  }
+})
+
+STEP 4 — Function to get topic name from tags:
+
+function getTopicName(topicCode, tags) {
+  if (!tags || tags.length === 0) {
+    // Fallback: parse from topicCode
+    // BPSC_GEO_001 → remove prefix → generic
+    return topicCode || 'Unknown Topic'
+  }
+
+  // Tags to SKIP (too generic)
+  const skipTags = [
+    'easy', 'medium', 'hard',
+    'history', 'geography', 'science', 
+    'polity', 'economy', 'reasoning',
+    'mathematics', 'english', 'hindi',
+    'environment', 'general', 'india',
+    'bihar', 'ancient', 'medieval', 'modern',
+    'physics', 'chemistry', 'biology',
+    'banking', 'current-affairs', 'mcq',
+    'sahitya', 'vyakaran', 'alankar',
+    'rivers', 'mountains', 'climate',
+    'technology', 'computer'
+  ]
+
+  // Find the MOST SPECIFIC tag
+  // Usually the 2nd or 3rd tag is most specific
+  const specificTag = tags.find(
+    t => !skipTags.includes(t.toLowerCase())
+  )
+
+  const tagToUse = specificTag || tags[1] || tags[0]
+  
+  if (!tagToUse) return 'General Topic'
+
+  // Convert to readable Title Case
+  // "kosi-river" → "Kosi River"
+  // "kalinga-war" → "Kalinga War"
+  // "flood-management" → "Flood Management"
+  return tagToUse
+    .replace(/_/g, '-')
+    .split('-')
+    .map(w => w.charAt(0).toUpperCase() + 
+               w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+STEP 5 — Group by topicCode and calculate scores:
+
+const topicStats = {}
+
+attempts.forEach(attempt => {
+  const code = attempt.topicCode
+  if (!code) return
+
+  if (!topicStats[code]) {
+    const info = topicInfoMap[code] || {}
+    topicStats[code] = {
+      topicCode: code,
+      topicName: getTopicName(code, info.tags),
+      subjectCode: attempt.subjectCode || info.subjectCode,
+      examCode: attempt.examCode,
+      total: 0,
+      correct: 0
+    }
+  }
+  topicStats[code].total++
+  if (attempt.is_correct) topicStats[code].correct++
+})
+
+STEP 6 — Filter weak topics (score < 50%):
+
+const SUBJECT_NAME_MAP = {
+  'QA': 'Quantitative Aptitude',
+  'ENG': 'English Language',
+  'GIR': 'General Intelligence & Reasoning',
+  'GA': 'General Awareness',
+  'DESC': 'Descriptive Paper',
+  'BANK': 'Banking & Financial Awareness',
+  'COMP': 'Computer & Digital Banking',
+  'RCA': 'Reasoning & Computer Aptitude',
+  'MATH': 'Mathematics',
+  'HIST': 'History & Culture',
+  'POL': 'Indian Polity & Governance',
+  'SCI': 'Science & Technology',
+  'HINDI': 'General Hindi',
+  'GEO': 'Geography & Environment',
+  'BIHAR': 'Bihar Special',
+  'MREAS': 'Mathematics & Reasoning',
+  'NUM': 'Numerical Ability',
+  'REAS': 'Reasoning Ability',
+  'ECO': 'Economy & Development',
+  'GK': 'General Knowledge',
+  'CA': 'Current Affairs',
+}
+
+const weakTopics = Object.values(topicStats)
+  .map(t => ({
+    ...t,
+    score: t.total > 0 
+      ? Math.round((t.correct / t.total) * 100) 
+      : 0,
+    subjectName: SUBJECT_NAME_MAP[t.subjectCode] 
+                 || t.subjectCode
+  }))
+  .filter(t => t.total > 0 && t.score < 50)
+  .sort((a, b) => a.score - b.score)
+  .slice(0, 10) // Max 10 weak topics
+
+STEP 7 — Display each weak topic card:
+
+{weakTopics.map(topic => (
+  <div key={topic.topicCode} className="weak-card">
+    
+    <div className="top-row">
+      <div>
+        <span className="topic-name">
+          {topic.topicName}
+        </span>
+        <span className="subject-badge">
+          {topic.subjectName}
+        </span>
+      </div>
+      <span className="score" style="color:red">
+        {topic.score}%
+      </span>
+    </div>
+
+    <div className="progress-bar">
+      <div style="width: topic.score%" />
+    </div>
+
+    <p className="meta">
+      {topic.total} attempted · 
+      {topic.score === 0 
+        ? 'No correct answers yet!' 
+        : topic.score < 30 
+          ? 'Needs urgent attention!' 
+          : 'Keep practising to improve'}
+    </p>
+
+  </div>
+))}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPECTED FINAL OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Weak Areas                    BPSC
+
+Kosi River                        0%
+Geography & Environment
+1 attempted · No correct answers yet!
+
+Flood Management                  0%
+Geography & Environment  
+1 attempted · No correct answers yet!
+
+Kalinga War                       0%
+History & Culture
+1 attempted · No correct answers yet!
+
+Cell Biology                      0%
+Science & Technology
+1 attempted · No correct answers yet!
+
+Photosynthesis                   25%  ██░░
+Science & Technology
+4 attempted · Needs urgent attention!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Each topicCode = one card (no duplicates)
+
+2. Topic name comes from tags in question_bank
+   NOT from topicCode string itself
+
+3. Subject name shown below topic name 
+   as smaller text (for context only)
+
+4. Filter: score < 50% AND at least 1 attempt
+
+5. Sort: worst score first (0% at top)
+
+6. Max 10 topics shown
+
+7. If tags give duplicate topic names for 
+   different topicCodes, still show both 
+   (they are different questions/topics)
+
+8. Do NOT change Quiz Performance by Subject
+   panel — it is working correctly
+
+9. Do not break any existing functionality

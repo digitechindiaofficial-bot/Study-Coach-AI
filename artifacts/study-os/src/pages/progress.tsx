@@ -292,9 +292,12 @@ export default function ProgressPage() {
                     {statList.length === 0 ? noExamState : weakList.length > 0 ? (
                       <div className="space-y-4">
                         {weakList.map((wa: any) => (
-                          <div key={wa.subjectCode} className="space-y-1">
+                          <div key={wa.topicCode} className="space-y-1">
                             <div className="flex items-start justify-between text-sm gap-2">
-                              <p className="font-medium leading-tight min-w-0 flex-1">{wa.subjectName}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium leading-tight">{wa.topicName}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{wa.subjectName}</p>
+                              </div>
                               <span className="font-bold text-destructive shrink-0 tabular-nums">{wa.accuracy}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -304,7 +307,12 @@ export default function ProgressPage() {
                               />
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {wa.attempts} attempted · {wa.accuracy < 30 ? "Needs urgent attention!" : "Keep practising to improve"}
+                              {wa.attempts} attempted ·{" "}
+                              {wa.accuracy === 0
+                                ? "No correct answers yet!"
+                                : wa.accuracy < 30
+                                  ? "Needs urgent attention!"
+                                  : "Keep practising to improve"}
                             </p>
                           </div>
                         ))}

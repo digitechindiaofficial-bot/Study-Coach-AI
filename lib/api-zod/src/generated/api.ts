@@ -335,6 +335,8 @@ export const GetProgressSummaryResponse = zod.object({
  * @summary Get list of weak topic areas (below 60% accuracy)
  */
 export const GetWeakAreasResponseItem = zod.object({
+  "topicCode": zod.string(),
+  "topicName": zod.string(),
   "subjectCode": zod.string(),
   "subjectName": zod.string(),
   "examCode": zod.string(),

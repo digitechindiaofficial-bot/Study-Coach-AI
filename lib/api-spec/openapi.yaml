@@ -891,6 +891,10 @@ components:
     WeakArea:
       type: object
       properties:
+        topicCode:
+          type: string
+        topicName:
+          type: string
         subjectCode:
           type: string
         subjectName:
@@ -901,7 +905,7 @@ components:
           type: number
         attempts:
           type: integer
-      required: [subjectCode, subjectName, examCode, accuracy, attempts]
+      required: [topicCode, topicName, subjectCode, subjectName, examCode, accuracy, attempts]
 
     DailyHoursEntry:
       type: object
