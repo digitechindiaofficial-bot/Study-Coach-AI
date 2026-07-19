@@ -85,6 +85,7 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   const [poolIndex, setPoolIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [answers, setAnswers] = useState<
@@ -130,7 +131,10 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
       }
 
       if (excludeIds.size > 0) {
-        base.exclude = Array.from(excludeIds).join(",");
+        // Cap at 100 to keep URL length reasonable — the unseen JOIN on the
+        // server already handles all-time deduplication beyond this window.
+        const ids = Array.from(excludeIds).slice(-100);
+        base.exclude = ids.join(",");
       }
       return base;
     },
@@ -166,10 +170,19 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
         } else {
           data.forEach(q => loadedIds.current.add(q.id));
           setPool(prev => (initial ? data : [...prev, ...data]));
+          setFetchError(null);
         }
 
         if (initial) setPoolIndex(0);
         return data;
+      } catch (err: any) {
+        const msg: string =
+          err?.response?.data?.error ??
+          err?.message ??
+          "Unable to load questions. Please try again.";
+        setFetchError(msg);
+        // On initial load failure keep isLoading false so the error screen shows
+        return [];
       } finally {
         setIsLoading(false);
         setIsFetching(false);
@@ -264,6 +277,7 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     setSessionAnswered(0);
     setFinished(false);
     setIsLoading(true);
+    setFetchError(null);
     fetchMore(true);
   };
 
@@ -272,6 +286,27 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // ── Fetch error ──
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 px-4">
+        <XCircle className="w-12 h-12 text-destructive" />
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Could not load questions</h2>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto">{fetchError}</p>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/quiz">
+            <Button variant="outline">Back to Quiz</Button>
+          </Link>
+          <Button onClick={handleRetry}>
+            <RotateCcw className="mr-2 w-4 h-4" /> Try Again
+          </Button>
+        </div>
       </div>
     );
   }

@@ -95,7 +95,11 @@ router.get("/quiz/questions", async (req, res) => {
     whereParts.push(sql`q.difficulty = ${difficulty}`);
   }
   if (excludeIds.length > 0) {
-    whereParts.push(sql`q.id != ALL(${excludeIds}::uuid[])`);
+    // Build ARRAY[$1::uuid, $2::uuid, ...] with one parameter per ID.
+    // Passing a raw JS array to sql`` uses pg's array serialization which
+    // is unreliable for large uuid lists — explicit join is always safe.
+    const uuidParams = excludeIds.map(id => sql`${id}::uuid`);
+    whereParts.push(sql`q.id != ALL(ARRAY[${sql.join(uuidParams, sql`, `)}])`);
   }
 
   // ── Weak area prioritisation ─────────────────────────────────────────────

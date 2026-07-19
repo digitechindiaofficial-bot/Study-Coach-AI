@@ -1,0 +1,189 @@
+In my GovtGuru app, when a user answers more than 
+15 questions in a quiz session, the app crashes 
+with this error:
+
+HTTP 500 Internal Server Error
+Failed query: SELECT q.* FROM question_bank q
+LEFT JOIN (
+  SELECT DISTINCT question_id FROM question_attempts...
+)
+
+The error occurs in:
+/src/pages/quiz-session.tsx at line 146
+
+Please fix this completely.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROOT CAUSE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The quiz session query tries to fetch questions 
+that the user has NOT already attempted, using 
+a LEFT JOIN or NOT IN subquery. This fails because:
+
+1. The question_attempts table uses column "id" 
+   or "question_bank_id" but the query looks for 
+   "question_id" which does not exist
+
+2. OR the subquery returns too many rows causing 
+   a timeout when user has 15+ attempts
+
+3. OR the NOT IN / LEFT JOIN query has a bug 
+   when the subquery result is large
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX — Open quiz-session.tsx line ~146
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Find the query that fetches quiz questions.
+It probably looks something like this (BROKEN):
+
+const { data: questions } = await supabase
+  .from('question_bank')
+  .select('*')
+  .eq('examCode', examCode)
+  .eq('subjectCode', subjectCode)
+  .not('id', 'in', `(
+    SELECT question_id 
+    FROM question_attempts 
+    WHERE user_id = '${userId}'
+  )`)
+
+OR it might use a LEFT JOIN via RPC/raw SQL.
+
+REPLACE the entire question fetching logic with 
+this SAFE approach:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SAFE FIX — Two step approach
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — First fetch the IDs of already attempted 
+questions separately:
+
+const { data: attemptedData } = await supabase
+  .from('question_attempts')
+  .select('question_id')
+  .eq('user_id', userId)
+  .eq('examCode', examCode)
+  .eq('subjectCode', subjectCode)
+
+const attemptedIds = attemptedData
+  ?.map(a => a.question_id)
+  .filter(Boolean) || []
+
+STEP 2 — Then fetch questions excluding those IDs:
+
+let query = supabase
+  .from('question_bank')
+  .select('*')
+  .eq('examCode', examCode)
+  .eq('subjectCode', subjectCode)
+  .limit(10)
+
+// Only apply exclusion filter if there are 
+// attempted questions (avoid empty NOT IN)
+if (attemptedIds.length > 0) {
+  query = query.not('id', 'in', 
+    `(${attemptedIds.join(',')})`)
+}
+
+const { data: questions, error } = await query
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALSO CHECK — Column name mismatch
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The error says "question_id" — check what column 
+name is actually used in question_attempts table 
+for storing the question reference.
+
+Run this check:
+const { data: sampleAttempt } = await supabase
+  .from('question_attempts')
+  .select('*')
+  .limit(1)
+
+console.log('attempt columns:', 
+  Object.keys(sampleAttempt?.[0] || {}))
+
+The column might be named:
+- question_id  
+- questionId
+- question_bank_id
+- questionBankId
+
+Use whatever column name actually exists in the 
+table — not an assumed name.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITIONAL SAFEGUARDS TO ADD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Add error handling so the quiz does not crash:
+
+if (error) {
+  console.error('Quiz fetch error:', error)
+  // Fallback: fetch any questions without 
+  // exclusion filter
+  const { data: fallbackQs } = await supabase
+    .from('question_bank')
+    .select('*')
+    .eq('examCode', examCode)
+    .eq('subjectCode', subjectCode)
+    .limit(10)
+  return fallbackQs || []
+}
+
+2. If no unattempted questions remain, show 
+   a friendly message instead of crashing:
+
+if (!questions || questions.length === 0) {
+  // Show completion message
+  setQuizComplete(true)
+  setCompletionMessage(
+    'You have completed all available questions 
+     for this subject! Great job! 🎉'
+  )
+  return
+}
+
+3. Add a try-catch around the entire quiz 
+   question fetching function:
+
+try {
+  // entire fetch logic here
+} catch (err) {
+  console.error('Quiz session error:', err)
+  setError('Unable to load questions. 
+    Please try again.')
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALSO CHECK quiz-session.tsx line 146
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Go directly to line 146 in quiz-session.tsx 
+and show me what the exact query/code is there.
+
+Fix whatever is causing the 500 error at that 
+specific line — it is likely an await call to 
+either supabase or an API endpoint that is 
+failing when attempted questions count > 15.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPECTED BEHAVIOUR AFTER FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- User can answer unlimited questions in a session
+- Already attempted questions are not repeated
+- When all questions are exhausted, show:
+  "All questions completed! You have attempted 
+   all X questions in this subject."
+  with options to:
+  * Practice again (reset attempts for this subject)
+  * Go to next subject
+  * Back to dashboard
+
+- No 500 error at any point during quiz
+- Quiz works smoothly for 10, 20, 50, 100+ attempts
