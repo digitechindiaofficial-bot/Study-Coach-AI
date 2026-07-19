@@ -1,0 +1,160 @@
+In my GovtGuru app Progress page, the Weak Areas 
+panel has two bugs:
+
+BUG 1: Same topic name repeating multiple times
+"Bihar Geography" is showing 6-7 times as separate 
+entries instead of being grouped into one.
+
+BUG 2: Wrong grouping logic
+The code is grouping by topic NAME (from tags) 
+instead of grouping by subjectCode.
+
+CURRENT WRONG LOGIC:
+// Groups by topicCode — creates one entry per question
+const topicStats = {}
+attempts.forEach(attempt => {
+  const key = attempt.topicCode  // WRONG — too granular
+  topicStats[key] = ...
+})
+
+This creates separate entries for:
+BPSC_GEO_001 → "Bihar Geography"
+BPSC_GEO_002 → "Bihar Geography"  
+BPSC_GEO_003 → "Bihar Geography"
+= 3 separate "Bihar Geography" cards!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE CORRECT FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REPLACE the entire weak areas calculation with 
+this subject-level grouping:
+
+STEP 1 — Group by subjectCode (NOT topicCode):
+
+const subjectStats = {}
+
+attempts.forEach(attempt => {
+  // Group by subjectCode — this is the correct level
+  const key = attempt.subjectCode
+  if (!key) return
+  
+  if (!subjectStats[key]) {
+    subjectStats[key] = {
+      subjectCode: key,
+      examCode: attempt.examCode,
+      total: 0,
+      correct: 0
+    }
+  }
+  subjectStats[key].total++
+  if (attempt.is_correct) subjectStats[key].correct++
+})
+
+STEP 2 — Calculate score and filter weak subjects:
+
+const SUBJECT_NAME_MAP = {
+  'QA': 'Quantitative Aptitude',
+  'ENG': 'English Language',
+  'GIR': 'General Intelligence & Reasoning',
+  'GA': 'General Awareness',
+  'DESC': 'Descriptive Paper',
+  'BANK': 'Banking & Financial Awareness',
+  'COMP': 'Computer & Digital Banking',
+  'RCA': 'Reasoning & Computer Aptitude',
+  'MATH': 'Mathematics',
+  'HIST': 'History & Culture',
+  'POL': 'Indian Polity & Governance',
+  'SCI': 'Science & Technology',
+  'HINDI': 'General Hindi',
+  'GEO': 'Geography & Environment',
+  'BIHAR': 'Bihar Special',
+  'MREAS': 'Mathematics & Reasoning',
+  'NUM': 'Numerical Ability',
+  'REAS': 'Reasoning Ability',
+  'ECO': 'Economy & Development',
+  'GK': 'General Knowledge',
+  'CA': 'Current Affairs',
+}
+
+const weakSubjects = Object.values(subjectStats)
+  .map(s => ({
+    ...s,
+    subjectName: SUBJECT_NAME_MAP[s.subjectCode] 
+                 || s.subjectCode,
+    score: s.total > 0 
+      ? Math.round((s.correct / s.total) * 100) 
+      : 0
+  }))
+  .filter(s => s.total > 0 && s.score < 60)
+  .sort((a, b) => a.score - b.score)
+
+STEP 3 — Display (one card per subject only):
+
+weakSubjects.map(subject => (
+  <div key={subject.subjectCode}>
+    
+    <div style="flex between">
+      <div>
+        <h4>{subject.subjectName}</h4>
+        <span badge>{subject.examCode}</span>
+      </div>
+      <span color="red">{subject.score}%</span>
+    </div>
+    
+    <progress value={subject.score} max={100} />
+    
+    <p>
+      {subject.total} attempted · 
+      {subject.score < 30 
+        ? 'Needs urgent attention!' 
+        : 'Keep practising to improve'}
+    </p>
+
+  </div>
+))
+
+STEP 4 — Expected output after fix:
+
+⚠️ Weak Areas                    BPSC
+
+History & Culture                41%  ████░░░░
+17 attempted · Keep practising
+
+Geography & Environment          31%  ███░░░░░
+36 attempted · Keep practising
+
+General Science                  25%  ██░░░░░░
+12 attempted · Needs urgent attention!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ONE card per subject — no duplicates
+
+2. Only show subjects that have at least 
+   1 attempt AND score below 60%
+
+3. Sort by score ascending (worst first)
+
+4. Do NOT use topicCode for grouping anywhere
+   in Weak Areas — only use subjectCode
+
+5. Do NOT use tags or topic names in Weak Areas
+   — subject name is enough
+
+6. Indian Polity & Governance shows 50% — 
+   do NOT show it in weak areas 
+   (50% is exactly the threshold, 
+   filter should be strictly LESS THAN 60%)
+
+7. If all subjects are >= 60%, show:
+   "Great job! No weak areas. 
+    Keep practising! 🎉"
+
+8. Do not touch Quiz Performance by Subject 
+   panel — it is working correctly
+
+9. Remove ALL the topic-level (topicCode) 
+   grouping code from Weak Areas completely

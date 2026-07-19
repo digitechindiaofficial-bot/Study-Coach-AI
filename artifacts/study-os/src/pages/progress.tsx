@@ -291,13 +291,10 @@ export default function ProgressPage() {
                   <CardContent>
                     {statList.length === 0 ? noExamState : weakList.length > 0 ? (
                       <div className="space-y-4">
-                        {weakList.map((wa: any, i: number) => (
-                          <div key={i} className="space-y-1">
+                        {weakList.map((wa: any) => (
+                          <div key={wa.subjectCode} className="space-y-1">
                             <div className="flex items-start justify-between text-sm gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium leading-tight">{wa.topic}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{wa.subject}</p>
-                              </div>
+                              <p className="font-medium leading-tight min-w-0 flex-1">{wa.subjectName}</p>
                               <span className="font-bold text-destructive shrink-0 tabular-nums">{wa.accuracy}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -307,7 +304,7 @@ export default function ProgressPage() {
                               />
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {wa.attempts} attempt{wa.attempts !== 1 ? "s" : ""} · Keep practising to improve
+                              {wa.attempts} attempted · {wa.accuracy < 30 ? "Needs urgent attention!" : "Keep practising to improve"}
                             </p>
                           </div>
                         ))}
@@ -315,9 +312,8 @@ export default function ProgressPage() {
                     ) : (
                       <div className="text-center py-8 space-y-2">
                         <BrainCircuit className="w-8 h-8 mx-auto text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">
-                          Keep practising! Weak areas will appear here after you attempt more questions.
-                        </p>
+                        <p className="text-sm text-muted-foreground font-medium">Great job! No weak areas.</p>
+                        <p className="text-xs text-muted-foreground">Keep practising! 🎉</p>
                       </div>
                     )}
                   </CardContent>

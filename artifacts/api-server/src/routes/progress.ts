@@ -124,6 +124,31 @@ router.get("/progress/summary", async (req, res) => {
   });
 });
 
+// Friendly display names for subject codes
+const SUBJECT_NAME_MAP: Record<string, string> = {
+  QA: "Quantitative Aptitude",
+  ENG: "English Language",
+  GIR: "General Intelligence & Reasoning",
+  GA: "General Awareness",
+  DESC: "Descriptive Paper",
+  BANK: "Banking & Financial Awareness",
+  COMP: "Computer & Digital Banking",
+  RCA: "Reasoning & Computer Aptitude",
+  MATH: "Mathematics",
+  HIST: "History & Culture",
+  POL: "Indian Polity & Governance",
+  SCI: "Science & Technology",
+  HINDI: "General Hindi",
+  GEO: "Geography & Environment",
+  BIHAR: "Bihar Special",
+  MREAS: "Mathematics & Reasoning",
+  NUM: "Numerical Ability",
+  REAS: "Reasoning Ability",
+  ECO: "Economy & Development",
+  GK: "General Knowledge",
+  CA: "Current Affairs",
+};
+
 router.get("/progress/weak-areas", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -131,70 +156,47 @@ router.get("/progress/weak-areas", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.json([]);
 
-  // Use question_attempts grouped by topic_code, filtered by user's target exam
   const activeExamCode = profile.examType ?? null;
   if (!activeExamCode) return res.json([]);
 
-  // CTE picks one representative set of tags per topic_code (for name resolution)
+  // Group by subject_code only — topic-level grouping caused duplicate entries
+  // (e.g. BPSC_GEO_001..006 all resolved to "Bihar Geography", showing 6 cards)
   const result = await db.execute(sql`
-    WITH topic_tags_cte AS (
-      SELECT DISTINCT ON (topic_code)
-        topic_code,
-        array_to_json(tags)::text AS tags_json
-      FROM question_bank
-      WHERE topic_code IS NOT NULL
-        AND tags IS NOT NULL
-        AND exam_code = ${activeExamCode}
-      ORDER BY topic_code, id
-    )
     SELECT
       qa.subject_code,
       qa.exam_code,
-      qb.topic_code,
-      tt.tags_json                                     AS topic_tags,
       ss.name                                          AS subject_name,
       COUNT(qa.id)::int                               AS total,
       COUNT(CASE WHEN qa.is_correct THEN 1 END)::int  AS correct
     FROM question_attempts qa
-    LEFT JOIN question_bank qb ON qb.id = qa.question_id
-    LEFT JOIN topic_tags_cte tt ON tt.topic_code = qb.topic_code
     LEFT JOIN syllabus_subjects ss
       ON ss.subject_code = qa.subject_code
       AND ss.exam_id = (SELECT id FROM syllabus_exams WHERE code = ${activeExamCode} LIMIT 1)
     WHERE qa.user_id = ${profile.id}
       AND qa.exam_code = ${activeExamCode}
-    GROUP BY qa.subject_code, qa.exam_code, qb.topic_code, tt.tags_json, ss.name
+    GROUP BY qa.subject_code, qa.exam_code, ss.name
     HAVING COUNT(qa.id) >= 1
   `);
 
   type WeakRow = {
     subject_code: string;
     exam_code: string;
-    topic_code: string | null;
-    topic_tags: string | null;
     subject_name: string | null;
     total: number;
     correct: number;
   };
 
   const weakAreas = (result.rows as WeakRow[])
-    .map(r => {
-      // Priority: tags-derived name → parsed topic code → subject name
-      const subjectDisplay = r.subject_name ?? r.subject_code;
-      const topicName =
-        getTopicNameFromTags(r.topic_tags) ??
-        parseTopicName(r.topic_code) ??
-        subjectDisplay;
-      return {
-        topicCode: r.topic_code ?? null,
-        topic: topicName,
-        subject: subjectDisplay,
-        subjectCode: r.subject_code,
-        examCode: r.exam_code,
-        accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
-        attempts: r.total,
-      };
-    })
+    .map(r => ({
+      subjectCode: r.subject_code,
+      subjectName:
+        SUBJECT_NAME_MAP[r.subject_code] ??
+        r.subject_name ??
+        r.subject_code,
+      examCode: r.exam_code,
+      accuracy: r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0,
+      attempts: r.total,
+    }))
     .filter(w => w.accuracy < 60)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 10);

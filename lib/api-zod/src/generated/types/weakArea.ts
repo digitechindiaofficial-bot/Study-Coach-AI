@@ -7,8 +7,9 @@
  */
 
 export interface WeakArea {
-  topic: string;
-  subject: string;
+  subjectCode: string;
+  subjectName: string;
+  examCode: string;
   accuracy: number;
   attempts: number;
 }
