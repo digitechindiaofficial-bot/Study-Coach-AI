@@ -62,10 +62,6 @@ export default function QuizHomePage() {
             (stats as any[]).length,
         )
       : 0;
-  const totalAvailable = (stats as any[]).reduce(
-    (sum: number, s: any) => sum + (s.questionsAvailable ?? 0),
-    0,
-  );
 
   return (
     <div className="space-y-8">
@@ -109,8 +105,8 @@ export default function QuizHomePage() {
               <BrainCircuit className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold">{totalAvailable}</div>
-              <div className="text-xs text-muted-foreground">Questions Available</div>
+              <div className="text-2xl font-bold">{(stats as any[]).length}</div>
+              <div className="text-xs text-muted-foreground">Subjects Practised</div>
             </div>
           </CardContent>
         </Card>
@@ -122,7 +118,7 @@ export default function QuizHomePage() {
           <div>
             <h3 className="font-bold text-lg">Quick Practice</h3>
             <p className="text-muted-foreground text-sm">
-              Mixed questions from all subjects • 20 questions
+              Mixed questions from all subjects
             </p>
           </div>
           <Link href="/quiz/all">
@@ -140,7 +136,6 @@ export default function QuizHomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {subjects.map(sub => {
             const stat = getStat(sub) as any;
-            const available = stat?.questionsAvailable ?? 0;
             const accuracy = stat?.accuracy ?? 0;
             return (
               <Card key={sub.id} className="hover:border-primary/40 transition-colors">
@@ -148,9 +143,7 @@ export default function QuizHomePage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm mb-1 truncate">{sub.name}</div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-xs">
-                        {available > 0 ? `${available} questions` : "Questions available"}
-                      </Badge>
+                      <Badge variant="secondary" className="text-xs">Practice</Badge>
                       {stat && (
                         <span className="text-xs text-muted-foreground">
                           Accuracy:{" "}

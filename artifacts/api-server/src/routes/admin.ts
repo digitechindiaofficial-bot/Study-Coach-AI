@@ -466,4 +466,84 @@ router.delete("/admin/syllabus/exams/:id", async (req, res) => {
   res.status(204).send();
 });
 
+router.get("/admin/question-stats", requireAdmin, async (req, res) => {
+  try {
+    const { pool: pgPool } = await import("@workspace/db");
+
+    const [totalRes, byExamSubjectRes, byDiffRes, allSubjectsRes] = await Promise.all([
+      pgPool.query<{ total: string }>("SELECT COUNT(*)::text AS total FROM question_bank"),
+      pgPool.query<{ exam_code: string; subject_code: string; cnt: string }>(
+        "SELECT exam_code, subject_code, COUNT(*)::text AS cnt FROM question_bank GROUP BY exam_code, subject_code"
+      ),
+      pgPool.query<{ exam_code: string; subject_code: string; difficulty: string; cnt: string }>(
+        "SELECT exam_code, subject_code, COALESCE(LOWER(difficulty), 'medium') AS difficulty, COUNT(*)::text AS cnt FROM question_bank GROUP BY exam_code, subject_code, LOWER(difficulty)"
+      ),
+      pgPool.query<{ exam_code: string; subject_code: string; subject_name: string }>(
+        `SELECT se.code AS exam_code, ss.subject_code, ss.name AS subject_name
+         FROM syllabus_subjects ss
+         JOIN syllabus_exams se ON se.id = ss.exam_id
+         WHERE ss.is_active = true
+         ORDER BY se.code, ss.subject_code`
+      ),
+    ]);
+
+    const total = parseInt(totalRes.rows[0]?.total ?? "0", 10);
+
+    // Build difficulty lookup: "EXAM|SUBJ|diff" -> count
+    const diffMap: Record<string, number> = {};
+    for (const r of byDiffRes.rows) {
+      const key = `${r.exam_code}|${r.subject_code}|${r.difficulty}`;
+      diffMap[key] = (diffMap[key] ?? 0) + parseInt(r.cnt, 10);
+    }
+
+    // Build subject count lookup: "EXAM|SUBJ" -> count
+    const subMap: Record<string, number> = {};
+    for (const r of byExamSubjectRes.rows) {
+      subMap[`${r.exam_code}|${r.subject_code}`] = parseInt(r.cnt, 10);
+    }
+
+    // Group all syllabus subjects by exam
+    const examSubjectsMap: Record<string, Array<{ exam_code: string; subject_code: string; subject_name: string }>> = {};
+    for (const s of allSubjectsRes.rows) {
+      if (!examSubjectsMap[s.exam_code]) examSubjectsMap[s.exam_code] = [];
+      examSubjectsMap[s.exam_code].push(s);
+    }
+
+    // Build per-exam stats
+    const examCodes = [...new Set(allSubjectsRes.rows.map(r => r.exam_code))];
+    const exams = examCodes.map(code => {
+      const subjects = (examSubjectsMap[code] ?? []).map(s => {
+        const sk = `${code}|${s.subject_code}`;
+        const count = subMap[sk] ?? 0;
+        return {
+          subject_code: s.subject_code,
+          count,
+          difficulty: {
+            easy:   diffMap[`${sk}|easy`]   ?? 0,
+            medium: diffMap[`${sk}|medium`] ?? 0,
+            hard:   diffMap[`${sk}|hard`]   ?? 0,
+          },
+        };
+      });
+      const examTotal = subjects.reduce((sum, s) => sum + s.count, 0);
+      return { exam_code: code, total: examTotal, subjects };
+    });
+
+    const subjectCount = allSubjectsRes.rows.length;
+    const subjectsWithZero = allSubjectsRes.rows.filter(s => (subMap[`${s.exam_code}|${s.subject_code}`] ?? 0) === 0);
+
+    res.json({
+      total,
+      exam_count: examCodes.length,
+      subject_count: subjectCount,
+      avg_per_subject: subjectCount > 0 ? Math.round(total / subjectCount) : 0,
+      exams,
+      subjects_with_zero: subjectsWithZero,
+    });
+  } catch (err: any) {
+    req.log.error({ err: err?.message }, "question-stats failed");
+    res.status(500).json({ error: err?.message ?? "Failed" });
+  }
+});
+
 export default router;

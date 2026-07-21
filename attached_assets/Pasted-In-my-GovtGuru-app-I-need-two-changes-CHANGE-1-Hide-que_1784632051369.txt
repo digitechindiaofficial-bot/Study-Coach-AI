@@ -1,0 +1,156 @@
+In my GovtGuru app I need two changes:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 1 — Hide question count from users
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+On the Quiz Practice page (/quiz), 
+currently showing:
+"100 questions  Accuracy: 0%"
+
+REMOVE "100 questions" from user-facing UI.
+
+Only show:
+"Accuracy: 0%"
+
+Or replace with something meaningful:
+"Practice  Accuracy: 0%"
+
+Find all places where question count 
+is displayed to users and remove it:
+
+1. Quiz Practice page subject cards
+   REMOVE: "100 questions"
+   KEEP: "Accuracy: X%"
+
+2. Quick Practice section
+   CHANGE: "Mixed questions from all 
+            subjects • 20 questions"
+   TO:     "Mixed questions from all subjects"
+
+3. Any other place where total question 
+   count is shown to users — remove it
+
+Users should NOT know how many questions 
+are in the database. It should feel 
+unlimited to them.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 2 — Add Question Statistics 
+           in Admin Panel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a new page in admin panel at 
+/admin/question-stats
+
+This page should show a detailed 
+question bank statistics dashboard 
+ONLY visible to admins.
+
+FETCH THIS DATA:
+
+// Total questions overall
+const { count: totalQuestions } = await supabase
+  .from('question_bank')
+  .select('*', { count: 'exact', head: true })
+
+// Questions by exam
+const { data: examStats } = await supabase
+  .from('question_bank')
+  .select('examCode')
+
+// Questions by exam AND subject
+const { data: subjectStats } = await supabase
+  .from('question_bank')
+  .select('examCode, subjectCode')
+
+// Questions by difficulty
+const { data: difficultyStats } = await supabase
+  .from('question_bank')
+  .select('examCode, subjectCode, difficulty')
+
+Process the data:
+// Group by examCode
+const byExam = {}
+examStats.forEach(q => {
+  byExam[q.examCode] = (byExam[q.examCode] || 0) + 1
+})
+
+// Group by examCode + subjectCode
+const bySubject = {}
+subjectStats.forEach(q => {
+  const key = q.examCode + '_' + q.subjectCode
+  bySubject[key] = (bySubject[key] || 0) + 1
+})
+
+DISPLAY FORMAT:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Question Bank Statistics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OVERVIEW CARDS (top row):
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│  Total   │ │  Exams   │ │ Subjects │ │  Avg per │
+│  4,149   │ │    9     │ │   23     │ │ Subject  │
+│ Questions│ │          │ │          │ │   180    │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
+
+EXAM-WISE BREAKDOWN TABLE:
+┌─────────────┬──────────┬────────────────────────────┐
+│ Exam        │ Total Qs │ Subjects                   │
+├─────────────┼──────────┼────────────────────────────┤
+│ BPSC        │  800     │ ██████████ 100%            │
+│  └ HIST     │  100     │ ████░░░░░░ 12.5%           │
+│  └ GEO      │  100     │ ████░░░░░░ 12.5%           │
+│  └ POL      │  100     │ ████░░░░░░ 12.5%           │
+│  └ SCI      │  100     │ ████░░░░░░ 12.5%           │
+│  └ BIHAR    │  100     │ ████░░░░░░ 12.5%           │
+│  └ MREAS    │  100     │ ████░░░░░░ 12.5%           │
+│  └ HINDI    │  100     │ ████░░░░░░ 12.5%           │
+│  └ ECO      │  100     │ ████░░░░░░ 12.5%           │
+├─────────────┼──────────┼────────────────────────────┤
+│ UPPSC       │  400     │ ...                        │
+│ SSC CGL     │  400     │ ...                        │
+│ IBPS PO     │  400     │ ...                        │
+│ SBI PO      │  200     │ ...                        │
+│ SSC CHSL    │  300     │ ...                        │
+│ RRB NTPC    │  100     │ ...                        │
+│ IBPS CLERK  │    0     │ ⚠️ No questions yet        │
+│ SBI CLERK   │  100     │ ...                        │
+└─────────────┴──────────┴────────────────────────────┘
+
+DIFFICULTY DISTRIBUTION (per exam):
+BPSC:
+Easy   ████░░░░░░  35%  (280 Qs)
+Medium ██████░░░░  45%  (360 Qs)
+Hard   ███░░░░░░░  20%  (160 Qs)
+
+MISSING SUBJECTS ALERT:
+⚠️ These subjects have 0 questions:
+- IBPS_CLERK → ENG, NUM, REAS
+- RRB_NTPC   → GA, GIA
+- UPPSC      → GEO, ECO
+- BPSC       → ECO
+
+Add a button next to each:
+[+ Upload Questions] → goes to /admin/question-bank
+
+ALSO add this page to admin sidebar:
+📊 Question Stats  ← new menu item
+Between "Question Bank" and "Mock Tests"
+
+STYLING:
+- Same dark theme as rest of admin panel
+- Use cards and tables
+- Color code by exam
+- Show progress bars for each subject
+- Red highlight for 0-question subjects
+- Green for 100+ questions
+
+Make sure this page is only accessible 
+to admin users (check admin role from 
+Clerk or from profiles table).
+
+Regular users going to /admin/question-stats
+should be redirected to /dashboard.
