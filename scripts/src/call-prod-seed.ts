@@ -90,20 +90,20 @@ async function main() {
   // ── question_bank ─────────────────────────────────────────────────────────
   const Q_BATCH = 100;
   let qTotal = 0;
-  let offset = 0;
+  let lastId = "00000000-0000-0000-0000-000000000000";
   for (;;) {
     const { rows } = await client.query(
       `SELECT id,exam_code,subject_code,topic_code,difficulty,question,
               option_a,option_b,option_c,option_d,correct_answer,explanation,
               source,exam_year,language,tags,is_active,created_at
-       FROM question_bank ORDER BY created_at LIMIT $1 OFFSET $2`,
-      [Q_BATCH, offset]
+       FROM question_bank WHERE id > $1 ORDER BY id LIMIT $2`,
+      [lastId, Q_BATCH]
     );
     if (rows.length === 0) break;
     const r = await post("/seed/questions", rows);
     qTotal += r.inserted;
-    offset += Q_BATCH;
-    process.stdout.write(`\r  Questions: ${qTotal}/${offset} inserted`);
+    lastId = rows[rows.length - 1].id;
+    process.stdout.write(`\r  Questions: ${qTotal} inserted (cursor: ${lastId.slice(0, 8)}...)`);
   }
   console.log(`\nQuestions: ${qTotal} total inserted`);
 

@@ -13,11 +13,8 @@ import mockTestsRouter from "./mock-tests";
 import mockTestsAdminRouter from "./mock-tests-admin";
 import examPatternsRouter from "./exam-patterns-admin";
 import examsAdminRouter from "./exams-admin";
-import seedRouter from "./seed";
-
 const router: IRouter = Router();
 
-router.use(seedRouter);
 router.use(healthRouter);
 router.use(profilesRouter);
 router.use(studyPlansRouter);

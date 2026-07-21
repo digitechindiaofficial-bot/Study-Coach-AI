@@ -25,4 +25,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-SEED_TOKEN = "94rjc599nww-til0e2hmi78-mru16fyq"
