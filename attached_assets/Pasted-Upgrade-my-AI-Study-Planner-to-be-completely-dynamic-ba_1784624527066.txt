@@ -1,0 +1,389 @@
+Upgrade my AI Study Planner to be completely 
+dynamic based on the remaining days until 
+the user's exam date.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORE LOGIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — Calculate remaining days:
+
+const today = new Date()
+const examDate = new Date(profile.exam_date)
+const remainingDays = Math.ceil(
+  (examDate - today) / (1000 * 60 * 60 * 24)
+)
+
+// Handle edge cases:
+if (remainingDays <= 0) {
+  show: "Your exam date has passed. 
+         Please update your exam date 
+         in Settings."
+  return
+}
+
+if (remainingDays < 7) {
+  show: "Only ${remainingDays} days left!
+         Focus on revision and mock tests only."
+  // Show emergency revision plan
+}
+
+STEP 2 — Calculate time per subject:
+
+const totalSubjects = subjects.length
+const dailyHours = profile.daily_hours || 4
+const totalAvailableHours = 
+  remainingDays * dailyHours
+
+// Reserve last 20% days for revision
+const revisionDays = Math.ceil(remainingDays * 0.20)
+const studyDays = remainingDays - revisionDays
+
+// Distribute study days among subjects
+// Give more days to subjects with more topics
+const totalTopics = subjects.reduce(
+  (sum, s) => sum + (s.syllabus_topics?.length || 5), 
+  0
+)
+
+const subjectPlan = subjects.map(sub => {
+  const topicCount = sub.syllabus_topics?.length || 5
+  const subjectDays = Math.max(
+    Math.round((topicCount / totalTopics) * studyDays),
+    3 // minimum 3 days per subject
+  )
+  const hoursPerDay = dailyHours
+  const totalHours = subjectDays * hoursPerDay
+  const daysPerTopic = subjectDays / topicCount
+
+  return {
+    subject: sub.subject_name,
+    subjectCode: sub.subject_code,
+    topics: sub.syllabus_topics || [],
+    allocatedDays: subjectDays,
+    totalHours: totalHours,
+    daysPerTopic: Math.max(daysPerTopic, 0.5),
+    weightage: Math.round(
+      (topicCount / totalTopics) * 100
+    )
+  }
+})
+
+STEP 3 — Build day-by-day schedule:
+
+// Different plans based on remaining days
+
+if (remainingDays >= 60) {
+  // RELAXED PLAN — deep study
+  // 2-3 days per topic
+  // Full revision week at end
+  // 2 mock tests per week
+  planType = "Comprehensive"
+  daysPerTopic = 2
+}
+else if (remainingDays >= 30) {
+  // MODERATE PLAN — balanced
+  // 1-2 days per topic  
+  // 5 days revision at end
+  // 1 mock test per week
+  planType = "Focused"
+  daysPerTopic = 1.5
+}
+else if (remainingDays >= 15) {
+  // INTENSIVE PLAN — fast coverage
+  // 1 day per topic max
+  // 3 days revision at end
+  // Mock test every alternate day
+  planType = "Intensive"
+  daysPerTopic = 1
+}
+else {
+  // EMERGENCY PLAN — only important topics
+  // Cover only high-weightage topics
+  // Daily mock tests
+  // Focus on previous year questions
+  planType = "Emergency Revision"
+  daysPerTopic = 0.5
+}
+
+STEP 4 — Generate day-by-day calendar:
+
+Create an actual calendar from today 
+to exam date, assigning topics to each day:
+
+const fullPlan = []
+let currentDay = new Date(today)
+let subjectIndex = 0
+let topicIndex = 0
+
+while (currentDay < examDate) {
+  const dayOfWeek = currentDay.getDay()
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+  const daysLeft = Math.ceil(
+    (examDate - currentDay) / (1000*60*60*24)
+  )
+  const isLastWeek = daysLeft <= 7
+  const isLastThreeDays = daysLeft <= 3
+
+  let dayPlan = {
+    date: currentDay.toISOString().split('T')[0],
+    dayName: ['Sun','Mon','Tue','Wed',
+               'Thu','Fri','Sat'][dayOfWeek],
+    sessions: []
+  }
+
+  if (isLastThreeDays) {
+    // Final 3 days — only revision
+    dayPlan.sessions = [{
+      type: "FINAL REVISION",
+      topic: "Complete Syllabus Revision",
+      subject: "All Subjects",
+      duration: dailyHours * 60,
+      tasks: [
+        "Revise all your notes",
+        "Solve previous year papers",
+        "Focus on weak topics only",
+        "Stay calm and confident"
+      ]
+    }]
+  }
+  else if (isLastWeek) {
+    // Last week — mock tests
+    dayPlan.sessions = [{
+      type: "MOCK TEST",
+      topic: "Full Mock Test",
+      subject: "All Subjects", 
+      duration: 120,
+      tasks: [
+        "Attempt full mock test",
+        "Analyse mistakes",
+        "Revise wrong answers"
+      ]
+    }]
+  }
+  else if (isWeekend) {
+    // Weekend — revision of week's topics
+    dayPlan.sessions = [{
+      type: "REVISION",
+      topic: "Weekly Revision",
+      subject: "This week's subjects",
+      duration: dailyHours * 60,
+      tasks: [
+        "Revise all topics studied this week",
+        "Solve 50 mixed practice questions",
+        "Make quick notes of important points"
+      ]
+    }]
+  }
+  else {
+    // Weekday — study new topic
+    const currentSubject = subjectPlan[subjectIndex]
+    
+    if (currentSubject && 
+        topicIndex < currentSubject.topics.length) {
+      
+      const topic = currentSubject.topics[topicIndex]
+      
+      // Morning session — new topic
+      dayPlan.sessions.push({
+        type: "STUDY",
+        time: "Morning",
+        topic: topic,
+        subject: currentSubject.subject,
+        duration: Math.round(dailyHours * 60 * 0.6),
+        tasks: [
+          `Study: ${topic} in depth`,
+          "Make concise notes",
+          `Solve ${Math.round(dailyHours * 8)} MCQs`,
+          "Note important facts and dates"
+        ]
+      })
+      
+      // Evening session — practice
+      dayPlan.sessions.push({
+        type: "PRACTICE",
+        time: "Evening",
+        topic: topic + " Practice",
+        subject: currentSubject.subject,
+        duration: Math.round(dailyHours * 60 * 0.4),
+        tasks: [
+          "Revise morning's notes",
+          `Attempt ${Math.round(dailyHours * 5)} more MCQs`,
+          "Review previous year questions on this topic",
+          "Identify and note weak points"
+        ]
+      })
+
+      // Move to next topic
+      topicIndex++
+      
+      // If all topics of this subject done,
+      // move to next subject
+      if (topicIndex >= currentSubject.topics.length) {
+        subjectIndex++
+        topicIndex = 0
+      }
+    }
+  }
+
+  fullPlan.push(dayPlan)
+  
+  // Move to next day
+  currentDay = new Date(currentDay)
+  currentDay.setDate(currentDay.getDate() + 1)
+}
+
+STEP 5 — Pass to AI for enhancement:
+
+Send this pre-calculated plan to Claude AI 
+with this prompt:
+
+const aiPrompt = `
+You are an expert coach for ${targetExam}.
+
+I have calculated this study schedule based on:
+- Exam: ${targetExam}
+- Today: ${today.toDateString()}
+- Exam Date: ${examDate.toDateString()}
+- Days Remaining: ${remainingDays}
+- Daily Study Hours: ${dailyHours}h
+- Plan Type: ${planType}
+
+PRE-CALCULATED SCHEDULE:
+${JSON.stringify(fullPlan, null, 2)}
+
+SUBJECTS WITH SYLLABUS:
+${JSON.stringify(subjectPlan, null, 2)}
+
+STUDENT'S WEAK AREAS:
+${JSON.stringify(weakSubjects, null, 2)}
+
+Please enhance this schedule by:
+1. Adding specific study tips for each topic
+2. Highlighting important topics for ${targetExam}
+3. Adjusting time for weak areas 
+   (give 50% more time to weak subjects)
+4. Adding motivational notes for tough days
+5. Suggesting specific resources for each topic
+
+Keep the same date structure but make 
+each day's plan more detailed and actionable.
+
+Return enhanced JSON in exact same format.
+`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UI — HOW TO DISPLAY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HEADER SECTION:
+┌────────────────────────────────────┐
+│ 📅 Study Planner                   │
+│ IBPS PO • 45 days remaining        │
+│                                    │
+│ ⏰ 45 days  📚 180h  🎯 72 topics │
+│                                    │
+│ Plan Type: FOCUSED PLAN            │
+│ Daily: 4h study + revision         │
+└────────────────────────────────────┘
+
+COUNTDOWN BANNER:
+┌────────────────────────────────────┐
+│ 🔥 45 Days to IBPS PO!            │
+│ ████████████░░░░░░░  60% planned  │
+└────────────────────────────────────┘
+
+SUBJECT BREAKDOWN:
+Show each subject with:
+- Days allocated
+- Topics to cover  
+- Hours total
+- Start date → End date
+
+Example:
+Quantitative Aptitude
+Days: 12 | Topics: 21 | Hours: 48
+📅 Jul 21 → Aug 02
+
+English Language  
+Days: 8  | Topics: 10 | Hours: 32
+📅 Aug 03 → Aug 11
+
+DAILY VIEW (Calendar style):
+Show current week by default
+
+Mon Jul 21          ← TODAY
+🌅 Morning (2.5h)
+   📖 Number System & HCF/LCM
+   Quantitative Aptitude
+   ✏️ Practice 20 MCQs after studying
+   💡 Tip: Start with basics, 
+      HCF/LCM is high-weightage in IBPS
+
+🌆 Evening (1.5h)
+   🔄 Number System Practice
+   ✏️ Solve 15 previous year questions
+   📝 Note: Common mistake areas
+
+Tue Jul 22
+🌅 Morning (2.5h)
+   📖 Percentage & Profit-Loss
+   ...
+
+Sat Jul 26  [REVISION DAY]
+🔄 Revise: Number System, Percentage, 
+   Profit-Loss, SI/CI
+✏️ Attempt 50 mixed questions
+📊 Check your accuracy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Plan MUST start from TODAY's date
+2. Plan MUST end on exam date
+3. Every single day must have a task
+4. Weekend = Revision (no new topics)
+5. Last 7 days = Mock tests only
+6. Last 3 days = Light revision + rest
+7. If remaining days < total topics,
+   combine 2 topics per day
+8. If remaining days > 2x topics,
+   give 2 days per topic (deep study)
+9. Weak subjects get 50% more days
+10. Never exceed exam date
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLAN TYPES BASED ON DAYS LEFT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+> 90 days = "Comprehensive Plan"
+  Deep study, 2-3 days per topic
+  Multiple revisions
+  
+60-90 days = "Strategic Plan"  
+  Thorough coverage, 2 days per topic
+  Weekly revision
+  
+30-60 days = "Focused Plan"
+  1-2 days per topic
+  Bi-weekly revision
+  
+15-30 days = "Intensive Plan"
+  1 day per topic
+  Daily quick revision
+  
+7-15 days = "Crash Course"
+  Only important topics
+  Focus on high-weightage areas
+  Daily mock tests
+  
+< 7 days = "Emergency Plan"
+  Revision only
+  Previous year papers
+  Important formulas/facts only
+
+Please implement this completely.
+The key feature is: exam date drives 
+everything — days, topics per day, 
+revision frequency, everything.
