@@ -1,0 +1,201 @@
+My AI Study Planner is showing a generic plan 
+with wrong subjects for my exam.
+
+CURRENT PROBLEM:
+User's target exam = BPSC
+But planner shows SSC CGL subjects:
+- Quantitative Aptitude 25%
+- English Language 25%
+- General Intelligence 25%
+- General Awareness 25%
+
+This is completely wrong for BPSC!
+
+BPSC correct subjects should be:
+- History & Culture
+- Geography & Environment
+- Indian Polity & Governance
+- Economy & Development
+- General Science
+- Mathematics & Reasoning
+- General Hindi
+- Bihar Special
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROOT CAUSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The AI study planner prompt is using a 
+hardcoded subject list instead of fetching 
+the actual subjects from the database for 
+the user's target exam.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Find the study planner generation code.
+It likely has an AI prompt like:
+"Create a study plan for [exam]"
+
+But it is NOT passing the actual subjects 
+and syllabus to the AI.
+
+STEP 1 — Fetch user's exam and subjects 
+from database BEFORE calling AI:
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('exam_code, target_exam, exam_date')
+  .eq('user_id', userId)
+  .single()
+
+const targetExam = profile.exam_code 
+                   || profile.target_exam
+
+const { data: subjects } = await supabase
+  .from('subjects')
+  .select('subject_name, subject_code, 
+           syllabus_topics, total_questions')
+  .eq('exam_code', targetExam)
+  .eq('is_active', true)
+  .order('display_order')
+
+STEP 2 — Build exam-specific AI prompt:
+
+const subjectList = subjects.map(s => ({
+  name: s.subject_name,
+  topics: s.syllabus_topics || [],
+  questions: s.total_questions || 100
+}))
+
+const prompt = `
+You are an expert study planner for Indian 
+government exams.
+
+Create a detailed 2-week study plan for:
+Exam: ${targetExam}
+Exam Date: ${profile.exam_date}
+Daily Study Hours: ${profile.daily_hours || 4}
+
+SUBJECTS FOR THIS EXAM (use ONLY these):
+${subjectList.map(s => `
+- ${s.name}
+  Topics: ${s.topics.slice(0,5).join(', ')}
+  Total Questions: ${s.questions}
+`).join('\n')}
+
+IMPORTANT RULES:
+1. Only use the subjects listed above
+2. Allocate time based on number of topics
+3. Include revision days on weekends
+4. Each day should have 2-3 topics max
+5. Return a structured JSON plan
+
+Return JSON in this format:
+{
+  "exam": "${targetExam}",
+  "strategy": "...",
+  "subjects": [
+    {
+      "name": "subject name",
+      "weightage": 20,
+      "recommendedHours": 40,
+      "topics": ["topic1", "topic2"]
+    }
+  ],
+  "weeklySchedule": [
+    {
+      "week": 1,
+      "title": "Week title",
+      "days": [
+        {
+          "day": "MON",
+          "tasks": [
+            {
+              "topic": "topic name",
+              "subject": "subject name", 
+              "duration": 90
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+`
+
+STEP 3 — Call AI with this prompt:
+
+const response = await fetch(
+  'https://api.anthropic.com/v1/messages',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+  }
+)
+
+STEP 4 — Parse and display the plan:
+
+The response will have correct subjects 
+for the user's actual exam.
+
+Display subject breakdown using the 
+subjects from AI response, NOT hardcoded.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPECTED RESULT FOR BPSC USER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Subject Breakdown:
+History & Culture          15%  40h
+Geography & Environment    15%  40h
+Indian Polity & Governance 15%  35h
+Economy & Development      10%  30h
+General Science            15%  35h
+Mathematics & Reasoning    15%  35h
+General Hindi              10%  25h
+Bihar Special              05%  15h
+
+Weekly Schedule:
+W1: History & Culture Focus
+MON: Ancient India Topics  90min
+TUE: Medieval History      90min
+WED: Modern India          90min
+...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALSO FIX THESE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Title shows "AI-generated 2-week plan 
+   for OTHER" — fix to show actual exam name:
+   "AI-generated 2-week plan for BPSC"
+
+2. Update my profile in database:
+   exam_code = 'BPSC'
+   plan = 'pro'
+   for user: digitechindiaofficial@gmail.com
+
+3. After fixing, regenerate the study plan 
+   and confirm it shows BPSC subjects only
+
+4. Make sure this works for ALL exams:
+   SSC CGL → SSC CGL subjects
+   BPSC → BPSC subjects
+   IBPS PO → IBPS PO subjects
+   etc.
+
+Do not hardcode any subject list anywhere.
+Always fetch from subjects table in database.

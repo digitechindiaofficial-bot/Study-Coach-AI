@@ -1,67 +1,79 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import { profilesTable, studyPlansTable, dailyTasksTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { getSyllabusText } from "../lib/syllabi";
 
 const router = Router();
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+interface DbSubject {
+  name: string;
+  subject_code: string | null;
+  syllabus_topics: string[] | null;
+  total_questions: number | null;
+}
+
+async function fetchExamSubjects(examCode: string): Promise<DbSubject[]> {
+  const { rows } = await pool.query<DbSubject>(
+    `SELECT ss.name, ss.subject_code, ss.syllabus_topics, ss.total_questions
+     FROM syllabus_subjects ss
+     JOIN syllabus_exams se ON se.id = ss.exam_id
+     WHERE se.code = $1 AND ss.is_active = true
+     ORDER BY ss.display_order`,
+    [examCode]
+  );
+  return rows;
+}
 
 async function getProfileByClerkId(clerkUserId: string) {
   const rows = await db.select().from(profilesTable).where(eq(profilesTable.clerkUserId, clerkUserId)).limit(1);
   return rows[0] ?? null;
 }
 
-const EXAM_SUBJECTS: Record<string, Array<{ name: string; weightage_percent: number; recommended_hours: number; topics: string[] }>> = {
-  SSC_CGL: [
-    { name: "Quantitative Aptitude", weightage_percent: 25, recommended_hours: 80, topics: ["Number System", "Percentage", "Ratio & Proportion", "Algebra", "Geometry", "Trigonometry", "Data Interpretation", "Time & Work", "Speed & Distance"] },
-    { name: "English Language", weightage_percent: 25, recommended_hours: 60, topics: ["Reading Comprehension", "Cloze Test", "Fill in the Blanks", "Error Spotting", "Sentence Improvement", "Synonyms & Antonyms", "Idioms & Phrases"] },
-    { name: "General Intelligence", weightage_percent: 25, recommended_hours: 50, topics: ["Analogies", "Series", "Coding-Decoding", "Blood Relations", "Direction Sense", "Matrix", "Venn Diagrams", "Syllogism"] },
-    { name: "General Awareness", weightage_percent: 25, recommended_hours: 60, topics: ["History", "Geography", "Polity", "Economics", "Science & Technology", "Current Affairs", "Sports", "Awards & Honours"] },
-  ],
-  BANKING: [
-    { name: "Quantitative Aptitude", weightage_percent: 30, recommended_hours: 90, topics: ["Number Series", "Simplification", "Data Interpretation", "Quadratic Equations", "Percentage", "Profit & Loss", "Time & Work", "Probability"] },
-    { name: "Reasoning Ability", weightage_percent: 30, recommended_hours: 70, topics: ["Puzzles & Seating Arrangement", "Syllogism", "Coding-Decoding", "Blood Relations", "Inequality", "Direction Sense", "Input-Output"] },
-    { name: "English Language", weightage_percent: 20, recommended_hours: 50, topics: ["Reading Comprehension", "Cloze Test", "Para Jumbles", "Error Detection", "Fill in the Blanks", "Sentence Correction"] },
-    { name: "General Awareness", weightage_percent: 20, recommended_hours: 40, topics: ["Banking Awareness", "Financial Awareness", "Current Affairs", "Static GK", "Government Schemes"] },
-  ],
-  RAILWAY: [
-    { name: "Mathematics", weightage_percent: 30, recommended_hours: 80, topics: ["Number System", "LCM & HCF", "Percentage", "Ratio", "Time & Work", "Speed & Distance", "Geometry", "Mensuration"] },
-    { name: "General Intelligence", weightage_percent: 25, recommended_hours: 55, topics: ["Analogies", "Alphabetical Series", "Coding-Decoding", "Mathematical Operations", "Conclusions", "Decision Making"] },
-    { name: "General Science", weightage_percent: 25, recommended_hours: 65, topics: ["Physics", "Chemistry", "Biology", "Computer Basics", "Environmental Science"] },
-    { name: "General Awareness", weightage_percent: 20, recommended_hours: 50, topics: ["History", "Geography", "Polity", "Economy", "Current Affairs", "Railways GK"] },
-  ],
-};
-
-function buildTemplatePlan(examType: string, weeksRemaining: number, dailyHours: number) {
-  const subjects = EXAM_SUBJECTS[examType] ?? EXAM_SUBJECTS["SSC_CGL"];
+function buildTemplatePlan(
+  examType: string,
+  dbSubjects: DbSubject[],
+  weeksRemaining: number,
+  dailyHours: number
+) {
   const totalWeeks = Math.min(weeksRemaining, 12);
   const scheduleWeeks = Math.min(weeksRemaining, 4);
+  const subjectCount = dbSubjects.length || 1;
+  const weightage = Math.floor(100 / subjectCount);
 
-  const subjectList = subjects.map(s => ({
-    name: s.name,
-    weightage_percent: s.weightage_percent,
-    recommended_hours: s.recommended_hours,
-    topics: s.topics.map((t, i) => ({
-      name: t,
-      estimated_hours: 4,
-      priority: i < 3 ? "high" : i < 6 ? "medium" : "low",
-      week_number: (i % totalWeeks) + 1,
-    })),
-  }));
+  const subjectList = dbSubjects.map((s, idx) => {
+    const topics = Array.isArray(s.syllabus_topics) ? s.syllabus_topics : [];
+    return {
+      name: s.name,
+      weightage_percent: idx === dbSubjects.length - 1 ? 100 - weightage * (subjectCount - 1) : weightage,
+      recommended_hours: Math.round((totalWeeks * dailyHours * 7 * weightage) / 100),
+      topics: topics.map((t: string, i: number) => ({
+        name: t,
+        estimated_hours: 4,
+        priority: i < 3 ? "high" : i < 6 ? "medium" : "low",
+        week_number: (i % totalWeeks) + 1,
+      })),
+    };
+  });
 
+  const subjectNames = dbSubjects.map(s => s.name);
   const dayMinutes = dailyHours * 60;
-  const subjectNames = subjects.map(s => s.name);
 
-  const makeDay = (subjectIdx: number, topicIdx: number, type: string) => [{
-    subject: subjectNames[subjectIdx % subjectNames.length],
-    topic: subjects[subjectIdx % subjects.length].topics[topicIdx % subjects[subjectIdx % subjects.length].topics.length],
-    duration_minutes: Math.min(dayMinutes, 90),
-    type,
-  }];
+  const makeDay = (subjectIdx: number, topicIdx: number, type: string) => {
+    const s = dbSubjects[subjectIdx % dbSubjects.length];
+    const topics = Array.isArray(s?.syllabus_topics) && s.syllabus_topics.length > 0
+      ? s.syllabus_topics
+      : ["General Study"];
+    return [{
+      subject: subjectNames[subjectIdx % subjectNames.length],
+      topic: topics[topicIdx % topics.length],
+      duration_minutes: Math.min(dayMinutes, 90),
+      type,
+    }];
+  };
 
   const weeklySchedule = Array.from({ length: scheduleWeeks }, (_, w) => ({
     week: w + 1,
@@ -184,7 +196,22 @@ router.post("/study-plans/generate", async (req, res) => {
     weeksRemaining = Math.max(1, Math.ceil((exam.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 7)));
   }
 
-  const syllabusText = getSyllabusText(examType);
+  // Fetch real subjects from DB for this exam
+  const dbSubjects = await fetchExamSubjects(examType);
+
+  let subjectSection: string;
+  if (dbSubjects.length > 0) {
+    subjectSection = `SUBJECTS FOR ${examType} (use ONLY these subjects, in this order):\n` +
+      dbSubjects.map(s => {
+        const topics = Array.isArray(s.syllabus_topics) && s.syllabus_topics.length > 0
+          ? `\n  Key Topics: ${(s.syllabus_topics as string[]).slice(0, 6).join(", ")}`
+          : "";
+        const qCount = s.total_questions ? ` (${s.total_questions} questions)` : "";
+        return `- ${s.name}${qCount}${topics}`;
+      }).join("\n");
+  } else {
+    subjectSection = `Generate appropriate subjects for the ${examType} exam based on its official syllabus.`;
+  }
 
   const prompt = `You are an expert study planner for Indian government competitive examinations.
 
@@ -194,21 +221,24 @@ Student Profile:
 - Weeks Remaining: ${weeksRemaining}
 - Daily Study Hours: ${dailyHours}
 
+${subjectSection}
+
 Create a detailed, week-by-week study plan. Be specific about topics, not vague.
+Allocate weightage proportionally based on number of questions and importance.
 
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
   "exam": "${examType}",
   "total_weeks": ${Math.min(weeksRemaining, 12)},
-  "strategy": "<2-3 sentence overall strategy>",
+  "strategy": "<2-3 sentence overall strategy specific to ${examType}>",
   "subjects": [
     {
-      "name": "<subject>",
-      "weightage_percent": <number>,
+      "name": "<subject name from list above>",
+      "weightage_percent": <number, all must sum to 100>,
       "recommended_hours": <number>,
       "topics": [
         {
-          "name": "<topic name>",
+          "name": "<specific topic name>",
           "estimated_hours": <number>,
           "priority": "high|medium|low",
           "week_number": <number>
@@ -233,10 +263,7 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
   ]
 }
 
-SYLLABUS REFERENCE for ${examType}:
-${syllabusText}
-
-Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 for brevity).`;
+Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule.`;
 
   let planData: object;
   let source = "ai";
@@ -255,7 +282,7 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule (or up to 4 fo
     const isQuota = errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED") || errStr.includes("quota");
     if (isQuota) {
       req.log.warn("Gemini quota exhausted — using template plan");
-      planData = buildTemplatePlan(examType, weeksRemaining, dailyHours);
+      planData = buildTemplatePlan(examType, dbSubjects, weeksRemaining, dailyHours);
       source = "template";
     } else {
       req.log.error({ err: errStr }, "study plan generation failed");
