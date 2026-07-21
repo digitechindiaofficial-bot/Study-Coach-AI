@@ -11,6 +11,8 @@
     "finalize-syllabi": "tsx ./src/finalize-syllabi.ts",
     "migrate-quiz-codes": "tsx ./src/migrate-quiz-codes.ts",
     "migrate-to-question-bank": "tsx ./src/migrate-to-question-bank.ts",
+    "export-to-prod": "tsx ./src/export-to-prod.ts",
+    "call-prod-seed": "tsx ./src/call-prod-seed.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
