@@ -6,24 +6,58 @@ import { eq, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 
 const router = Router();
-
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 interface DbSubject {
+  id: string;
   name: string;
   subject_code: string | null;
-  syllabus_topics: string[] | null;
   total_questions: number | null;
+  topics: string[];
 }
 
-async function fetchExamSubjects(examCode: string): Promise<DbSubject[]> {
+interface WeakArea {
+  subject_code: string;
+  score_pct: number;
+  total_attempts: number;
+}
+
+async function fetchExamData(examCode: string): Promise<DbSubject[]> {
   const { rows } = await pool.query<DbSubject>(
-    `SELECT ss.name, ss.subject_code, ss.syllabus_topics, ss.total_questions
+    `SELECT
+       ss.id,
+       ss.name,
+       ss.subject_code,
+       ss.total_questions,
+       COALESCE(
+         json_agg(st.name ORDER BY st.display_order)
+           FILTER (WHERE st.id IS NOT NULL),
+         '[]'::json
+       ) AS topics
      FROM syllabus_subjects ss
      JOIN syllabus_exams se ON se.id = ss.exam_id
+     LEFT JOIN syllabus_topics st ON st.subject_id = ss.id
      WHERE se.code = $1 AND ss.is_active = true
+     GROUP BY ss.id, ss.name, ss.subject_code, ss.total_questions, ss.display_order
      ORDER BY ss.display_order`,
     [examCode]
+  );
+  return rows;
+}
+
+async function fetchWeakAreas(profileId: string, examCode: string): Promise<WeakArea[]> {
+  const { rows } = await pool.query<WeakArea>(
+    `SELECT
+       subject_code,
+       ROUND(100.0 * SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) / COUNT(*))::int AS score_pct,
+       COUNT(*)::int AS total_attempts
+     FROM question_attempts
+     WHERE user_id = $1 AND exam_code = $2
+     GROUP BY subject_code
+     HAVING COUNT(*) >= 5
+     ORDER BY score_pct ASC
+     LIMIT 4`,
+    [profileId, examCode]
   );
   return rows;
 }
@@ -36,21 +70,29 @@ async function getProfileByClerkId(clerkUserId: string) {
 function buildTemplatePlan(
   examType: string,
   dbSubjects: DbSubject[],
+  weaksMap: Record<string, number>,
   weeksRemaining: number,
   dailyHours: number
 ) {
   const totalWeeks = Math.min(weeksRemaining, 12);
   const scheduleWeeks = Math.min(weeksRemaining, 4);
   const subjectCount = dbSubjects.length || 1;
-  const weightage = Math.floor(100 / subjectCount);
+  const baseWeight = Math.floor(100 / subjectCount);
 
-  const subjectList = dbSubjects.map((s, idx) => {
-    const topics = Array.isArray(s.syllabus_topics) ? s.syllabus_topics : [];
+  const subjects = dbSubjects.map((s, idx) => {
+    const score = weaksMap[s.subject_code ?? ""] ?? 80;
+    const isWeak = score < 60;
+    const weightage = idx === dbSubjects.length - 1
+      ? 100 - baseWeight * (subjectCount - 1)
+      : baseWeight;
+    const hours = Math.round((totalWeeks * dailyHours * 7 * (isWeak ? weightage * 1.5 : weightage)) / 100);
     return {
       name: s.name,
-      weightage_percent: idx === dbSubjects.length - 1 ? 100 - weightage * (subjectCount - 1) : weightage,
-      recommended_hours: Math.round((totalWeeks * dailyHours * 7 * weightage) / 100),
-      topics: topics.map((t: string, i: number) => ({
+      weightage_percent: weightage,
+      recommended_hours: Math.min(hours, 80),
+      topic_count: s.topics.length,
+      is_weak: isWeak,
+      topics: s.topics.map((t, i) => ({
         name: t,
         estimated_hours: 4,
         priority: i < 3 ? "high" : i < 6 ? "medium" : "low",
@@ -59,42 +101,62 @@ function buildTemplatePlan(
     };
   });
 
-  const subjectNames = dbSubjects.map(s => s.name);
-  const dayMinutes = dailyHours * 60;
-
-  const makeDay = (subjectIdx: number, topicIdx: number, type: string) => {
-    const s = dbSubjects[subjectIdx % dbSubjects.length];
-    const topics = Array.isArray(s?.syllabus_topics) && s.syllabus_topics.length > 0
-      ? s.syllabus_topics
-      : ["General Study"];
-    return [{
-      subject: subjectNames[subjectIdx % subjectNames.length],
-      topic: topics[topicIdx % topics.length],
-      duration_minutes: Math.min(dayMinutes, 90),
-      type,
-    }];
+  const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const makeSession = (subIdx: number, topicIdx: number, time: "Morning" | "Evening", type: "study" | "revision") => {
+    const s = dbSubjects[subIdx % dbSubjects.length];
+    const topic = s.topics.length > 0 ? s.topics[topicIdx % s.topics.length] : "General Topics";
+    return {
+      time,
+      topic,
+      subject: s.name,
+      duration: time === "Morning" ? 90 : 60,
+      tasks: [
+        `Study ${topic} in detail`,
+        `Make concise notes`,
+        `Solve 20 practice MCQs`,
+      ],
+      tip: `Focus on understanding core concepts of ${topic}`,
+    };
   };
 
   const weeklySchedule = Array.from({ length: scheduleWeeks }, (_, w) => ({
     week: w + 1,
-    theme: `${subjectNames[w % subjectNames.length]} Focus — Week ${w + 1}`,
-    daily_tasks: {
-      Monday:    makeDay(w,     w,     "study"),
-      Tuesday:   makeDay(w + 1, w + 1, "study"),
-      Wednesday: makeDay(w,     w + 2, "study"),
-      Thursday:  makeDay(w + 1, w + 2, "study"),
-      Friday:    makeDay(w + 2, w,     "study"),
-      Saturday:  makeDay(w,     w,     "revision"),
-      Sunday:    [{ subject: "Revision", topic: `Week ${w + 1} Full Revision`, duration_minutes: 120, type: "revision" }],
-    },
+    theme: `${dbSubjects[w % dbSubjects.length]?.name ?? "General"} Focus — Week ${w + 1}`,
+    days: dayOrder.map((day, d) => {
+      if (day === "Sunday") {
+        return {
+          day,
+          sessions: [{
+            time: "Morning",
+            topic: `Week ${w + 1} Full Revision`,
+            subject: "Revision",
+            duration: 120,
+            tasks: ["Review all topics from this week", "Attempt a mini mock test", "Identify weak areas"],
+            tip: "Revision is as important as learning new topics",
+          }],
+        };
+      }
+      if (day === "Saturday") {
+        return {
+          day,
+          sessions: [makeSession(w + d, d, "Morning", "revision")],
+        };
+      }
+      return {
+        day,
+        sessions: [
+          makeSession(w + d, d, "Morning", "study"),
+          makeSession(w + d + 1, d + 1, "Evening", "study"),
+        ],
+      };
+    }),
   }));
 
-  const examLabel = examType.replace(/_/g, " ");
   return {
     exam: examType,
     total_weeks: totalWeeks,
-    strategy: `Focus on high-weightage sections first with ${dailyHours}h daily study. Dedicate weekdays to new topics and weekends to revision and mock tests. Track accuracy weekly and revise weak areas before ${examLabel}.`,
-    subjects: subjectList,
+    strategy: `Systematic coverage of all ${examType} topics with extra time on weak areas. Weekdays for new topics, Saturdays for revision, Sundays for full revision + mock tests.`,
+    subjects,
     weekly_schedule: weeklySchedule,
   };
 }
@@ -116,20 +178,43 @@ async function savePlanAndSeedTasks(
   }).returning();
 
   const today = new Date();
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dayNameToOffset: Record<string, number> = {
+    Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3,
+    Friday: 4, Saturday: 5, Sunday: 6,
+  };
+
   const taskRows: {
     userId: string; date: string; subject: string; topic: string;
     durationMinutes: number; taskType: string; isCompleted: boolean;
   }[] = [];
 
   const weekSchedule = (planData as any).weekly_schedule?.[0];
-  if (weekSchedule?.daily_tasks) {
+
+  if (weekSchedule?.days) {
+    for (const dayObj of weekSchedule.days) {
+      const offset = dayNameToOffset[dayObj.day] ?? 0;
+      const date = new Date(today);
+      date.setDate(date.getDate() + offset);
+      const dateStr = date.toISOString().split("T")[0];
+      for (const session of (dayObj.sessions ?? [])) {
+        taskRows.push({
+          userId,
+          date: dateStr,
+          subject: session.subject ?? "General",
+          topic: session.topic ?? "Study",
+          durationMinutes: session.duration ?? 60,
+          taskType: session.time === "Morning" ? "study" : "revision",
+          isCompleted: false,
+        });
+      }
+    }
+  } else if (weekSchedule?.daily_tasks) {
+    const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       const dayName = dayNames[date.getDay()];
-      const dateTasks = weekSchedule.daily_tasks[dayName] ?? [];
-      for (const t of dateTasks) {
+      for (const t of (weekSchedule.daily_tasks[dayName] ?? [])) {
         taskRows.push({
           userId,
           date: date.toISOString().split("T")[0],
@@ -180,9 +265,7 @@ router.post("/study-plans/generate", async (req, res) => {
       .where(eq(studyPlansTable.userId, profile.id))
       .orderBy(desc(studyPlansTable.createdAt))
       .limit(1);
-    if (existing[0]) {
-      return res.json({ plan: existing[0], cached: true });
-    }
+    if (existing[0]) return res.json({ plan: existing[0], cached: true });
   }
 
   const examType = profile.examType ?? "SSC_CGL";
@@ -190,80 +273,115 @@ router.post("/study-plans/generate", async (req, res) => {
   const dailyHours = profile.dailyStudyHours ?? 4;
 
   let weeksRemaining = 12;
+  let daysRemaining = 84;
   if (examDate) {
     const exam = new Date(examDate);
     const now = new Date();
-    weeksRemaining = Math.max(1, Math.ceil((exam.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 7)));
+    daysRemaining = Math.max(7, Math.ceil((exam.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    weeksRemaining = Math.max(1, Math.ceil(daysRemaining / 7));
   }
 
-  // Fetch real subjects from DB for this exam
-  const dbSubjects = await fetchExamSubjects(examType);
+  const [dbSubjects, weakAreas] = await Promise.all([
+    fetchExamData(examType),
+    fetchWeakAreas(profile.id, examType),
+  ]);
 
-  let subjectSection: string;
-  if (dbSubjects.length > 0) {
-    subjectSection = `SUBJECTS FOR ${examType} (use ONLY these subjects, in this order):\n` +
-      dbSubjects.map(s => {
-        const topics = Array.isArray(s.syllabus_topics) && s.syllabus_topics.length > 0
-          ? `\n  Key Topics: ${(s.syllabus_topics as string[]).slice(0, 6).join(", ")}`
+  const weaksMap: Record<string, number> = {};
+  for (const w of weakAreas) {
+    if (w.subject_code) weaksMap[w.subject_code] = w.score_pct;
+  }
+
+  const subjectBlock = dbSubjects.length > 0
+    ? dbSubjects.map(s => {
+        const topicList = s.topics.length > 0
+          ? `\n  Topics (${s.topics.length}): ${s.topics.join(", ")}`
           : "";
-        const qCount = s.total_questions ? ` (${s.total_questions} questions)` : "";
-        return `- ${s.name}${qCount}${topics}`;
-      }).join("\n");
-  } else {
-    subjectSection = `Generate appropriate subjects for the ${examType} exam based on its official syllabus.`;
-  }
+        const qNote = s.total_questions ? ` — ${s.total_questions} questions in bank` : "";
+        const weakNote = weaksMap[s.subject_code ?? ""] !== undefined
+          ? ` ⚠️ WEAK AREA (${weaksMap[s.subject_code ?? ""]}% score — give 50% more time)`
+          : "";
+        return `• ${s.name}${qNote}${weakNote}${topicList}`;
+      }).join("\n")
+    : `Generate appropriate subjects for ${examType}.`;
 
-  const prompt = `You are an expert study planner for Indian government competitive examinations.
+  const weakBlock = weakAreas.length > 0
+    ? "STUDENT WEAK AREAS (prioritise these):\n" +
+      weakAreas.map(w => `• ${w.subject_code}: ${w.score_pct}% score (${w.total_attempts} attempts)`).join("\n")
+    : "No weak area data yet — distribute time evenly.";
 
-Student Profile:
-- Exam: ${examType}
-- Exam Date: ${examDate ?? "in 12 weeks"}
-- Weeks Remaining: ${weeksRemaining}
-- Daily Study Hours: ${dailyHours}
+  const scheduleWeeks = Math.min(weeksRemaining, 4);
 
-${subjectSection}
+  const prompt = `You are an expert coach for the ${examType} Indian government exam.
 
-Create a detailed, week-by-week study plan. Be specific about topics, not vague.
-Allocate weightage proportionally based on number of questions and importance.
+STUDENT PROFILE:
+- Target Exam: ${examType}
+- Exam Date: ${examDate ?? `in ${weeksRemaining} weeks`}
+- Days Remaining: ${daysRemaining}
+- Daily Study Hours: ${dailyHours}h
 
-Return ONLY valid JSON in this exact format (no markdown, no explanation):
+EXAM SYLLABUS — use ONLY these subjects and topics:
+${subjectBlock}
+
+${weakBlock}
+
+PLANNING RULES:
+1. Cover every topic listed above at least once
+2. Give 50% extra time to weak areas
+3. Each day: Morning session (new topic) + Evening session (practice/revision)
+4. Saturday: Revision of the week's topics
+5. Sunday: Full revision + mock test
+6. Topics with more questions get proportionally more time
+7. Last 20% of days: only revision + mock tests
+
+Return ONLY valid JSON — no markdown, no explanation:
 {
   "exam": "${examType}",
   "total_weeks": ${Math.min(weeksRemaining, 12)},
-  "strategy": "<2-3 sentence overall strategy specific to ${examType}>",
+  "strategy": "<2-3 sentences specific to ${examType} and this student's weak areas>",
   "subjects": [
     {
-      "name": "<subject name from list above>",
-      "weightage_percent": <number, all must sum to 100>,
+      "name": "<subject>",
+      "weightage_percent": <0-100, all must sum to 100>,
       "recommended_hours": <number>,
+      "topic_count": <number of topics>,
       "topics": [
-        {
-          "name": "<specific topic name>",
-          "estimated_hours": <number>,
-          "priority": "high|medium|low",
-          "week_number": <number>
-        }
+        { "name": "<topic>", "estimated_hours": <number>, "priority": "high|medium|low", "week_number": <1-${scheduleWeeks}> }
       ]
     }
   ],
   "weekly_schedule": [
     {
       "week": 1,
-      "theme": "<focus area for week>",
-      "daily_tasks": {
-        "Monday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study|revision|quiz"}],
-        "Tuesday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study"}],
-        "Wednesday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study"}],
-        "Thursday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study"}],
-        "Friday": [{"subject": "", "topic": "", "duration_minutes": 60, "type": "study"}],
-        "Saturday": [{"subject": "", "topic": "", "duration_minutes": 90, "type": "revision"}],
-        "Sunday": [{"subject": "Revision", "topic": "Weekly revision", "duration_minutes": 120, "type": "revision"}]
-      }
+      "theme": "<focus area>",
+      "days": [
+        {
+          "day": "Monday",
+          "sessions": [
+            {
+              "time": "Morning",
+              "topic": "<specific topic name from syllabus>",
+              "subject": "<subject name>",
+              "duration": 90,
+              "tasks": ["<specific task 1>", "<specific task 2>", "Solve <N> practice MCQs"],
+              "tip": "<1 specific exam tip for this topic>"
+            },
+            {
+              "time": "Evening",
+              "topic": "<specific topic name>",
+              "subject": "<subject name>",
+              "duration": 60,
+              "tasks": ["<task 1>", "<task 2>", "Solve <N> MCQs"],
+              "tip": "<specific tip>"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
 
-Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule.`;
+Generate exactly ${scheduleWeeks} week(s) covering days Monday through Sunday.
+Use specific topic names from the syllabus above — never use "General Study" or vague names.`;
 
   let planData: object;
   let source = "ai";
@@ -282,7 +400,7 @@ Generate exactly ${Math.min(weeksRemaining, 4)} weeks of schedule.`;
     const isQuota = errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED") || errStr.includes("quota");
     if (isQuota) {
       req.log.warn("Gemini quota exhausted — using template plan");
-      planData = buildTemplatePlan(examType, dbSubjects, weeksRemaining, dailyHours);
+      planData = buildTemplatePlan(examType, dbSubjects, weaksMap, weeksRemaining, dailyHours);
       source = "template";
     } else {
       req.log.error({ err: errStr }, "study plan generation failed");

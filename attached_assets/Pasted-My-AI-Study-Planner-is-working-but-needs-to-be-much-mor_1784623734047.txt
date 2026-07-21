@@ -1,0 +1,239 @@
+My AI Study Planner is working but needs to be 
+much more detailed and intelligent. 
+
+CURRENT (Basic):
+Week 1 - Monday:
+  General Study
+  History & Culture • 90m
+
+EXPECTED (Detailed & Smart):
+Week 1 - Monday:
+  Ancient India — Indus Valley Civilisation
+  History & Culture • 90min
+  📖 Read: NCERT Class 11 Ch 1-2
+  ✏️ Practice: 20 MCQs on Indus Valley
+  🔄 Revise: Previous year questions
+  
+  Vedic Age & Mahajanapadas  
+  History & Culture • 60min
+  📖 Focus: Political & Economic aspects
+  ✏️ Practice: 15 MCQs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT I WANT — COMPLETE UPGRADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. TOPIC-LEVEL PLANNING
+Each day should show SPECIFIC TOPICS 
+from the syllabus, not just subject names.
+
+Fetch syllabus_topics from subjects table:
+const { data: subjects } = await supabase
+  .from('subjects')
+  .select('subject_name, subject_code, 
+           syllabus_topics, total_questions')
+  .eq('exam_code', targetExam)
+  .eq('is_active', true)
+
+Pass ALL topics to AI:
+subjects.forEach(subject => {
+  // syllabus_topics is a JSON array like:
+  // ["Ancient India", "Medieval India", 
+  //  "Modern India", "Art & Culture"]
+  allTopics.push({
+    subject: subject.subject_name,
+    topics: subject.syllabus_topics
+  })
+})
+
+2. SMART TIME ALLOCATION
+Not all topics need same time. AI should:
+- Give more time to high-weightage subjects
+- Give more time to topics with more questions
+- Give less time to easy/short topics
+
+For UPPSC example:
+History & Culture     → 15% weightage → 45h
+Geography             → 12% weightage → 36h  
+Polity & Governance   → 15% weightage → 45h
+Economy               → 10% weightage → 30h
+Science & Technology  → 12% weightage → 36h
+Ethics & Aptitude     → 10% weightage → 30h
+General Hindi         → 14% weightage → 42h
+CSAT (Aptitude)       → 12% weightage → 36h
+
+3. DAILY PLAN FORMAT
+Each day should have:
+- Morning session (Topic name + duration)
+- Evening session (Topic name + duration)  
+- Practice questions count
+- Study tips specific to that topic
+
+4. UPDATED AI PROMPT
+Replace current AI prompt with this:
+
+const prompt = `
+You are an expert coach for Indian government 
+exam ${targetExam}.
+
+Create a DETAILED study plan for this student:
+- Target Exam: ${targetExam}
+- Exam Date: ${examDate}
+- Days Remaining: ${daysRemaining}
+- Daily Study Hours: ${dailyHours}h
+
+EXAM SYLLABUS (use ONLY these topics):
+${subjects.map(sub => `
+SUBJECT: ${sub.subject_name} 
+TOPICS: ${JSON.stringify(sub.syllabus_topics)}
+TOTAL QUESTIONS IN BANK: ${sub.total_questions}
+`).join('\n')}
+
+STUDENT'S WEAK AREAS (from their quiz attempts):
+${weakSubjects.map(w => 
+  `- ${w.subjectName}: ${w.score}% score`
+).join('\n')}
+
+PLANNING RULES:
+1. Distribute ALL syllabus topics across the plan
+2. Cover every single topic at least once
+3. Give 2x time to student's weak subjects
+4. Each study session = 1 specific topic (not "General Study")
+5. Add revision sessions every Saturday
+6. Add mock test every Sunday
+7. Morning session: New topic learning
+8. Evening session: Practice questions + revision
+9. Last week: Only revision + mock tests
+10. Topics with more questions get more time
+
+DAILY SESSION FORMAT:
+Each day must have exactly this structure:
+{
+  "day": "MON",
+  "sessions": [
+    {
+      "time": "Morning",
+      "topic": "Indus Valley Civilisation",
+      "subject": "History & Culture",
+      "duration": 90,
+      "tasks": [
+        "Read about Harappa and Mohenjo-daro",
+        "Note important dates and facts",
+        "Solve 25 practice MCQs",
+        "Review previous year questions"
+      ],
+      "tip": "Focus on trade routes and town planning"
+    },
+    {
+      "time": "Evening", 
+      "topic": "Vedic Age",
+      "subject": "History & Culture",
+      "duration": 60,
+      "tasks": [
+        "Read Rigvedic vs Later Vedic period",
+        "Make notes on political system",
+        "Solve 15 MCQs"
+      ],
+      "tip": "Compare Early and Later Vedic society"
+    }
+  ]
+}
+
+Return complete JSON plan covering 
+all ${daysRemaining} days until exam.
+`
+
+5. UI IMPROVEMENTS
+Update the display to show:
+
+SUBJECT BREAKDOWN:
+Show actual weightage based on exam pattern
+Show topic count per subject
+Show completion progress
+
+WEEKLY SCHEDULE:
+Each day card should expand to show:
+├── 🌅 Morning: Topic Name (90min)
+│   ├── 📚 What to study
+│   ├── ✏️ Practice: X questions  
+│   └── 💡 Tip: ...
+│
+└── 🌆 Evening: Topic Name (60min)
+    ├── 📚 What to study
+    ├── ✏️ Practice: X questions
+    └── 💡 Tip: ...
+
+6. SMART FEATURES TO ADD
+
+A) PROGRESS TRACKING
+Mark topics as "completed" when user 
+finishes them. Show:
+- Topics covered: 15/45
+- Topics remaining: 30
+- On track / Behind schedule indicator
+
+B) WEAK AREA PRIORITY
+If user scored < 50% in a subject in quiz,
+automatically give that subject more time 
+in the plan.
+
+Query weak areas:
+const { data: attempts } = await supabase
+  .from('question_attempts')
+  .select('subjectCode, is_correct')
+  .eq('user_id', userId)
+  .eq('examCode', targetExam)
+
+// Calculate weak subjects
+// Add 50% more time for weak subjects in plan
+
+C) TOPIC-WISE QUESTION COUNT
+Show how many questions are available 
+for each topic in question bank:
+
+const { data: topicCounts } = await supabase
+  .from('question_bank')
+  .select('subjectCode')
+  .eq('examCode', targetExam)
+
+D) DAILY REMINDER
+Each day's plan shows:
+"Today's Goal: Complete Ancient India + 
+ Practice 40 questions"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXPECTED FINAL OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Subject Breakdown:
+┌─────────────────────────────────────┐
+│ History & Culture      15%   45h   │
+│ Topics: 12 | Questions: 100        │
+│ ████░░░░░░ 0% completed            │
+├─────────────────────────────────────┤
+│ Geography & Environment 12%  36h   │
+│ Topics: 10 | Questions: 100        │
+│ ████░░░░░░ 0% completed            │
+└─────────────────────────────────────┘
+
+Week 1 - History Focus:
+┌──────────────────────────────────────┐
+│ MON - Ancient India                  │
+│ 🌅 Morning (90min)                   │
+│   📖 Indus Valley Civilisation       │
+│   ✏️ Practice: 25 MCQs              │
+│   💡 Focus on town planning          │
+│                                      │
+│ 🌆 Evening (60min)                   │
+│   📖 Vedic Age - Early Period        │
+│   ✏️ Practice: 15 MCQs              │
+│   💡 Compare Early vs Late Vedic     │
+└──────────────────────────────────────┘
+
+This is what makes GovtGuru unique — 
+not just a subject list, but a complete 
+day-by-day, topic-by-topic smart plan!
+
+Please implement all these improvements.
+Start with the AI prompt update first,
+then improve the UI display.
