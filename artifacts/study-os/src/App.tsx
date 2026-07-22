@@ -30,6 +30,13 @@ import AdminMockTestsPage from "@/pages/admin/mock-tests";
 import AdminExamPatternsPage from "@/pages/admin/exam-patterns";
 import AdminExamManagerPage from "@/pages/admin/exam-manager";
 import AdminQuestionStatsPage from "@/pages/admin/question-stats";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TermsOfServicePage from "@/pages/terms-of-service";
+import RefundPolicyPage from "@/pages/refund-policy";
+import CancellationPolicyPage from "@/pages/cancellation-policy";
+import ContactUsPage from "@/pages/contact-us";
+import AboutUsPage from "@/pages/about-us";
+import FAQPage from "@/pages/faq";
 import MockTestListPage from "@/pages/mock-tests/index";
 import MockTestSessionPage from "@/pages/mock-tests/session";
 import MockTestResultPage from "@/pages/mock-tests/result";
@@ -302,6 +309,15 @@ function Router() {
       <Route path="/admin/question-stats">
         <AdminRoute component={AdminQuestionStatsPage} />
       </Route>
+
+      {/* Public legal & info pages — no auth required */}
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/terms-of-service" component={TermsOfServicePage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
+      <Route path="/cancellation-policy" component={CancellationPolicyPage} />
+      <Route path="/contact-us" component={ContactUsPage} />
+      <Route path="/about-us" component={AboutUsPage} />
+      <Route path="/faq" component={FAQPage} />
 
       <Route component={NotFound} />
     </Switch>

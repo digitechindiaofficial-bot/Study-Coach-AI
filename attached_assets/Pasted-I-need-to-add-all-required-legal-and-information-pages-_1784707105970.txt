@@ -1,0 +1,506 @@
+I need to add all required legal and 
+information pages to my GovtGuru app 
+for Play Store and App Store submission.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGES TO CREATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create these pages with proper content:
+
+1. /privacy-policy
+2. /terms-of-service  
+3. /refund-policy
+4. /contact-us
+5. /about-us
+6. /faq
+7. /cancellation-policy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE CONTENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Use exactly this content for each page:
+
+━━━ PAGE 1: PRIVACY POLICY ━━━
+Route: /privacy-policy
+
+Title: Privacy Policy — GovtGuru
+
+Last Updated: July 22, 2026
+
+1. Introduction
+GovtGuru ("we", "our", "us") is owned and 
+operated by Digi Tech India 
+(digitechindiaofficial@gmail.com).
+This Privacy Policy explains how we collect,
+use, and protect your personal information
+when you use our app and website.
+
+2. Information We Collect
+- Name and email address (via Clerk Auth)
+- Mobile number (optional, provided by you)
+- Target exam and study preferences
+- Quiz attempt history and scores
+- Device information and usage data
+- Payment information (processed by Razorpay,
+  we do not store card details)
+
+3. How We Use Your Information
+- To provide personalised study plans
+- To track your quiz performance
+- To send study reminders and notifications
+- To process payments for Pro subscription
+- To improve our app and services
+- To send important updates about your exam
+
+4. Data Storage and Security
+- Your data is stored securely on Supabase
+- Authentication is handled by Clerk
+- We use industry-standard SSL encryption
+- We do not sell your data to third parties
+- Quiz history is stored to track your progress
+
+5. Third-Party Services We Use
+- Clerk (Authentication)
+- Supabase (Database)
+- Razorpay (Payment Processing)
+- Anthropic Claude AI (Study Plan Generation)
+- Google Analytics (App usage analytics)
+
+6. Your Rights
+- Access your personal data anytime
+- Delete your account and all data
+- Opt out of marketing emails
+- Update your profile information
+- Export your quiz history
+
+7. Children's Privacy
+GovtGuru is intended for users 13 years 
+and older. We do not knowingly collect 
+data from children under 13.
+
+8. Cookies
+We use cookies to maintain your login 
+session and improve user experience.
+You can disable cookies in browser settings.
+
+9. Changes to Privacy Policy
+We will notify you of any changes via 
+email or app notification.
+
+10. Contact Us
+For privacy concerns, contact:
+Email: digitechindiaofficial@gmail.com
+Address: India
+
+━━━ PAGE 2: TERMS OF SERVICE ━━━
+Route: /terms-of-service
+
+Title: Terms of Service — GovtGuru
+
+Last Updated: July 22, 2026
+
+1. Acceptance of Terms
+By using GovtGuru, you agree to these 
+Terms of Service. If you do not agree,
+please do not use our service.
+
+2. Description of Service
+GovtGuru provides:
+- AI-powered study plans for govt exams
+- Quiz practice with 4000+ questions
+- Progress tracking and weak area analysis
+- Current affairs updates
+- Available on web and mobile platforms
+
+3. User Accounts
+- You must provide accurate information
+- You are responsible for account security
+- One account per person only
+- Do not share your account credentials
+- We reserve right to suspend accounts 
+  that violate these terms
+
+4. Free and Pro Plans
+
+FREE PLAN:
+- 10 questions per day
+- Basic study planner
+- Access to syllabus
+- Limited current affairs
+
+PRO PLAN (₹199/month):
+- Unlimited questions
+- AI-powered personalised study plan
+- Detailed progress analytics
+- Weak area drill
+- Priority support
+- Full current affairs access
+
+5. Prohibited Activities
+You must NOT:
+- Copy or redistribute our question bank
+- Use bots or automated tools
+- Share your account with others
+- Attempt to hack or disrupt the service
+- Use the app for commercial purposes
+- Post inappropriate content
+
+6. Intellectual Property
+All content on GovtGuru including questions,
+study plans, and materials are owned by 
+Digi Tech India. You may not reproduce 
+or distribute any content without permission.
+
+7. Disclaimer
+- Questions are for practice purposes only
+- We do not guarantee exam success
+- Content accuracy is maintained but 
+  we are not responsible for errors
+- Study plans are AI-generated suggestions
+
+8. Limitation of Liability
+GovtGuru shall not be liable for:
+- Exam failures or poor performance
+- Data loss due to technical issues
+- Third-party service interruptions
+- Indirect or consequential damages
+
+9. Termination
+We may terminate your account if you:
+- Violate these terms
+- Engage in fraudulent activity
+- Abuse the platform or other users
+
+10. Governing Law
+These terms are governed by the laws 
+of India. Disputes shall be resolved 
+in courts of India.
+
+11. Contact
+Email: digitechindiaofficial@gmail.com
+
+━━━ PAGE 3: REFUND POLICY ━━━
+Route: /refund-policy
+
+Title: Refund Policy — GovtGuru
+
+Last Updated: July 22, 2026
+
+1. Subscription Plans
+GovtGuru offers monthly Pro subscription 
+at ₹199/month processed via Razorpay.
+
+2. Refund Eligibility
+
+ELIGIBLE FOR REFUND:
+✅ Request within 7 days of purchase
+✅ Technical issue preventing app usage
+✅ Duplicate payment charged
+✅ Service not as described
+
+NOT ELIGIBLE FOR REFUND:
+❌ After 7 days of purchase
+❌ Change of mind after usage
+❌ Partial month usage
+❌ Account suspended due to violations
+
+3. How to Request Refund
+Email us at: digitechindiaofficial@gmail.com
+Subject: Refund Request — [Your Email]
+Include:
+- Your registered email
+- Payment date and amount
+- Reason for refund
+- Transaction ID from Razorpay
+
+4. Refund Processing
+- We will respond within 2 business days
+- Approved refunds processed in 5-7 days
+- Refund goes back to original payment method
+- Bank may take additional 3-5 days
+
+5. Cancellation
+- Cancel anytime from Settings page
+- Access continues till end of billing period
+- No refund for remaining days after cancel
+- You can resubscribe anytime
+
+6. Contact
+Email: digitechindiaofficial@gmail.com
+
+━━━ PAGE 4: CONTACT US ━━━
+Route: /contact-us
+
+Title: Contact Us — GovtGuru
+
+We are here to help! 🙏
+
+SUPPORT EMAIL:
+digitechindiaofficial@gmail.com
+
+RESPONSE TIME:
+Monday - Saturday: 10 AM - 6 PM IST
+We reply within 24 hours on working days
+
+COMMON ISSUES - QUICK HELP:
+
+Q: How to upgrade to Pro?
+Go to Settings → Upgrade to Pro → 
+Pay ₹199/month via Razorpay
+
+Q: I was charged but plan not activated?
+Email us with your transaction ID. 
+We will activate within 2 hours.
+
+Q: How to change target exam?
+Go to Settings → Target Exam → 
+Select exam → Save Settings
+
+Q: How to delete my account?
+Email us at digitechindiaofficial@gmail.com
+We will delete all your data within 7 days.
+
+Q: Found a wrong question?
+Please email us the question details.
+We appreciate your feedback!
+
+CONTACT FORM ON PAGE:
+Fields:
+- Name
+- Email  
+- Subject (dropdown):
+  * Technical Issue
+  * Payment Problem
+  * Wrong Question Report
+  * Feature Request
+  * Account Deletion
+  * Other
+- Message (textarea)
+- Submit button
+
+Form submits to: digitechindiaofficial@gmail.com
+
+━━━ PAGE 5: ABOUT US ━━━
+Route: /about-us
+
+Title: About GovtGuru
+
+🎯 Our Mission
+To make quality government exam preparation 
+accessible and affordable for every student 
+in India using the power of Artificial Intelligence.
+
+📖 Our Story
+GovtGuru was built by students, for students.
+We understand the struggle of preparing for 
+government exams without proper guidance,
+expensive coaching, or personalised study plans.
+
+That is why we created GovtGuru — India's 
+first AI-powered government exam preparation 
+platform that creates personalised study plans,
+tracks your progress, and identifies your 
+weak areas automatically.
+
+🚀 What Makes Us Different
+✅ AI Study Planner — personalised to YOUR 
+   exam date and available time
+✅ 4000+ Questions — across 10+ major exams
+✅ Weak Area Detection — AI finds where 
+   you need more practice
+✅ Affordable — ₹199/month (less than 
+   the cost of one coaching class!)
+✅ Available 24/7 — study anytime, anywhere
+
+📊 Our Numbers
+- 4000+ Practice Questions
+- 10+ Government Exams Covered
+- 8 Subjects per Exam
+- AI-Powered Personalisation
+
+🎓 Exams We Cover
+- BPSC (Bihar Public Service Commission)
+- UPPSC (UP Public Service Commission)
+- SSC CGL & CHSL
+- IBPS PO & Clerk
+- SBI PO & Clerk
+- RRB NTPC
+- And more coming soon!
+
+👨‍💻 Built By
+Digi Tech India
+digitechindiaofficial@gmail.com
+
+💡 Our Vision
+To help 1 million students crack their 
+dream government job by 2027.
+
+━━━ PAGE 6: FAQ ━━━
+Route: /faq
+
+Title: Frequently Asked Questions
+
+GENERAL:
+
+Q: What is GovtGuru?
+A: GovtGuru is an AI-powered study platform 
+   for Indian government exam preparation.
+   We provide personalised study plans,
+   practice questions, and progress tracking.
+
+Q: Which exams are covered?
+A: Currently we cover BPSC, UPPSC, SSC CGL,
+   SSC CHSL, IBPS PO, IBPS Clerk, SBI PO,
+   SBI Clerk, RRB NTPC, and UPSC.
+   More exams being added regularly.
+
+Q: Is GovtGuru free?
+A: Yes! Basic features are free with 
+   10 questions per day limit.
+   Pro plan at ₹199/month gives unlimited 
+   access to all features.
+
+ACCOUNT:
+
+Q: How do I sign up?
+A: Click "Sign Up" on the home page.
+   You can sign up with Google or email.
+
+Q: Can I use one account on multiple devices?
+A: Yes! Your account syncs across all devices.
+
+Q: How to delete my account?
+A: Email us at digitechindiaofficial@gmail.com
+   We will delete your account within 7 days.
+
+SUBSCRIPTION:
+
+Q: What is included in Pro plan?
+A: Unlimited questions, AI study planner,
+   detailed analytics, weak area drill,
+   and priority support.
+
+Q: Can I cancel anytime?
+A: Yes! Cancel anytime from Settings.
+   You keep access till end of billing period.
+
+Q: Is my payment information safe?
+A: Yes! Payments are processed by Razorpay.
+   We never store your card details.
+
+Q: Do you offer student discounts?
+A: Yes! We offer special discounts. 
+   Email us for student discount codes.
+
+TECHNICAL:
+
+Q: App is not loading?
+A: Try refreshing the page or clearing 
+   browser cache. If issue persists,
+   email us at digitechindiaofficial@gmail.com
+
+Q: My quiz progress is not saving?
+A: Make sure you are logged in.
+   Progress saves automatically after 
+   each question is answered.
+
+Q: Study plan is showing wrong subjects?
+A: Go to Settings and make sure your 
+   Target Exam is set correctly.
+   Then click Regenerate on Study Planner.
+
+━━━ PAGE 7: CANCELLATION POLICY ━━━
+Route: /cancellation-policy
+
+Title: Cancellation Policy — GovtGuru
+
+1. How to Cancel
+Go to: Settings → Subscription → 
+Cancel Subscription
+
+Or email: digitechindiaofficial@gmail.com
+
+2. What Happens After Cancellation
+- Your Pro access continues till 
+  end of current billing period
+- After that, account moves to Free plan
+- Your data and progress is saved
+- You can resubscribe anytime
+
+3. Cancellation Deadline
+Cancel at least 24 hours before 
+next billing date to avoid being 
+charged for next month.
+
+4. Reactivation
+You can resubscribe anytime from 
+Settings → Upgrade to Pro.
+Your previous progress will be intact.
+
+5. Contact
+Email: digitechindiaofficial@gmail.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NAVIGATION — ADD TO APP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Add footer to all pages with links:
+Footer links:
+- Privacy Policy → /privacy-policy
+- Terms of Service → /terms-of-service
+- Refund Policy → /refund-policy
+- Contact Us → /contact-us
+- About Us → /about-us
+- FAQ → /faq
+
+Footer text:
+"© 2026 GovtGuru by Digi Tech India. 
+ All rights reserved."
+
+2. Add to Settings page bottom:
+"Privacy Policy | Terms | Support"
+
+3. Add to Login/Signup page:
+"By signing up, you agree to our 
+Terms of Service and Privacy Policy"
+(with links)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All legal pages should:
+- Have clean white background
+- Use same GovtGuru header/navbar
+- Have back button or breadcrumb
+- Be mobile responsive
+- Have clear headings and sections
+- Contact email clickable (mailto link)
+- Last updated date at top
+
+Contact Us page should have:
+- A working contact form
+- Form validation
+- Success message after submit
+- Form sends email to 
+  digitechindiaofficial@gmail.com
+  using emailjs or nodemailer
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLAY STORE REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After creating pages, also add:
+1. Privacy Policy URL for Play Store:
+   https://study-coach-ai.replit.app/privacy-policy
+
+2. Make sure Privacy Policy page is:
+   - Publicly accessible (no login needed)
+   - Mentions data collection clearly
+   - Has contact information
+   - Mentions third-party services
+
+These pages MUST be accessible without 
+login for Play Store approval.

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import Footer from "@/components/footer";
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import {
@@ -164,6 +165,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="flex-1 max-w-[1280px] w-full mx-auto p-4 md:p-8">
           {children}
         </div>
+        <Footer className="hidden md:block" />
       </main>
 
       {/* Mobile Bottom Nav */}
