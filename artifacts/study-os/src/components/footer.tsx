@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 
 const FOOTER_LINKS = [
+  { label: "Blog",                href: "/blog" },
   { label: "Privacy Policy",      href: "/privacy-policy" },
   { label: "Terms of Service",    href: "/terms-of-service" },
   { label: "Refund Policy",       href: "/refund-policy" },

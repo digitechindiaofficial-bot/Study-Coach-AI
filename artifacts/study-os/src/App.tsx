@@ -40,6 +40,9 @@ import FAQPage from "@/pages/faq";
 import MockTestListPage from "@/pages/mock-tests/index";
 import MockTestSessionPage from "@/pages/mock-tests/session";
 import MockTestResultPage from "@/pages/mock-tests/result";
+import BlogListPage from "@/pages/blog/index";
+import BlogPostPage from "@/pages/blog/post";
+import AdminBlogPage from "@/pages/admin/blog";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -318,6 +321,16 @@ function Router() {
       </Route>
       <Route path="/admin/question-stats">
         <AdminRoute component={AdminQuestionStatsPage} />
+      </Route>
+
+      {/* Public blog pages — no auth required (SEO crawlable) */}
+      <Route path="/blog" component={BlogListPage} />
+      <Route path="/blog/:slug">
+        {(params) => <BlogPostPage slug={params.slug} />}
+      </Route>
+
+      <Route path="/admin/blog">
+        <AdminRoute component={AdminBlogPage} />
       </Route>
 
       {/* Public legal & info pages — no auth required */}

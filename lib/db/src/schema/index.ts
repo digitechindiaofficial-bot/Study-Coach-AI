@@ -1,5 +1,6 @@
 export * from "./profiles";
 export * from "./otp-verifications";
+export * from "./blog-posts";
 export * from "./study-plans";
 export * from "./daily-tasks";
 export * from "./syllabus-progress";

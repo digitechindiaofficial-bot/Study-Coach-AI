@@ -15,6 +15,7 @@ import {
   Layers,
   Settings2,
   BarChart3,
+  FileText,
 } from "lucide-react";
 import { useClerk } from "@clerk/react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Syllabus", href: "/admin/syllabus", icon: BookOpen },
   { name: "Question Bank", href: "/admin/question-bank", icon: Database },
   { name: "Question Stats", href: "/admin/question-stats", icon: BarChart3 },
+  { name: "Blog Manager", href: "/admin/blog", icon: FileText },
   { name: "Mock Tests", href: "/admin/mock-tests", icon: ClipboardList },
   { name: "Current Affairs", href: "/admin/current-affairs", icon: Newspaper },
   { name: "Users", href: "/admin/users", icon: Users },

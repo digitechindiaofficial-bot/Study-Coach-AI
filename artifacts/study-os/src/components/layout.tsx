@@ -13,6 +13,7 @@ import {
   LogOut,
   Sparkles,
   Zap,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +27,7 @@ const navItems = [
   { name: "Study Planner",   href: "/planner",          icon: CalendarDays,   badge: "AI" },
   { name: "Syllabus",        href: "/syllabus",         icon: BookOpen },
   { name: "Current Affairs", href: "/current-affairs",  icon: Newspaper },
+  { name: "Blog",            href: "/blog",             icon: FileText },
   { name: "Quiz Practice",   href: "/quiz",             icon: BrainCircuit },
   { name: "Progress",        href: "/progress",         icon: TrendingUp },
 ];

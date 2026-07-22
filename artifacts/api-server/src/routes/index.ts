@@ -15,6 +15,7 @@ import examPatternsRouter from "./exam-patterns-admin";
 import examsAdminRouter from "./exams-admin";
 import contactRouter from "./contact";
 import otpRouter from "./otp";
+import blogRouter from "./blog";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -33,5 +34,6 @@ router.use(examPatternsRouter);
 router.use(examsAdminRouter);
 router.use(contactRouter);
 router.use(otpRouter);
+router.use(blogRouter);
 
 export default router;

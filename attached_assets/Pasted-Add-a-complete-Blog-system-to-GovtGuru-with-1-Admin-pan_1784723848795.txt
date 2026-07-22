@@ -1,0 +1,1579 @@
+Add a complete Blog system to GovtGuru with:
+1. Admin panel to write and manage blogs
+2. User-facing blog page to read posts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create blog_posts table in Supabase:
+
+CREATE TABLE blog_posts (
+  id UUID DEFAULT gen_random_uuid() 
+     PRIMARY KEY,
+  title TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL,
+  cover_image TEXT,
+  category TEXT NOT NULL 
+    DEFAULT 'general',
+  tags TEXT[] DEFAULT '{}',
+  exam_code TEXT,
+  author TEXT DEFAULT 'GovtGuru Team',
+  is_published BOOLEAN DEFAULT false,
+  is_featured BOOLEAN DEFAULT false,
+  views INTEGER DEFAULT 0,
+  read_time INTEGER DEFAULT 5,
+  meta_title TEXT,
+  meta_description TEXT,
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE blog_posts 
+  ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read published" 
+  ON blog_posts FOR SELECT 
+  USING (is_published = true);
+
+CREATE POLICY "Service role all access"
+  ON blog_posts FOR ALL
+  USING (auth.role() = 'service_role');
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — ADMIN BLOG MANAGER
+Route: /admin/blog
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add "Blog Manager" in admin sidebar 
+between "Question Stats" and existing items.
+
+The admin blog page has TWO views:
+A) Blog List View (default)
+B) Blog Editor View (add/edit)
+
+━━━━━━━━
+A) BLOG LIST VIEW
+━━━━━━━━
+
+Shows all blog posts in a table:
+
+┌─────────────────────────────────────────────────────┐
+│ 📝 Blog Manager              [+ Write New Post]     │
+│ Manage your blog content for SEO                    │
+├──────────────────────────────────────────────────────┤
+│ [All] [Published] [Draft] [Featured]                │
+├──────────────────┬────────┬──────────┬──────┬───────┤
+│ Title            │Category│ Status   │Views │Actions│
+├──────────────────┼────────┼──────────┼──────┼───────┤
+│ BPSC 2026 Guide  │ BPSC   │ ✅ Live  │ 245  │ ✏️ 🗑️│
+│ SSC CGL Syllabus │ SSC    │ 📝 Draft │  0   │ ✏️ 🗑️│
+│ IBPS PO Strategy │ IBPS   │ ✅ Live  │ 180  │ ✏️ 🗑️│
+└──────────────────┴────────┴──────────┴──────┴───────┘
+
+Code for list:
+
+const AdminBlogList = () => {
+  const [posts, setPosts] = useState([])
+  const [filter, setFilter] = 
+    useState('all')
+  const [view, setView] = 
+    useState('list') // 'list' or 'editor'
+  const [editingPost, setEditingPost] = 
+    useState(null)
+
+  const fetchPosts = async () => {
+    let query = supabase
+      .from('blog_posts')
+      .select('*')
+      .order('created_at', 
+             { ascending: false })
+
+    if (filter === 'published') {
+      query = query.eq('is_published', true)
+    } else if (filter === 'draft') {
+      query = query.eq('is_published', false)
+    } else if (filter === 'featured') {
+      query = query.eq('is_featured', true)
+    }
+
+    const { data } = await query
+    setPosts(data || [])
+  }
+
+  const deletePost = async (id) => {
+    if (!confirm('Delete this post?')) return
+    await supabase
+      .from('blog_posts')
+      .delete()
+      .eq('id', id)
+    fetchPosts()
+  }
+
+  const togglePublish = async (post) => {
+    await supabase
+      .from('blog_posts')
+      .update({ 
+        is_published: !post.is_published,
+        published_at: !post.is_published 
+          ? new Date().toISOString() 
+          : null
+      })
+      .eq('id', post.id)
+    fetchPosts()
+  }
+
+  if (view === 'editor') {
+    return <BlogEditor 
+      post={editingPost}
+      onBack={() => {
+        setView('list')
+        setEditingPost(null)
+        fetchPosts()
+      }}
+    />
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', 
+                    justifyContent:'space-between',
+                    marginBottom: 24 }}>
+        <div>
+          <h1>📝 Blog Manager</h1>
+          <p>Manage blog posts for SEO</p>
+        </div>
+        <button onClick={() => {
+          setEditingPost(null)
+          setView('editor')
+        }}>
+          + Write New Post
+        </button>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display:'flex', gap: 8,
+                    marginBottom: 16 }}>
+        {['all','published','draft','featured']
+          .map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              background: filter === f 
+                ? '#1B2A4A' : '#f1f5f9',
+              color: filter === f 
+                ? 'white' : '#64748b',
+              padding: '6px 16px',
+              borderRadius: 6,
+              border: 'none',
+              cursor: 'pointer',
+              textTransform: 'capitalize'
+            }}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Posts table */}
+      <table style={{ width:'100%', 
+                      borderCollapse:'collapse' }}>
+        <thead>
+          <tr style={{ background:'#f8fafc' }}>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Views</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {posts.map(post => (
+            <tr key={post.id} 
+                style={{ borderBottom: 
+                         '1px solid #e2e8f0' }}>
+              <td>
+                <div style={{ fontWeight: 600 }}>
+                  {post.title}
+                </div>
+                {post.is_featured && (
+                  <span style={{ 
+                    fontSize: 11,
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    padding: '2px 6px',
+                    borderRadius: 4
+                  }}>
+                    ⭐ Featured
+                  </span>
+                )}
+              </td>
+              <td>
+                <span style={{
+                  background: '#EFF6FF',
+                  color: '#1D4ED8',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontSize: 12
+                }}>
+                  {post.category}
+                </span>
+              </td>
+              <td>
+                <span style={{
+                  color: post.is_published 
+                    ? '#10b981' : '#f59e0b'
+                }}>
+                  {post.is_published 
+                    ? '✅ Published' 
+                    : '📝 Draft'}
+                </span>
+              </td>
+              <td>{post.views || 0}</td>
+              <td>
+                {post.published_at 
+                  ? new Date(post.published_at)
+                      .toLocaleDateString('en-IN')
+                  : '—'}
+              </td>
+              <td>
+                <div style={{ display:'flex',
+                              gap: 8 }}>
+                  <button onClick={() => {
+                    setEditingPost(post)
+                    setView('editor')
+                  }}>✏️</button>
+                  <button onClick={() => 
+                    togglePublish(post)}>
+                    {post.is_published 
+                      ? '⬇️' : '🚀'}
+                  </button>
+                  <button 
+                    style={{ color:'red' }}
+                    onClick={() => 
+                      deletePost(post.id)}>
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {posts.length === 0 && (
+        <div style={{ textAlign:'center',
+                      padding: '60px 20px',
+                      color: '#94a3b8' }}>
+          <div style={{ fontSize: 48 }}>📝</div>
+          <p>No blog posts yet</p>
+          <button onClick={() => 
+            setView('editor')}>
+            Write First Post
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+━━━━━━━━
+B) BLOG EDITOR VIEW
+━━━━━━━━
+
+Full blog post editor:
+
+const BlogEditor = ({ post, onBack }) => {
+  const [form, setForm] = useState({
+    title: post?.title || '',
+    slug: post?.slug || '',
+    excerpt: post?.excerpt || '',
+    content: post?.content || '',
+    cover_image: post?.cover_image || '',
+    category: post?.category || 'general',
+    exam_code: post?.exam_code || '',
+    author: post?.author || 'GovtGuru Team',
+    tags: post?.tags || [],
+    is_published: post?.is_published || false,
+    is_featured: post?.is_featured || false,
+    read_time: post?.read_time || 5,
+    meta_title: post?.meta_title || '',
+    meta_description: post?.meta_description || ''
+  })
+
+  const [tagInput, setTagInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  // Auto generate slug from title
+  const generateSlug = (title) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+  }
+
+  // Auto calculate read time
+  const calculateReadTime = (content) => {
+    const words = content
+      .replace(/<[^>]*>/g, '')
+      .split(/\s+/).length
+    return Math.ceil(words / 200)
+  }
+
+  const handleTitleChange = (title) => {
+    setForm(f => ({
+      ...f,
+      title,
+      slug: !post ? generateSlug(title) : f.slug,
+      meta_title: !f.meta_title 
+        ? title + ' — GovtGuru' : f.meta_title
+    }))
+  }
+
+  const addTag = () => {
+    const tag = tagInput.trim().toLowerCase()
+    if (tag && !form.tags.includes(tag)) {
+      setForm(f => ({ 
+        ...f, 
+        tags: [...f.tags, tag] 
+      }))
+    }
+    setTagInput('')
+  }
+
+  const removeTag = (tag) => {
+    setForm(f => ({
+      ...f,
+      tags: f.tags.filter(t => t !== tag)
+    }))
+  }
+
+  const savePost = async (publish = false) => {
+    if (!form.title || !form.content) {
+      setToast('Title and content required!')
+      return
+    }
+
+    setSaving(true)
+
+    const postData = {
+      ...form,
+      is_published: publish || form.is_published,
+      published_at: publish 
+        ? new Date().toISOString()
+        : form.is_published 
+          ? post?.published_at 
+          : null,
+      read_time: calculateReadTime(form.content),
+      updated_at: new Date().toISOString()
+    }
+
+    if (post?.id) {
+      // Update existing
+      await supabase
+        .from('blog_posts')
+        .update(postData)
+        .eq('id', post.id)
+    } else {
+      // Create new
+      await supabase
+        .from('blog_posts')
+        .insert([postData])
+    }
+
+    setSaving(false)
+    setToast(publish 
+      ? '🚀 Post Published!' 
+      : '✅ Draft Saved!')
+    setTimeout(() => onBack(), 1500)
+  }
+
+  const CATEGORIES = [
+    { value: 'bpsc', label: 'BPSC' },
+    { value: 'uppsc', label: 'UPPSC' },
+    { value: 'ssc', label: 'SSC' },
+    { value: 'ibps', label: 'IBPS PO' },
+    { value: 'sbi', label: 'SBI' },
+    { value: 'rrb', label: 'RRB NTPC' },
+    { value: 'current-affairs', 
+      label: 'Current Affairs' },
+    { value: 'study-tips', 
+      label: 'Study Tips' },
+    { value: 'general', label: 'General' },
+  ]
+
+  const EXAMS = [
+    'BPSC', 'UPPSC', 'SSC_CGL', 
+    'SSC_CHSL', 'IBPS_PO', 'IBPS_CLERK',
+    'SBI_PO', 'SBI_CLERK', 'RRB_NTPC'
+  ]
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: 20, right: 20,
+          background: '#10b981',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: 8,
+          fontWeight: 600,
+          zIndex: 9999
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display:'flex', 
+                    justifyContent:'space-between',
+                    alignItems:'center',
+                    marginBottom: 24 }}>
+        <div style={{ display:'flex', 
+                      alignItems:'center',
+                      gap: 12 }}>
+          <button onClick={onBack}>
+            ← Back
+          </button>
+          <h2>
+            {post ? 'Edit Post' : 'New Blog Post'}
+          </h2>
+        </div>
+        <div style={{ display:'flex', gap: 8 }}>
+          <button 
+            onClick={() => savePost(false)}
+            disabled={saving}>
+            {saving ? 'Saving...' : '💾 Save Draft'}
+          </button>
+          <button
+            onClick={() => savePost(true)}
+            disabled={saving}
+            style={{ 
+              background: '#1B2A4A',
+              color: 'white'
+            }}>
+            🚀 Publish
+          </button>
+        </div>
+      </div>
+
+      {/* Two column layout */}
+      <div style={{ display:'grid',
+                    gridTemplateColumns:'1fr 300px',
+                    gap: 24 }}>
+
+        {/* LEFT — Main content */}
+        <div style={{ display:'flex',
+                      flexDirection:'column',
+                      gap: 16 }}>
+
+          {/* Title */}
+          <div>
+            <label>Blog Title *</label>
+            <input
+              value={form.title}
+              onChange={e => 
+                handleTitleChange(e.target.value)}
+              placeholder="e.g. BPSC 2026 Complete Syllabus Guide"
+              style={{ 
+                width: '100%',
+                fontSize: 20,
+                fontWeight: 600,
+                padding: '12px 16px',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8
+              }}
+            />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label>URL Slug</label>
+            <div style={{ display:'flex',
+                          alignItems:'center',
+                          gap: 8 }}>
+              <span style={{ color:'#94a3b8',
+                             fontSize: 14 }}>
+                govtguru.com/blog/
+              </span>
+              <input
+                value={form.slug}
+                onChange={e => setForm(f => ({
+                  ...f, slug: e.target.value
+                }))}
+                placeholder="bpsc-2026-syllabus-guide"
+                style={{ flex: 1 }}
+              />
+            </div>
+          </div>
+
+          {/* Excerpt */}
+          <div>
+            <label>
+              Excerpt (shown in blog list)
+            </label>
+            <textarea
+              value={form.excerpt}
+              onChange={e => setForm(f => ({
+                ...f, excerpt: e.target.value
+              }))}
+              placeholder="Brief description of the post (150-160 chars for SEO)"
+              rows={3}
+              maxLength={160}
+              style={{ width:'100%', padding: 12 }}
+            />
+            <span style={{ fontSize: 12,
+                           color: '#94a3b8' }}>
+              {form.excerpt.length}/160 chars
+            </span>
+          </div>
+
+          {/* Content */}
+          <div>
+            <label>Content * (HTML supported)</label>
+            <textarea
+              value={form.content}
+              onChange={e => setForm(f => ({
+                ...f, content: e.target.value
+              }))}
+              placeholder={`Write your blog post here...
+
+You can use HTML tags:
+<h2>Section Heading</h2>
+<p>Paragraph text</p>
+<ul><li>List item</li></ul>
+<strong>Bold text</strong>
+<em>Italic text</em>`}
+              rows={20}
+              style={{ 
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: 14,
+                padding: 12,
+                border: '1px solid #e2e8f0',
+                borderRadius: 8
+              }}
+            />
+            <span style={{ fontSize: 12,
+                           color: '#94a3b8' }}>
+              Estimated read time: 
+              {calculateReadTime(form.content)} min
+            </span>
+          </div>
+
+          {/* SEO Section */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8,
+            border: '1px solid #e2e8f0'
+          }}>
+            <h3 style={{ marginBottom: 12 }}>
+              🔍 SEO Settings
+            </h3>
+            <div style={{ marginBottom: 12 }}>
+              <label>Meta Title</label>
+              <input
+                value={form.meta_title}
+                onChange={e => setForm(f => ({
+                  ...f, meta_title: e.target.value
+                }))}
+                placeholder="SEO title (50-60 chars)"
+                maxLength={60}
+                style={{ width:'100%' }}
+              />
+              <span style={{ fontSize: 12,
+                             color: form.meta_title.length > 60 
+                               ? 'red' : '#94a3b8' }}>
+                {form.meta_title.length}/60
+              </span>
+            </div>
+            <div>
+              <label>Meta Description</label>
+              <textarea
+                value={form.meta_description}
+                onChange={e => setForm(f => ({
+                  ...f, 
+                  meta_description: e.target.value
+                }))}
+                placeholder="SEO description (150-160 chars)"
+                maxLength={160}
+                rows={3}
+                style={{ width:'100%' }}
+              />
+              <span style={{ fontSize: 12,
+                             color: '#94a3b8' }}>
+                {form.meta_description.length}/160
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — Settings sidebar */}
+        <div style={{ display:'flex',
+                      flexDirection:'column',
+                      gap: 16 }}>
+
+          {/* Publish settings */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8,
+            border: '1px solid #e2e8f0'
+          }}>
+            <h4>Publish Settings</h4>
+            <label style={{ display:'flex',
+                            alignItems:'center',
+                            gap: 8,
+                            cursor:'pointer',
+                            marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                checked={form.is_featured}
+                onChange={e => setForm(f => ({
+                  ...f, 
+                  is_featured: e.target.checked
+                }))}
+              />
+              ⭐ Featured Post
+            </label>
+            <label style={{ display:'flex',
+                            alignItems:'center',
+                            gap: 8,
+                            cursor:'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.is_published}
+                onChange={e => setForm(f => ({
+                  ...f, 
+                  is_published: e.target.checked
+                }))}
+              />
+              🌐 Published
+            </label>
+          </div>
+
+          {/* Category */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8
+          }}>
+            <h4>Category</h4>
+            <select
+              value={form.category}
+              onChange={e => setForm(f => ({
+                ...f, category: e.target.value
+              }))}
+              style={{ width:'100%', padding: 8 }}>
+              {CATEGORIES.map(c => (
+                <option key={c.value} 
+                        value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Related Exam */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8
+          }}>
+            <h4>Related Exam</h4>
+            <select
+              value={form.exam_code}
+              onChange={e => setForm(f => ({
+                ...f, exam_code: e.target.value
+              }))}
+              style={{ width:'100%', padding: 8 }}>
+              <option value="">
+                -- Select Exam --
+              </option>
+              {EXAMS.map(e => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Cover Image */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8
+          }}>
+            <h4>Cover Image URL</h4>
+            <input
+              value={form.cover_image}
+              onChange={e => setForm(f => ({
+                ...f, cover_image: e.target.value
+              }))}
+              placeholder="https://image-url.com/img.jpg"
+              style={{ width:'100%', padding: 8 }}
+            />
+            {form.cover_image && (
+              <img
+                src={form.cover_image}
+                alt="Cover preview"
+                style={{ 
+                  width: '100%',
+                  height: 120,
+                  objectFit: 'cover',
+                  borderRadius: 6,
+                  marginTop: 8
+                }}
+                onError={e => 
+                  e.target.style.display='none'}
+              />
+            )}
+          </div>
+
+          {/* Author */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8
+          }}>
+            <h4>Author</h4>
+            <input
+              value={form.author}
+              onChange={e => setForm(f => ({
+                ...f, author: e.target.value
+              }))}
+              style={{ width:'100%', padding: 8 }}
+            />
+          </div>
+
+          {/* Tags */}
+          <div style={{ 
+            background: '#f8fafc',
+            padding: 16,
+            borderRadius: 8
+          }}>
+            <h4>Tags</h4>
+            <div style={{ display:'flex', gap: 6 }}>
+              <input
+                value={tagInput}
+                onChange={e => 
+                  setTagInput(e.target.value)}
+                onKeyDown={e => 
+                  e.key === 'Enter' && addTag()}
+                placeholder="Add tag + Enter"
+                style={{ flex:1, padding: 6 }}
+              />
+              <button onClick={addTag}>+</button>
+            </div>
+            <div style={{ display:'flex',
+                          flexWrap:'wrap',
+                          gap: 4,
+                          marginTop: 8 }}>
+              {form.tags.map(tag => (
+                <span key={tag} style={{
+                  background: '#dbeafe',
+                  color: '#1d4ed8',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  display:'flex',
+                  alignItems:'center',
+                  gap: 4
+                }}>
+                  {tag}
+                  <button
+                    onClick={() => removeTag(tag)}
+                    style={{ 
+                      background:'none',
+                      border:'none',
+                      color:'#ef4444',
+                      cursor:'pointer',
+                      fontSize: 14
+                    }}>×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — USER BLOG PAGE
+Route: /blog (No login required)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create public blog pages:
+
+A) /blog — Blog listing
+
+const BlogListPage = () => {
+  const [posts, setPosts] = useState([])
+  const [category, setCategory] = 
+    useState('all')
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      let query = supabase
+        .from('blog_posts')
+        .select(`id, title, slug, excerpt,
+                 cover_image, category,
+                 author, read_time, views,
+                 published_at, is_featured,
+                 exam_code, tags`)
+        .eq('is_published', true)
+        .order('published_at', 
+               { ascending: false })
+
+      if (category !== 'all') {
+        query = query.eq('category', category)
+      }
+
+      if (search) {
+        query = query.ilike('title', 
+                            `%${search}%`)
+      }
+
+      const { data } = await query
+      setPosts(data || [])
+    }
+    fetchPosts()
+  }, [category, search])
+
+  const featured = posts.find(
+    p => p.is_featured
+  )
+  const regular = posts.filter(
+    p => !p.is_featured
+  )
+
+  const categories = [
+    { value: 'all', label: '📚 All' },
+    { value: 'bpsc', label: '🎯 BPSC' },
+    { value: 'uppsc', label: '🗺️ UPPSC' },
+    { value: 'ssc', label: '📝 SSC' },
+    { value: 'ibps', label: '🏦 IBPS' },
+    { value: 'sbi', label: '💼 SBI' },
+    { value: 'rrb', label: '🚂 RRB' },
+    { value: 'current-affairs', 
+      label: '📰 Current Affairs' },
+    { value: 'study-tips', 
+      label: '💡 Study Tips' },
+  ]
+
+  return (
+    <div style={{ maxWidth: 1100,
+                  margin: '0 auto',
+                  padding: '40px 20px' }}>
+      
+      {/* SEO */}
+      <title>Blog — GovtGuru</title>
+      <meta name="description" 
+        content="Expert guides for BPSC, 
+        UPPSC, SSC, IBPS exam preparation" />
+
+      {/* Header */}
+      <div style={{ textAlign:'center',
+                    marginBottom: 40 }}>
+        <h1 style={{ fontSize: 36,
+                     fontWeight: 800,
+                     color: '#1B2A4A' }}>
+          GovtGuru Blog
+        </h1>
+        <p style={{ color: '#64748b',
+                    fontSize: 18 }}>
+          Expert tips & guides for 
+          government exam preparation
+        </p>
+        
+        {/* Search */}
+        <input
+          value={search}
+          onChange={e => 
+            setSearch(e.target.value)}
+          placeholder="🔍 Search articles..."
+          style={{ 
+            width: '100%',
+            maxWidth: 400,
+            padding: '10px 16px',
+            borderRadius: 999,
+            border: '1px solid #e2e8f0',
+            fontSize: 16,
+            marginTop: 16
+          }}
+        />
+      </div>
+
+      {/* Category tabs */}
+      <div style={{ 
+        display:'flex',
+        gap: 8,
+        flexWrap:'wrap',
+        justifyContent:'center',
+        marginBottom: 32
+      }}>
+        {categories.map(cat => (
+          <button
+            key={cat.value}
+            onClick={() => 
+              setCategory(cat.value)}
+            style={{
+              background: category === cat.value
+                ? '#1B2A4A' : 'white',
+              color: category === cat.value
+                ? 'white' : '#64748b',
+              padding: '8px 16px',
+              borderRadius: 999,
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 500
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Featured Post */}
+      {featured && (
+        <a href={`/blog/${featured.slug}`}
+           style={{ textDecoration:'none' }}>
+          <div style={{
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid #e2e8f0',
+            marginBottom: 40,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr'
+          }}>
+            {featured.cover_image && (
+              <img
+                src={featured.cover_image}
+                alt={featured.title}
+                style={{ 
+                  width:'100%',
+                  height: 300,
+                  objectFit:'cover'
+                }}
+              />
+            )}
+            <div style={{ padding: 32 }}>
+              <span style={{
+                background: '#F5A623',
+                color: '#1B2A4A',
+                padding: '4px 12px',
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 700
+              }}>
+                ⭐ FEATURED
+              </span>
+              <h2 style={{ 
+                fontSize: 24,
+                fontWeight: 700,
+                color: '#1B2A4A',
+                marginTop: 12,
+                marginBottom: 12
+              }}>
+                {featured.title}
+              </h2>
+              <p style={{ color:'#64748b' }}>
+                {featured.excerpt}
+              </p>
+              <div style={{ 
+                marginTop: 16,
+                color:'#94a3b8',
+                fontSize: 13
+              }}>
+                ✍️ {featured.author} · 
+                ⏱️ {featured.read_time} min · 
+                👁️ {featured.views} views
+              </div>
+            </div>
+          </div>
+        </a>
+      )}
+
+      {/* Regular posts grid */}
+      <div style={{ 
+        display:'grid',
+        gridTemplateColumns: 
+          'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: 24
+      }}>
+        {regular.map(post => (
+          <a 
+            key={post.id}
+            href={`/blog/${post.slug}`}
+            style={{ textDecoration:'none' }}>
+            <div style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              overflow: 'hidden',
+              transition: 'transform 0.2s',
+              cursor: 'pointer',
+              background: 'white'
+            }}
+            onMouseEnter={e => 
+              e.currentTarget.style.transform = 
+                'translateY(-4px)'}
+            onMouseLeave={e => 
+              e.currentTarget.style.transform = 
+                'translateY(0)'}>
+              
+              {/* Cover Image */}
+              {post.cover_image ? (
+                <img
+                  src={post.cover_image}
+                  alt={post.title}
+                  style={{ 
+                    width:'100%',
+                    height: 180,
+                    objectFit:'cover'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  height: 180,
+                  background: 'linear-gradient(135deg, #1B2A4A, #2D4A7A)',
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  fontSize: 48
+                }}>
+                  📚
+                </div>
+              )}
+
+              {/* Content */}
+              <div style={{ padding: 20 }}>
+                <span style={{
+                  background: '#EFF6FF',
+                  color: '#1D4ED8',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>
+                  {post.category}
+                </span>
+                
+                <h3 style={{ 
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: '#1B2A4A',
+                  marginTop: 10,
+                  marginBottom: 8,
+                  lineHeight: 1.4
+                }}>
+                  {post.title}
+                </h3>
+                
+                <p style={{ 
+                  color: '#64748b',
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}>
+                  {post.excerpt}
+                </p>
+                
+                <div style={{ 
+                  display:'flex',
+                  justifyContent:'space-between',
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTop: '1px solid #f1f5f9',
+                  color: '#94a3b8',
+                  fontSize: 12
+                }}>
+                  <span>
+                    ✍️ {post.author}
+                  </span>
+                  <span>
+                    ⏱️ {post.read_time} min read
+                  </span>
+                </div>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <div style={{ textAlign:'center',
+                      padding: '60px 20px' }}>
+          <div style={{ fontSize: 48 }}>📝</div>
+          <p style={{ color:'#94a3b8' }}>
+            No posts found
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+B) /blog/:slug — Single Post Page
+
+const BlogPostPage = ({ params }) => {
+  const [post, setPost] = useState(null)
+  const [related, setRelated] = useState([])
+
+  useEffect(() => {
+    const fetchPost = async () => {
+      const { data } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('slug', params.slug)
+        .eq('is_published', true)
+        .single()
+
+      if (data) {
+        setPost(data)
+        
+        // Increment views
+        supabase
+          .from('blog_posts')
+          .update({ views: data.views + 1 })
+          .eq('id', data.id)
+
+        // Related posts
+        const { data: rel } = await supabase
+          .from('blog_posts')
+          .select(`id, title, slug, 
+                   excerpt, cover_image,
+                   read_time, category`)
+          .eq('is_published', true)
+          .eq('category', data.category)
+          .neq('id', data.id)
+          .limit(3)
+        
+        setRelated(rel || [])
+      }
+    }
+    fetchPost()
+  }, [params.slug])
+
+  if (!post) return (
+    <div style={{ textAlign:'center',
+                  padding: 60 }}>
+      Loading...
+    </div>
+  )
+
+  return (
+    <div style={{ maxWidth: 800,
+                  margin: '0 auto',
+                  padding: '40px 20px' }}>
+      
+      {/* SEO */}
+      <title>{post.meta_title || post.title}</title>
+      <meta name="description"
+        content={post.meta_description 
+                 || post.excerpt} />
+
+      {/* Breadcrumb */}
+      <div style={{ color:'#94a3b8',
+                    fontSize: 14,
+                    marginBottom: 24 }}>
+        <a href="/">Home</a> → 
+        <a href="/blog">Blog</a> → 
+        {post.category}
+      </div>
+
+      {/* Category + Read time */}
+      <div style={{ display:'flex',
+                    gap: 8,
+                    marginBottom: 16 }}>
+        <span style={{
+          background: '#EFF6FF',
+          color: '#1D4ED8',
+          padding: '4px 12px',
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 600,
+          textTransform: 'uppercase'
+        }}>
+          {post.category}
+        </span>
+        <span style={{ 
+          color:'#94a3b8',
+          fontSize: 14,
+          padding: '4px 0'
+        }}>
+          ⏱️ {post.read_time} min read · 
+          👁️ {post.views} views
+        </span>
+      </div>
+
+      {/* Title */}
+      <h1 style={{ 
+        fontSize: 36,
+        fontWeight: 800,
+        color: '#1B2A4A',
+        lineHeight: 1.3,
+        marginBottom: 16
+      }}>
+        {post.title}
+      </h1>
+
+      {/* Author + Date */}
+      <div style={{ 
+        display:'flex',
+        alignItems:'center',
+        gap: 12,
+        marginBottom: 24,
+        paddingBottom: 24,
+        borderBottom: '1px solid #e2e8f0'
+      }}>
+        <div style={{
+          width: 40, height: 40,
+          background: '#1B2A4A',
+          borderRadius: '50%',
+          display:'flex',
+          alignItems:'center',
+          justifyContent:'center',
+          color:'white',
+          fontWeight: 700
+        }}>
+          {post.author?.charAt(0)}
+        </div>
+        <div>
+          <div style={{ fontWeight: 600 }}>
+            {post.author}
+          </div>
+          <div style={{ 
+            color:'#94a3b8',
+            fontSize: 13
+          }}>
+            {new Date(post.published_at)
+              .toLocaleDateString('en-IN', {
+                day:'numeric',
+                month:'long',
+                year:'numeric'
+              })}
+          </div>
+        </div>
+      </div>
+
+      {/* Cover Image */}
+      {post.cover_image && (
+        <img
+          src={post.cover_image}
+          alt={post.title}
+          style={{ 
+            width:'100%',
+            borderRadius: 12,
+            marginBottom: 32,
+            maxHeight: 400,
+            objectFit:'cover'
+          }}
+        />
+      )}
+
+      {/* Content */}
+      <div 
+        style={{ 
+          lineHeight: 1.8,
+          fontSize: 16,
+          color: '#374151'
+        }}
+        dangerouslySetInnerHTML={{ 
+          __html: post.content 
+        }}
+      />
+
+      {/* Tags */}
+      {post.tags?.length > 0 && (
+        <div style={{ 
+          marginTop: 32,
+          paddingTop: 24,
+          borderTop: '1px solid #e2e8f0'
+        }}>
+          <strong>Tags: </strong>
+          {post.tags.map(tag => (
+            <span key={tag} style={{
+              background: '#f1f5f9',
+              padding: '3px 10px',
+              borderRadius: 999,
+              fontSize: 13,
+              marginRight: 6,
+              color: '#64748b'
+            }}>
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* CTA — Join GovtGuru */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1B2A4A, #2D4A7A)',
+        borderRadius: 16,
+        padding: 32,
+        marginTop: 40,
+        textAlign:'center',
+        color:'white'
+      }}>
+        <h3 style={{ fontSize: 22,
+                     marginBottom: 8 }}>
+          🎯 Prepare Smarter with GovtGuru
+        </h3>
+        <p style={{ color:'#cbd5e1',
+                    marginBottom: 20 }}>
+          AI-powered study plans, 4000+ practice 
+          questions, and progress tracking — 
+          all in one app!
+        </p>
+        <a href="/dashboard" style={{
+          background: '#F5A623',
+          color: '#1B2A4A',
+          padding: '12px 32px',
+          borderRadius: 8,
+          fontWeight: 700,
+          textDecoration:'none',
+          fontSize: 16
+        }}>
+          Start Free Today →
+        </a>
+      </div>
+
+      {/* Related Posts */}
+      {related.length > 0 && (
+        <div style={{ marginTop: 48 }}>
+          <h3 style={{ 
+            fontSize: 22,
+            fontWeight: 700,
+            marginBottom: 20
+          }}>
+            Related Articles
+          </h3>
+          <div style={{ 
+            display:'grid',
+            gridTemplateColumns: 
+              'repeat(auto-fill, minmax(220px,1fr))',
+            gap: 16
+          }}>
+            {related.map(rp => (
+              <a 
+                key={rp.id}
+                href={`/blog/${rp.slug}`}
+                style={{ textDecoration:'none' }}>
+                <div style={{
+                  border:'1px solid #e2e8f0',
+                  borderRadius: 10,
+                  overflow:'hidden'
+                }}>
+                  {rp.cover_image && (
+                    <img
+                      src={rp.cover_image}
+                      alt={rp.title}
+                      style={{ 
+                        width:'100%',
+                        height: 120,
+                        objectFit:'cover'
+                      }}
+                    />
+                  )}
+                  <div style={{ padding: 14 }}>
+                    <p style={{ 
+                      fontWeight: 600,
+                      color:'#1B2A4A',
+                      fontSize: 14
+                    }}>
+                      {rp.title}
+                    </p>
+                    <span style={{ 
+                      color:'#94a3b8',
+                      fontSize: 12
+                    }}>
+                      ⏱️ {rp.read_time} min
+                    </span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — NAVIGATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Add "Blog" to main navbar/sidebar:
+   Between "Current Affairs" and "Quiz Practice"
+   Icon: 📝
+   Route: /blog
+   (Visible to all — no login needed)
+
+2. Add "Blog Manager" to admin sidebar:
+   Icon: 📝
+   Route: /admin/blog
+
+3. Add Blog link in Footer:
+   Add "Blog" link next to other footer links
+
+4. Make /blog and /blog/:slug 
+   accessible WITHOUT login
+   (Important for SEO — Google must 
+   be able to crawl these pages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEED 3 SAMPLE BLOG POSTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Insert these sample posts so the 
+blog does not look empty:
+
+INSERT INTO blog_posts 
+(title, slug, excerpt, content, 
+ category, exam_code, author,
+ is_published, is_featured,
+ read_time, published_at,
+ meta_title, meta_description) 
+VALUES
+
+(
+'BPSC 70th Combined Exam 2026 — Complete Syllabus Guide',
+'bpsc-70th-exam-2026-complete-syllabus-guide',
+'Complete syllabus breakdown for BPSC 70th Combined Competitive Examination 2026. Know all subjects, topics, and preparation strategy.',
+'<h2>BPSC 70th CCE 2026 — Overview</h2>
+<p>Bihar Public Service Commission (BPSC) conducts the Combined Competitive Examination (CCE) to recruit officers for various state services. The 70th CCE is one of the most awaited exams for Bihar aspirants.</p>
+<h2>Exam Pattern</h2>
+<p>The BPSC Prelims consists of 150 questions of 150 marks with 2 hours duration. There is no negative marking in BPSC Prelims.</p>
+<h2>Complete Syllabus</h2>
+<h3>1. History & Culture</h3>
+<ul>
+<li>Ancient History of Bihar & India</li>
+<li>Medieval History</li>
+<li>Modern India & Freedom Struggle</li>
+<li>Bihar History & Culture</li>
+</ul>
+<h3>2. Geography & Environment</h3>
+<ul>
+<li>Physical Geography of Bihar</li>
+<li>Rivers of Bihar — Ganga, Kosi, Gandak</li>
+<li>Climate & Rainfall patterns</li>
+<li>Environmental issues</li>
+</ul>
+<h3>3. Indian Polity & Governance</h3>
+<ul>
+<li>Constitutional Framework</li>
+<li>Parliament & State Legislature</li>
+<li>Bihar specific governance</li>
+</ul>
+<h2>Preparation Strategy</h2>
+<p>Start with NCERT books for History and Geography. Focus on Bihar-specific content as it carries significant weightage. Practice at least 50 MCQs daily on GovtGuru.</p>',
+'bpsc',
+'BPSC',
+'GovtGuru Team',
+true,
+true,
+8,
+NOW(),
+'BPSC 70th Exam 2026 Syllabus — Complete Guide | GovtGuru',
+'Complete BPSC 70th CCE 2026 syllabus with subject-wise topics, exam pattern, and preparation tips. Start practicing free on GovtGuru.'
+),
+
+(
+'SSC CGL 2026 Preparation Strategy — Month-wise Plan',
+'ssc-cgl-2026-preparation-strategy',
+'Month-by-month preparation strategy for SSC CGL 2026. Includes subject-wise tips, important topics, and daily practice schedule.',
+'<h2>SSC CGL 2026 — Key Dates</h2>
+<p>SSC CGL Tier 1 exam is expected in mid-2026. Here is a month-wise plan to crack it.</p>
+<h2>Month 1 — Quantitative Aptitude</h2>
+<p>Focus on Number System, Percentage, and Profit-Loss. These topics have highest weightage in SSC CGL.</p>
+<ul>
+<li>Number System: 1 week</li>
+<li>Percentage & Profit-Loss: 1 week</li>
+<li>SI/CI: 3 days</li>
+<li>Practice 30 questions daily</li>
+</ul>
+<h2>Month 2 — English Language</h2>
+<p>Reading Comprehension and Error Detection are most important. Improve vocabulary daily.</p>
+<h2>Month 3 — General Awareness</h2>
+<p>Current Affairs of last 6 months + Static GK. Read newspaper daily and use GovtGuru Current Affairs section.</p>',
+'ssc',
+'SSC_CGL',
+'GovtGuru Team',
+true,
+false,
+6,
+NOW(),
+'SSC CGL 2026 Preparation Strategy — Month-wise Plan | GovtGuru',
+'Complete month-wise preparation strategy for SSC CGL 2026. Subject tips, important topics, and daily practice plan.'
+),
+
+(
+'5 Best Study Techniques for Government Exam Preparation',
+'best-study-techniques-government-exam',
+'Discover the 5 most effective study techniques used by IAS and SSC toppers. Science-backed methods to improve retention and score.',
+'<h2>Why Study Technique Matters</h2>
+<p>Most students study hard but not smart. The right technique can double your retention and halve your preparation time.</p>
+<h2>1. Pomodoro Technique</h2>
+<p>Study for 25 minutes, then take a 5-minute break. After 4 sessions, take a 30-minute break. This keeps your brain fresh and focused.</p>
+<h2>2. Active Recall</h2>
+<p>Instead of re-reading, close the book and try to recall what you read. This is proven to be 3x more effective than passive reading.</p>
+<h2>3. Spaced Repetition</h2>
+<p>Review topics at increasing intervals: 1 day, 3 days, 7 days, 21 days. GovtGuru AI Study Planner uses this technique automatically.</p>
+<h2>4. Practice Tests Daily</h2>
+<p>Solve at least 50 MCQs every day. Use GovtGuru Quiz Practice for subject-wise questions with explanations.</p>
+<h2>5. Weak Area Focus</h2>
+<p>Identify your weak topics using GovtGuru Progress tracker and spend 2x time on them.</p>',
+'study-tips',
+NULL,
+'GovtGuru Team',
+true,
+false,
+5,
+NOW(),
+'5 Best Study Techniques for Govt Exam | GovtGuru',
+'Science-backed study techniques used by toppers to crack BPSC, UPPSC, SSC and other government exams.'
+);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. /blog and /blog/:slug must be 
+   accessible WITHOUT any login
+   Remove any auth guard from these routes
+
+2. Add proper meta tags for SEO:
+   <title>, <meta description>, 
+   <og:title>, <og:description>,
+   <og:image>, canonical URL
+
+3. Blog content supports HTML
+   Use dangerouslySetInnerHTML to render
+
+4. Add "Blog" link in footer too
+
+5. Do not break any existing pages
+
+6. Add Blog Manager link in admin 
+   sidebar menu
