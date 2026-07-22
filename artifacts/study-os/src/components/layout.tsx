@@ -50,9 +50,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
     <>
       <div className="p-6">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={onNav}>
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold">
-            GG
-          </div>
+          <img src="/logo-icon.png" alt="GovtGuru" width={36} height={36} className="rounded-lg shrink-0" />
           <span className="font-bold text-lg text-foreground tracking-tight">GovtGuru</span>
         </Link>
       </div>
@@ -197,9 +195,7 @@ function MobileHeader({ location }: { location: string }) {
   return (
     <header className="md:hidden flex items-center justify-between p-4 border-b bg-card sticky top-0 z-20">
       <Link href="/dashboard" className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-          GG
-        </div>
+        <img src="/logo-icon.png" alt="GovtGuru" width={28} height={28} className="rounded-md shrink-0" />
         <span className="font-bold text-foreground">GovtGuru</span>
       </Link>
       <div className="flex items-center gap-2">

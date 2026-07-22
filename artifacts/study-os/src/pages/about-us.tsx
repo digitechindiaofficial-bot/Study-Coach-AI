@@ -34,10 +34,12 @@ export default function AboutUsPage() {
       <div className="space-y-12">
         {/* Hero */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary text-primary-foreground text-3xl font-black mx-auto">
-            GG
-          </div>
-          <h1 className="text-4xl font-black tracking-tight">About GovtGuru</h1>
+          <img
+            src="/logo-full.png"
+            alt="GovtGuru — AI se Sarkari Job Pakki"
+            width={300}
+            className="mx-auto block"
+          />
           <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             India's AI-powered government exam preparation platform — built by students, for students.
           </p>

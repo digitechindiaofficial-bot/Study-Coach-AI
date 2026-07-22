@@ -69,11 +69,8 @@ export default function OnboardingPage() {
       <div className="w-full max-w-md">
 
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-10">
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">GG</span>
-          </div>
-          <span className="font-bold text-lg">GovtGuru</span>
+        <div className="flex justify-center mb-8">
+          <img src="/logo-full.png" alt="GovtGuru — AI se Sarkari Job Pakki" width={200} className="block" />
         </div>
 
         {/* Progress bar */}

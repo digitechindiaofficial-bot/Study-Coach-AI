@@ -180,8 +180,16 @@ function RootRedirect() {
   }, [isLoaded, isSignedIn, setLocation]);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="flex h-screen w-full flex-col items-center justify-center gap-4" style={{ backgroundColor: "#1B2A4A" }}>
+      <img
+        src="/logo-icon.png"
+        alt="GovtGuru"
+        width={80}
+        height={80}
+        className="animate-pulse rounded-2xl"
+      />
+      <p className="text-lg font-bold" style={{ color: "#F5A623" }}>GovtGuru</p>
+      <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>AI se Sarkari Job Pakki</p>
     </div>
   );
 }
@@ -191,13 +199,14 @@ function LoginPage() {
     <div className="flex min-h-[100dvh] items-center justify-center bg-muted/30 px-4 py-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xl">GG</span>
-          </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Welcome to GovtGuru</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Your AI Guru for Govt Exams</p>
+          <img
+            src="/logo-full.png"
+            alt="GovtGuru — AI se Sarkari Job Pakki"
+            width={280}
+            className="mx-auto mb-2"
+          />
         </div>
-        <div className="mt-8 flex justify-center">
+        <div className="flex justify-center">
           <SignIn routing="path" path="/login" signUpUrl="/signup" />
         </div>
       </div>
@@ -210,13 +219,14 @@ function SignUpPage() {
     <div className="flex min-h-[100dvh] items-center justify-center bg-muted/30 px-4 py-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xl">GG</span>
-          </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Start Your Journey</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Create an account to build your study plan.</p>
+          <img
+            src="/logo-full.png"
+            alt="GovtGuru — AI se Sarkari Job Pakki"
+            width={280}
+            className="mx-auto mb-2"
+          />
         </div>
-        <div className="mt-8 flex justify-center">
+        <div className="flex justify-center">
           <SignUp routing="path" path="/signup" signInUrl="/login" />
         </div>
       </div>

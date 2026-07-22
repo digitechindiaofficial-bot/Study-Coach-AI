@@ -14,9 +14,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
-              <div className="h-7 w-7 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-                GG
-              </div>
+              <img src="/logo-icon.png" alt="GovtGuru" width={28} height={28} className="rounded-md shrink-0" />
               <span className="font-bold text-foreground">GovtGuru</span>
             </div>
           </Link>

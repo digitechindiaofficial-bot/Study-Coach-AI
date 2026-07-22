@@ -1,0 +1,292 @@
+I have my app logo and icon ready. 
+I need to add them throughout the app 
+in all required places.
+
+I am uploading two images:
+1. govt_logo_app.png — Square icon only 
+   (graduation cap + circuit board)
+2. Full logo with text "GovtGuru" and 
+   tagline "AI se Sarkari Job Pakki"
+
+Please add these to all required places:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — SAVE IMAGE FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Save these images in /public folder:
+- /public/logo-icon.png (square icon)
+- /public/logo-full.png (full logo with text)
+- /public/logo-white.png (if needed for dark bg)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — FAVICON (Browser tab icon)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Replace current favicon with our icon.
+
+In index.html or _document.tsx:
+<link rel="icon" 
+  type="image/png" 
+  href="/logo-icon.png" />
+<link rel="apple-touch-icon" 
+  href="/logo-icon.png" />
+
+Also add in <head>:
+<meta property="og:image" 
+  content="/logo-full.png" />
+<meta property="og:title" 
+  content="GovtGuru — AI se Sarkari Job Pakki" />
+<meta property="og:description"
+  content="India's #1 AI-powered government 
+  exam preparation platform. Personalised 
+  study plans for BPSC, UPPSC, SSC, IBPS & more." />
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — SIDEBAR / NAVBAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Currently showing "GG" text avatar or 
+plain "GovtGuru" text.
+
+Replace with actual logo image:
+
+// In Sidebar component top section:
+<div className="sidebar-logo">
+  <img 
+    src="/logo-icon.png" 
+    alt="GovtGuru" 
+    width={36} 
+    height={36}
+    style={{ borderRadius: '8px' }}
+  />
+  <span>GovtGuru</span>
+</div>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — LOGIN / SIGNUP PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add full logo on login and signup pages:
+
+<div className="auth-logo">
+  <img 
+    src="/logo-full.png" 
+    alt="GovtGuru — AI se Sarkari Job Pakki"
+    width={280}
+    style={{ marginBottom: '24px' }}
+  />
+</div>
+
+Place it above the login form, centered.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — ONBOARDING SCREENS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add logo at top of onboarding flow:
+
+<img 
+  src="/logo-full.png"
+  alt="GovtGuru"
+  width={200}
+  style={{ 
+    display: 'block',
+    margin: '0 auto 32px auto'
+  }}
+/>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — DASHBOARD HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If there is a top header bar, add logo:
+
+<header>
+  <img 
+    src="/logo-icon.png"
+    alt="GovtGuru"
+    width={32}
+    height={32}
+  />
+  <span>GovtGuru</span>
+</header>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 7 — ABOUT US PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add full logo prominently:
+
+<div style={{ textAlign: 'center', 
+              padding: '40px 0' }}>
+  <img 
+    src="/logo-full.png"
+    alt="GovtGuru"
+    width={300}
+  />
+  <p>AI se Sarkari Job Pakki</p>
+</div>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 8 — FOOTER (All pages)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add in footer component:
+
+<footer>
+  <img 
+    src="/logo-icon.png"
+    alt="GovtGuru"
+    width={40}
+    height={40}
+  />
+  <span>GovtGuru</span>
+  <p>AI se Sarkari Job Pakki</p>
+  <p>© 2026 Digi Tech India. 
+     All rights reserved.</p>
+</footer>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 9 — PWA MANIFEST (Web App)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update manifest.json or manifest.webmanifest:
+
+{
+  "name": "GovtGuru",
+  "short_name": "GovtGuru",
+  "description": "AI se Sarkari Job Pakki",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1B2A4A",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-icon.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 10 — PAGE TITLE (Browser Tab)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update all page titles:
+
+Homepage: "GovtGuru — AI se Sarkari Job Pakki"
+Quiz:     "Quiz Practice — GovtGuru"
+Planner:  "Study Planner — GovtGuru"
+Progress: "My Progress — GovtGuru"
+Settings: "Settings — GovtGuru"
+Login:    "Login — GovtGuru"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 11 — LOADING SCREEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add a loading screen with logo when 
+app first loads:
+
+// LoadingScreen component:
+<div style={{
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: '100vh',
+  backgroundColor: '#1B2A4A'
+}}>
+  <img 
+    src="/logo-icon.png"
+    alt="GovtGuru"
+    width={80}
+    height={80}
+    style={{ 
+      animation: 'pulse 1.5s infinite'
+    }}
+  />
+  <p style={{ 
+    color: '#F5A623',
+    marginTop: '16px',
+    fontSize: '18px',
+    fontWeight: '600'
+  }}>
+    GovtGuru
+  </p>
+  <p style={{ color: '#ffffff80' }}>
+    AI se Sarkari Job Pakki
+  </p>
+</div>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 12 — EMAIL TEMPLATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If any emails are sent (welcome, payment),
+add logo at top of email:
+
+<img src="https://study-coach-ai.replit.app/logo-full.png"
+  alt="GovtGuru" width="200" />
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLAY STORE ICON REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Also create these sizes from the icon:
+(Use sharp or canvas to resize)
+
+import sharp from 'sharp'
+
+// Generate all required sizes
+const sizes = [48, 72, 96, 144, 192, 512]
+for (const size of sizes) {
+  await sharp('/public/logo-icon.png')
+    .resize(size, size)
+    .toFile(`/public/icons/icon-${size}x${size}.png`)
+}
+
+// Play Store requires:
+// 512x512 — High res icon
+// 1024x500 — Feature graphic
+
+// App Store requires:
+// 1024x1024 — App icon
+
+Please generate these and save in 
+/public/icons/ folder.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COLORS FROM LOGO (Use throughout app)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Primary Dark Blue:  #1B2A4A
+Primary Gold:       #F5A623  
+White:              #FFFFFF
+Light Blue:         #2D4A7A
+
+Update theme/globals.css:
+:root {
+  --color-primary: #1B2A4A;
+  --color-accent: #F5A623;
+  --color-white: #FFFFFF;
+}
+
+Make sure buttons, headings, and 
+important UI elements use these 
+exact brand colors.
+
+After all changes, please show me 
+screenshots of:
+1. Login page with logo
+2. Sidebar with logo  
+3. Browser tab with favicon
