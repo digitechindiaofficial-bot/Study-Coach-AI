@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlan, FREE_DAILY_QUIZ_LIMIT } from "@/hooks/use-plan";
+import { useGetMyProfile } from "@workspace/api-client-react";
 
 const navItems = [
   { name: "Dashboard",       href: "/dashboard",       icon: LayoutDashboard },
@@ -41,6 +42,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
   const { user, isLoaded: userLoaded } = useUser();
   const { signOut } = useClerk();
   const plan = usePlan();
+  const { data: profileData } = useGetMyProfile();
 
   const isFree = !plan.isPro;
   const quizLeft = plan.quizQuestionsLeft;
@@ -131,7 +133,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
             <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium truncate">{user?.fullName || "User"}</span>
+            <span className="text-sm font-medium truncate">{profileData?.fullName || user?.fullName || "User"}</span>
             <span className="text-xs text-muted-foreground truncate capitalize">
               {plan.planType === "pro" ? "✦ Pro" : "Free Plan"}
             </span>

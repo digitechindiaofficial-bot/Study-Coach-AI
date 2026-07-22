@@ -13,6 +13,7 @@ export interface Profile {
   fullName?: string | null;
   /** @nullable */
   phoneNumber?: string | null;
+  phoneVerified?: boolean;
   /** @nullable */
   examType?: string | null;
   /** @nullable */
