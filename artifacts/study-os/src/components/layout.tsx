@@ -49,7 +49,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
   return (
     <>
       <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-3" onClick={onNav}>
+        <Link href="/dashboard" className="flex items-center gap-1.5" onClick={onNav}>
           <img src="/logo-icon.png" alt="GovtGuru" width={36} height={36} className="rounded-lg shrink-0" />
           <span className="font-bold text-lg text-foreground tracking-tight">GovtGuru</span>
         </Link>

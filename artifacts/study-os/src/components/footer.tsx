@@ -14,12 +14,9 @@ export default function Footer({ className = "" }: { className?: string }) {
   return (
     <footer className={`border-t bg-card py-6 px-4 mt-auto ${className}`}>
       <div className="max-w-[1280px] mx-auto space-y-3">
-        <div className="flex items-center justify-center gap-2 mb-1">
+        <div className="flex items-center justify-center gap-1.5 mb-1">
           <img src="/logo-icon.png" alt="GovtGuru" width={32} height={32} className="rounded-md" />
-          <div className="text-left">
-            <p className="text-sm font-bold text-foreground leading-none">GovtGuru</p>
-            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">AI se Sarkari Job Pakki</p>
-          </div>
+          <p className="text-sm font-bold text-foreground">GovtGuru</p>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center text-xs text-muted-foreground">
           {FOOTER_LINKS.map(link => (
