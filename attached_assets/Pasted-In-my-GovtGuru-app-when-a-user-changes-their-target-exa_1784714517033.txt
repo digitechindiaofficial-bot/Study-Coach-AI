@@ -1,0 +1,224 @@
+In my GovtGuru app, when a user changes 
+their target exam in Settings page, the 
+Study Planner still shows the old exam's 
+plan. I need two fixes:
+
+FIX 1 — Settings page: After saving 
+new exam, auto-refresh study plan
+
+FIX 2 — Study Planner: Detect exam 
+change and regenerate plan automatically
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 1 — SETTINGS PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Find the Settings page component where 
+"Save Settings" button is clicked.
+
+In the saveSettings function, after 
+successfully saving new exam_code:
+
+async function saveSettings() {
+  // Get old exam before saving
+  const oldExam = currentProfile?.exam_code
+  const newExam = selectedExam  
+  
+  // Save to database
+  await supabase
+    .from('profiles')
+    .update({ 
+      exam_code: newExam,
+      // other settings...
+    })
+    .eq('user_id', userId)
+  
+  // Check if exam changed
+  if (oldExam !== newExam) {
+    
+    // DELETE old study plan from database
+    await supabase
+      .from('study_plans')
+      .delete()
+      .eq('user_id', userId)
+    
+    // Show message to user
+    toast.success(
+      'Exam changed! Generating new 
+       study plan for ' + newExam + '...'
+    )
+    
+    // Redirect to Study Planner
+    // so new plan gets generated
+    setTimeout(() => {
+      window.location.href = '/planner'
+    }, 1500)
+    
+  } else {
+    // Exam not changed, normal save
+    toast.success('Settings saved!')
+  }
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 2 — STUDY PLANNER PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Find the Study Planner component.
+
+When the planner loads, check if 
+saved plan matches current exam:
+
+useEffect(() => {
+  async function checkAndLoadPlan() {
+    
+    // Get user's current exam
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('exam_code, exam_date, 
+               daily_hours')
+      .eq('user_id', userId)
+      .single()
+    
+    const currentExam = profile?.exam_code
+    
+    // Get saved study plan
+    const { data: savedPlan } = await supabase
+      .from('study_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
+    // Check if plan exists AND 
+    // matches current exam
+    if (savedPlan && 
+        savedPlan.exam_code === currentExam) {
+      // Plan is valid — show it
+      setPlan(savedPlan.plan_data)
+      setCurrentExam(currentExam)
+      
+    } else {
+      // Plan is outdated or missing
+      // Auto generate new plan
+      console.log('Exam changed or no plan found')
+      console.log('Generating new plan for:', 
+                  currentExam)
+      
+      // Delete old plan if exists
+      if (savedPlan) {
+        await supabase
+          .from('study_plans')
+          .delete()
+          .eq('user_id', userId)
+      }
+      
+      // Auto generate new plan
+      await generateNewPlan(currentExam, profile)
+    }
+  }
+  
+  checkAndLoadPlan()
+}, [userId])
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 3 — STUDY PLANS TABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Make sure study_plans table has 
+exam_code column to track which 
+exam the plan belongs to:
+
+ALTER TABLE study_plans 
+ADD COLUMN IF NOT EXISTS 
+exam_code TEXT;
+
+When saving a new plan, always 
+save the exam_code with it:
+
+await supabase
+  .from('study_plans')
+  .upsert({
+    user_id: userId,
+    exam_code: currentExam,  // ← Important!
+    plan_data: generatedPlan,
+    generated_at: new Date().toISOString()
+  })
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 4 — SHOW LOADING STATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When new plan is being generated,
+show a nice loading screen:
+
+if (isGenerating) {
+  return (
+    <div style={{ textAlign: 'center', 
+                  padding: '60px 20px' }}>
+      <div className="spinner" />
+      <h3>Generating your personalized 
+          study plan...</h3>
+      <p>Creating plan for {currentExam}</p>
+      <p style={{ color: 'gray' }}>
+        This may take 10-15 seconds
+      </p>
+    </div>
+  )
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPLETE FLOW AFTER FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User goes to Settings
+2. Changes exam from BPSC to UPPSC
+3. Clicks "Save Settings"
+4. App detects exam changed
+5. Shows toast: "Exam changed! 
+   Generating new plan..."
+6. Deletes old BPSC plan
+7. Redirects to /planner
+8. Planner sees no valid plan exists
+9. Auto generates UPPSC plan
+10. Shows new UPPSC study plan! ✅
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALSO FIX — DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dashboard "Today's Study Plan" section
+also shows old plan after exam change.
+
+Apply same fix:
+- Check if plan's exam_code matches 
+  profile's exam_code
+- If mismatch → show message:
+  "Your study plan is being updated 
+   for your new exam. 
+   Go to Study Planner →"
+- Link to /planner
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Do NOT regenerate plan if exam 
+   is same — only when exam changes
+
+2. Show clear loading state while 
+   plan is being generated
+
+3. If plan generation fails, show:
+   "Could not generate plan. 
+    Please click Regenerate button."
+
+4. After exam change, also reset:
+   - question_attempts (optional)
+   - progress data (optional)
+   But ask user first:
+   "Do you want to reset your 
+    progress for the new exam? 
+    [Yes, Reset] [Keep Old Progress]"
+
+5. Do not break existing 
+   Study Planner functionality

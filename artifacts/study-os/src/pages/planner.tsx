@@ -7,7 +7,7 @@ import {
   Sun, Moon, CheckCircle2, Lightbulb, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, Target, Zap, TrendingUp, Settings,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, addDays, startOfWeek } from "date-fns";
@@ -237,6 +237,9 @@ export default function PlannerPage() {
     qc.invalidateQueries({ queryKey: getGetDailyTasksQueryKey({ date: todayStr }) });
   };
 
+  // Track whether we already auto-triggered to avoid infinite loop
+  const autoRegenTriggered = useRef(false);
+
   const callGenerate = async (force: boolean) => {
     if (force && !plan.canRegeneratePlan) { setShowUpgradeModal(true); return; }
     setIsGenerating(true);
@@ -261,6 +264,47 @@ export default function PlannerPage() {
       setIsGenerating(false);
     }
   };
+
+  // Auto-regen when saved plan is for a different exam than the profile
+  useEffect(() => {
+    if (isLoading || isGenerating || autoRegenTriggered.current) return;
+    if (!currentPlan || !profile) return;
+
+    const planExam    = (currentPlan as any).examType as string | undefined;
+    const profileExam = (profile as any).examType    as string | undefined;
+
+    if (planExam && profileExam && planExam !== profileExam) {
+      autoRegenTriggered.current = true;
+      toast({
+        title: "Exam changed — regenerating your plan",
+        description: `Switching from ${planExam.replace(/_/g, " ")} to ${profileExam.replace(/_/g, " ")}…`,
+      });
+      // Force regenerate without the Pro gate — this is system-driven, not user-initiated
+      setIsGenerating(true);
+      fetch("/api/study-plans/generate?force=true", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      })
+        .then(async r => {
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            const code = (err as any).code;
+            if (code === "NO_EXAM_DATE" || code === "EXAM_PASSED") {
+              toast({ title: "Exam date needed", description: (err as any).error, variant: "destructive" });
+              navigate("/settings");
+              return;
+            }
+            throw new Error((err as any).error ?? "Failed");
+          }
+          toast({ title: "New plan ready!", description: `Study plan for ${profileExam.replace(/_/g, " ")} generated.` });
+          invalidateAll();
+        })
+        .catch((e: any) => {
+          toast({ title: "Could not regenerate plan", description: "Please click the Regenerate button.", variant: "destructive" });
+          autoRegenTriggered.current = false;
+        })
+        .finally(() => setIsGenerating(false));
+    }
+  }, [isLoading, currentPlan, profile]);
 
   if (isLoading) return (
     <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-32 bg-muted rounded animate-pulse" />)}</div>

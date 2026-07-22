@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const plan = usePlan();
+  const [, navigate] = useLocation();
 
   const { data: profile, isLoading } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
   const upsert = useUpsertProfile();
@@ -74,10 +76,23 @@ export default function SettingsPage() {
       toast({ title: "Enter a valid 10-digit mobile number", variant: "destructive" });
       return;
     }
+    const oldExam = (profile as any)?.examType ?? "";
+    const examChanged = oldExam && oldExam !== examType;
+
     upsert.mutate({ data: { fullName, phoneNumber: `+91${phoneNumber}`, examType, examDate: examDate?.toISOString(), dailyStudyHours: hours[0] } as any }, {
-      onSuccess: () => {
-        toast({ title: "Settings saved!" });
+      onSuccess: async () => {
         qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+        if (examChanged) {
+          toast({ title: "Exam changed!", description: `Generating new study plan for ${examType.replace(/_/g, " ")}…` });
+          try {
+            await fetch("/api/study-plans/current", { method: "DELETE", credentials: "include" });
+          } catch {
+            // non-fatal — planner will handle stale plan
+          }
+          setTimeout(() => navigate("/planner"), 1200);
+        } else {
+          toast({ title: "Settings saved!" });
+        }
       },
       onError: () => toast({ title: "Failed to save", variant: "destructive" })
     });

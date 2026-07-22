@@ -432,6 +432,16 @@ router.get("/study-plans/current", async (req, res) => {
   res.json({ plan: plans[0] });
 });
 
+router.delete("/study-plans/current", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  const profile = await getProfileByClerkId(userId);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+  await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
+  res.json({ ok: true });
+});
+
 router.post("/study-plans/generate", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
