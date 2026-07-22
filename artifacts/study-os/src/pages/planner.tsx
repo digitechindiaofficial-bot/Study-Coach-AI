@@ -394,6 +394,24 @@ export default function PlannerPage() {
         </Button>
       </div>
 
+      {/* Exam change reminder */}
+      <div style={{
+        background: '#EFF6FF',
+        border: '1px solid #BFDBFE',
+        borderLeft: '4px solid #3B82F6',
+        borderRadius: '8px',
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '10px',
+      }}>
+        <span style={{ fontSize: '16px', lineHeight: '1.5' }}>ℹ️</span>
+        <p style={{ margin: 0, color: '#1E40AF', fontSize: '14px', lineHeight: '1.5' }}>
+          <strong>Changed your target exam?</strong><br />
+          Click the <strong>"Regenerate"</strong> button above and refresh the page once to get your updated study plan.
+        </p>
+      </div>
+
       {!plan.canRegeneratePlan && (
         <div
           className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
