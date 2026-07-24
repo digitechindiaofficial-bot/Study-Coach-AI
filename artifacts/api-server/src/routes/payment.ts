@@ -36,7 +36,12 @@ router.post("/payment/create-order", async (req, res) => {
       VALUES ('${userId}', '${order.id}', 19900, 'INR', 'pending', 'pro')
     `);
 
-    res.json({ order_id: order.id, amount: order.amount, currency: order.currency });
+    res.json({
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key_id: process.env.RAZORPAY_KEY_ID,
+    });
   } catch (err) {
     logger.error({ err }, "Razorpay create-order failed");
     res.status(500).json({ error: "Failed to create payment order" });

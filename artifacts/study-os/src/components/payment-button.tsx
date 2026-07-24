@@ -63,11 +63,11 @@ export function PaymentButton({ userName, userEmail, onSuccess }: PaymentButtonP
         throw new Error(err.error || `Order creation failed (${orderRes.status})`);
       }
 
-      const { order_id, amount, currency } = await orderRes.json();
+      const { order_id, amount, currency, key_id } = await orderRes.json();
 
       // Step 3: Open Razorpay checkout
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: key_id,
         amount,
         currency,
         name: "GovtGuru",
