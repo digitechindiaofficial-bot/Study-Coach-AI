@@ -1,8 +1,11 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # compiled output
-dist
 tmp
+# Ignore dist everywhere EXCEPT the pre-built production artifacts
+dist
+!artifacts/api-server/dist
+!artifacts/study-os/dist
 out-tsc
 *.tsbuildinfo
 .expo
