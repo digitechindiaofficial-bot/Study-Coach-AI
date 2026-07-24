@@ -75,7 +75,7 @@ router.post("/payment/verify", async (req, res) => {
 
   await db
     .update(profilesTable)
-    .set({ planType: "pro", planExpiry: planExpiry.toISOString() } as any)
+    .set({ planType: "pro", planExpiry } as any)
     .where(eq(profilesTable.clerkUserId, userId));
 
   // Mark payment as captured

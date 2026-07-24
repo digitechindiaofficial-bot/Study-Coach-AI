@@ -1,0 +1,82 @@
+Payment is now going through Razorpay 
+successfully but showing:
+
+"Verification failed. Payment received 
+but verification failed. Please contact support."
+
+This means:
+✅ Payment is successful on Razorpay side
+❌ Signature verification failing on backend
+
+Please fix the verify endpoint.
+
+STEP 1 - Check Shell logs right now:
+Show me the server logs when 
+verify endpoint was called.
+
+STEP 2 - The verify endpoint likely 
+has this issue:
+
+import crypto from 'crypto'
+
+// This might be failing:
+const expectedSignature = crypto
+  .createHmac('sha256', 
+    process.env.RAZORPAY_KEY_SECRET)
+  .update(razorpay_order_id + '|' + 
+          razorpay_payment_id)
+  .digest('hex')
+
+Common issues:
+1. RAZORPAY_KEY_SECRET is undefined
+2. Wrong string format for HMAC
+3. userId not found in request
+
+STEP 3 - Add debug to verify route:
+
+console.log('=== VERIFY DEBUG ===')
+console.log('order_id:', razorpay_order_id)
+console.log('payment_id:', razorpay_payment_id)
+console.log('signature:', razorpay_signature)
+console.log('secret exists:', 
+  !!process.env.RAZORPAY_KEY_SECRET)
+console.log('expected:', expectedSignature)
+console.log('received:', razorpay_signature)
+console.log('match:', 
+  expectedSignature === razorpay_signature)
+
+STEP 4 - Also check Razorpay Dashboard:
+The payment shows as successful there.
+Get the payment_id from dashboard
+and manually verify.
+
+STEP 5 - IMPORTANT:
+Also check if the user exists in 
+profiles table before updating:
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('user_id')
+  .eq('user_id', userId)
+  .single()
+
+console.log('Profile found:', profile)
+
+STEP 6 - Fix the profiles update:
+After verification succeeds,
+make sure this runs correctly:
+
+await supabase
+  .from('profiles')
+  .update({
+    plan: 'pro',
+    plan_expiry: new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    ).toISOString()
+  })
+  .eq('user_id', userId)
+
+Please check Razorpay dashboard too — 
+payment of ₹199 should show there.
+Fix verification and then update 
+user to Pro plan.
