@@ -137553,7 +137553,7 @@ if (process.env.NODE_ENV === "production") {
   const __dirname2 = path2.dirname(fileURLToPath(import.meta.url));
   const staticDir = path2.resolve(__dirname2, "../../../artifacts/study-os/dist/public");
   app.use(import_express36.default.static(staticDir));
-  app.get("*", (_req, res) => {
+  app.get("(.*)", (_req, res) => {
     res.sendFile(path2.join(staticDir, "index.html"));
   });
 }
