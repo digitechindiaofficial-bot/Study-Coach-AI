@@ -1,0 +1,172 @@
+When I click "Upgrade to Pro" button,
+immediately shows "Payment Failed" 
+WITHOUT opening Razorpay modal at all.
+
+Razorpay checkout window never opens.
+
+This means either:
+1. Razorpay script not loaded in browser
+2. VITE_RAZORPAY_KEY_ID not available 
+   in frontend code
+3. create-order API call failing
+4. Razorpay object not found 
+   (window.Razorpay is undefined)
+
+Please fix:
+
+STEP 1 - Check browser console errors:
+Add this to PaymentButton component
+at the very start of handlePayment:
+
+const handlePayment = async () => {
+  console.log('Button clicked')
+  console.log('Razorpay available:', 
+    typeof window.Razorpay)
+  console.log('Key ID:', 
+    import.meta.env.VITE_RAZORPAY_KEY_ID)
+  
+  if (!window.Razorpay) {
+    alert('Razorpay not loaded! 
+           Check internet connection.')
+    return
+  }
+  // rest of code...
+}
+
+STEP 2 - Make sure Razorpay script 
+is in index.html:
+
+In client/index.html or index.html,
+inside <head> tag add:
+
+<script 
+  src="https://checkout.razorpay.com/v1/checkout.js">
+</script>
+
+STEP 3 - Fix VITE env variable:
+In the payment component, key should be:
+
+const key = import.meta.env.VITE_RAZORPAY_KEY_ID
+
+If this is undefined, add to 
+.env file (not just Replit Secrets):
+
+VITE_RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXX
+
+STEP 4 - Add proper error handling
+in PaymentButton:
+
+const handlePayment = async () => {
+  try {
+    setLoading(true)
+    
+    // Step 1: Create order
+    const orderRes = await fetch(
+      '/api/payment/create-order',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: userId,
+          email: userEmail
+        })
+      }
+    )
+    
+    if (!orderRes.ok) {
+      const err = await orderRes.json()
+      throw new Error(
+        err.error || 'Order creation failed'
+      )
+    }
+    
+    const orderData = await orderRes.json()
+    console.log('Order created:', orderData)
+    
+    // Step 2: Check Razorpay loaded
+    if (!window.Razorpay) {
+      throw new Error(
+        'Razorpay script not loaded'
+      )
+    }
+    
+    // Step 3: Open Razorpay
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: orderData.amount,
+      currency: 'INR',
+      name: 'GovtGuru',
+      description: 'Pro Plan — ₹199/month',
+      image: '/logo-icon.png',
+      order_id: orderData.orderId,
+      prefill: {
+        email: userEmail || '',
+        name: userName || ''
+      },
+      theme: { color: '#1B2A4A' },
+      handler: async function(response) {
+        // Verify payment
+        const verifyRes = await fetch(
+          '/api/payment/verify',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              razorpay_order_id: 
+                response.razorpay_order_id,
+              razorpay_payment_id: 
+                response.razorpay_payment_id,
+              razorpay_signature: 
+                response.razorpay_signature,
+              userId: userId
+            })
+          }
+        )
+        
+        const result = await verifyRes.json()
+        
+        if (result.success) {
+          alert('🎉 Pro Plan Activated!')
+          window.location.reload()
+        } else {
+          alert('Verification failed: ' + 
+                result.error)
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          setLoading(false)
+        }
+      }
+    }
+    
+    const rzp = new window.Razorpay(options)
+    
+    rzp.on('payment.failed', function(resp) {
+      console.error('Payment failed:', resp)
+      alert('Payment failed: ' + 
+            resp.error.description)
+      setLoading(false)
+    })
+    
+    rzp.open()
+    
+  } catch (error) {
+    console.error('Payment error:', error)
+    alert('Error: ' + error.message)
+    setLoading(false)
+  }
+}
+
+STEP 5 - Most important check:
+Open browser DevTools (F12)
+→ Console tab
+→ Click "Upgrade to Pro" button
+→ Show me what errors appear
+
+The console will show exactly 
+what is failing.
