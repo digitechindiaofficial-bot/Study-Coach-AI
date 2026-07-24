@@ -1,7 +1,11 @@
 module.exports = {
   hooks: {
-    readPackage(pkg, context) {
-      return pkg
+    readPackage(pkg) {
+      if (['@google/genai', 'esbuild', 'protobufjs'].includes(pkg.name)) {
+        pkg.pnpm = pkg.pnpm || {};
+        pkg.pnpm.allowBuild = true;
+      }
+      return pkg;
     }
   }
 }
