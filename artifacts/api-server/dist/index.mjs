@@ -137560,22 +137560,18 @@ if (process.env.NODE_ENV === "production") {
 var app_default = app;
 
 // src/index.ts
-var rawPort = process.env["PORT"];
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided."
-  );
-}
+var rawPort = process.env["PORT"] ?? "3000";
 var port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  logger2.warn({ rawPort }, "Invalid PORT value, defaulting to 3000");
 }
-app_default.listen(port, (err) => {
+var resolvedPort = Number.isNaN(port) || port <= 0 ? 3e3 : port;
+app_default.listen(resolvedPort, (err) => {
   if (err) {
     logger2.error({ err }, "Error listening on port");
     process.exit(1);
   }
-  logger2.info({ port }, "Server listening");
+  logger2.info({ port: resolvedPort }, "Server listening");
 });
 /*! Bundled license information:
 
