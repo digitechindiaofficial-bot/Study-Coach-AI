@@ -59,7 +59,7 @@ if (process.env.NODE_ENV === "production") {
   const staticDir = path.resolve(__dirname, "../../../artifacts/study-os/dist/public");
   app.use(express.static(staticDir));
   // SPA fallback — serve index.html for all non-API routes
-  app.get("(.*)", (_req, res) => {
+  app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
 }
