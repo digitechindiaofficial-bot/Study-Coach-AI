@@ -3,7 +3,7 @@
  * seeding endpoint in batches.
  *
  * Usage:
- *   SEED_TOKEN=<token> PROD_URL=https://study-coach-ai.replit.app \
+ *   SEED_TOKEN=<token> PROD_URL=https://govtguru.replit.app \
  *     pnpm --filter @workspace/scripts run call-prod-seed
  */
 import { createRequire } from "module";
@@ -13,7 +13,7 @@ const { Client } = require(
   "/home/runner/workspace/node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/index.js"
 );
 
-const PROD_URL = process.env.PROD_URL ?? "https://study-coach-ai.replit.app";
+const PROD_URL = process.env.PROD_URL ?? "https://govtguru.replit.app";
 const SEED_TOKEN = process.env.SEED_TOKEN;
 if (!SEED_TOKEN) throw new Error("SEED_TOKEN env var required");
 
