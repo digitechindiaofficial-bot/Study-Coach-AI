@@ -1,0 +1,88 @@
+Add Razorpay payment integration 
+to my GovtGuru app.
+
+My Razorpay TEST keys are now added 
+to Replit Secrets:
+- RAZORPAY_KEY_ID
+- RAZORPAY_KEY_SECRET
+- VITE_RAZORPAY_KEY_ID
+
+Please do the following:
+
+1. Install razorpay package:
+   npm install razorpay
+
+2. Add Razorpay checkout script 
+   in index.html <head>:
+   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+3. Create backend API routes:
+
+   POST /api/payment/create-order
+   → Creates Razorpay order
+   → Amount: 19900 paise (₹199)
+   → Returns order_id
+
+   POST /api/payment/verify
+   → Verifies payment signature
+   → Updates user plan to 'pro'
+   → Updates profiles table
+
+4. Create PaymentButton component:
+   - Calls /api/payment/create-order
+   - Opens Razorpay checkout modal
+   - On success calls /api/payment/verify
+   - On verified: shows success toast
+     and updates user to Pro
+
+   Razorpay options:
+   {
+     key: process.env.VITE_RAZORPAY_KEY_ID,
+     amount: 19900,
+     currency: 'INR',
+     name: 'GovtGuru',
+     description: 'Pro Plan — 1 Month',
+     image: '/logo-icon.png',
+     theme: { color: '#1B2A4A' },
+     prefill: {
+       name: userName,
+       email: userEmail
+     }
+   }
+
+5. Add payment button on Settings page
+   where "Upgrade to Pro" is shown.
+   Replace current upgrade button with
+   this new Razorpay payment button.
+
+6. After successful payment:
+   - Update profiles table:
+     plan = 'pro'
+     plan_expiry = 1 month from now
+   - Show success message:
+     "🎉 Welcome to Pro! 
+      Your plan is now active."
+   - Refresh page to show Pro features
+
+7. Create payments table in Supabase:
+   CREATE TABLE payments (
+     id UUID DEFAULT gen_random_uuid() 
+        PRIMARY KEY,
+     user_id TEXT NOT NULL,
+     order_id TEXT NOT NULL,
+     payment_id TEXT,
+     amount INTEGER NOT NULL,
+     currency TEXT DEFAULT 'INR',
+     status TEXT DEFAULT 'pending',
+     plan TEXT DEFAULT 'pro',
+     created_at TIMESTAMPTZ DEFAULT NOW()
+   );
+
+8. Test with these test card details:
+   Card: 4111 1111 1111 1111
+   Expiry: Any future date
+   CVV: Any 3 digits
+   OTP: 1234
+
+After implementation show me the 
+upgrade button on Settings page.

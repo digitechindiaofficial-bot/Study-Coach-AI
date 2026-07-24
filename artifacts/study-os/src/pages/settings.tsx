@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
+import { PaymentButton } from "@/components/payment-button";
 import { usePlan } from "@/hooks/use-plan";
 import { useExams } from "@/hooks/use-exams";
 
@@ -183,17 +184,32 @@ export default function SettingsPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-lg">Free Plan</p>
-                <p className="text-sm text-muted-foreground">10 quiz questions/day · Today's top 5 news</p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-bold text-lg">Free Plan</p>
+                  <p className="text-sm text-muted-foreground">10 quiz questions/day · Today's top 5 news</p>
+                </div>
               </div>
-              <Link href="/upgrade">
-                <Button className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm">
-                  <Sparkles className="mr-2 w-4 h-4" />
-                  Upgrade
-                </Button>
-              </Link>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {["Unlimited quiz questions","AI study plan regeneration","All 15 daily news","MCQ from current affairs","Full progress analytics","Complete syllabus tracking"].map(f => (
+                  <div key={f} className="flex items-center gap-1.5 text-muted-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    <span className="text-xs">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground mb-3">Unlock all Pro features for just ₹199/month</p>
+                <PaymentButton
+                  userName={user?.fullName ?? ""}
+                  userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
+                  onSuccess={() => qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() })}
+                />
+              </div>
             </div>
           )}
         </CardContent>

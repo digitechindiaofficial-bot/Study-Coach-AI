@@ -16,6 +16,7 @@ import examsAdminRouter from "./exams-admin";
 import contactRouter from "./contact";
 import otpRouter from "./otp";
 import blogRouter from "./blog";
+import paymentRouter from "./payment";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -35,5 +36,6 @@ router.use(examsAdminRouter);
 router.use(contactRouter);
 router.use(otpRouter);
 router.use(blogRouter);
+router.use(paymentRouter);
 
 export default router;

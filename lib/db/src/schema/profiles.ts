@@ -17,6 +17,7 @@ export const profilesTable = pgTable("profiles", {
   lastActiveDate: date("last_active_date"),
   quizCountToday: integer("quiz_count_today").default(0).notNull(),
   quizCountDate: date("quiz_count_date"),
+  planExpiry: timestamp("plan_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
