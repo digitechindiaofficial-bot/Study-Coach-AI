@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -49,5 +51,17 @@ app.use(
 );
 
 app.use("/api", router);
+
+// In production (Hostinger), serve the built React frontend static files
+if (process.env.NODE_ENV === "production") {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  // From artifacts/api-server/dist/ → up to repo root → artifacts/study-os/dist/public
+  const staticDir = path.resolve(__dirname, "../../../artifacts/study-os/dist/public");
+  app.use(express.static(staticDir));
+  // SPA fallback — serve index.html for all non-API routes
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+}
 
 export default app;
