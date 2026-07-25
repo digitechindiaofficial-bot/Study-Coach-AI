@@ -21,14 +21,19 @@ const router = Router();
 // ── Auth guard ────────────────────────────────────────────────────────────────
 
 function requireSeedToken(req: Request, res: Response, next: NextFunction): void {
-  const token = process.env.SEED_TOKEN;
+  const token = (process.env.SEED_TOKEN ?? "").trim();
   if (!token) {
     res.status(503).json({ error: "SEED_TOKEN not configured on this server" });
     return;
   }
+  // Accept token from Authorization header OR ?token= query param
   const auth = req.headers.authorization ?? "";
-  const provided = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const fromHeader = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const fromQuery = typeof req.query.token === "string" ? req.query.token.trim() : "";
+  const provided = fromHeader || fromQuery;
   if (provided !== token) {
+    // Log first/last chars for debugging (never log full token)
+    console.error(`[seed] token mismatch — expected len=${token.length} first3=${token.slice(0,3)} last3=${token.slice(-3)}, got len=${provided.length} first3=${provided.slice(0,3)} last3=${provided.slice(-3)}`);
     res.status(401).json({ error: "Invalid seed token" });
     return;
   }

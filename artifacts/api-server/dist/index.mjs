@@ -133142,14 +133142,17 @@ var import_express35 = __toESM(require_express2(), 1);
 init_src();
 var router19 = (0, import_express35.Router)();
 function requireSeedToken(req, res, next) {
-  const token = process.env.SEED_TOKEN;
+  const token = (process.env.SEED_TOKEN ?? "").trim();
   if (!token) {
     res.status(503).json({ error: "SEED_TOKEN not configured on this server" });
     return;
   }
   const auth = req.headers.authorization ?? "";
-  const provided = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const fromHeader = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const fromQuery = typeof req.query.token === "string" ? req.query.token.trim() : "";
+  const provided = fromHeader || fromQuery;
   if (provided !== token) {
+    console.error(`[seed] token mismatch \u2014 expected len=${token.length} first3=${token.slice(0, 3)} last3=${token.slice(-3)}, got len=${provided.length} first3=${provided.slice(0, 3)} last3=${provided.slice(-3)}`);
     res.status(401).json({ error: "Invalid seed token" });
     return;
   }
