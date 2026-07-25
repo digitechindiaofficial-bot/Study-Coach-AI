@@ -28857,15 +28857,6 @@ var init_isomorphicBtoa = __esm({
 });
 
 // ../../node_modules/.pnpm/@clerk+shared@4.22.0_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/@clerk/shared/dist/keys.mjs
-function buildPublishableKey(frontendApi) {
-  return `${PUBLISHABLE_FRONTEND_API_DEV_REGEX.test(frontendApi) || frontendApi.startsWith("clerk.") && LEGACY_DEV_INSTANCE_SUFFIXES.some((s3) => frontendApi.endsWith(s3)) ? PUBLISHABLE_KEY_TEST_PREFIX : PUBLISHABLE_KEY_LIVE_PREFIX}${isomorphicBtoa(`${frontendApi}$`).replace(/=+$/, "")}`;
-}
-function publishableKeyFromHost(host, fallbackKey) {
-  if (fallbackKey && isDevelopmentFromPublishableKey(fallbackKey)) return fallbackKey;
-  const hostname2 = host.toLowerCase().replace(/:\d+$/, "");
-  if (!hostname2) throw new Error("Host must not be empty.");
-  return buildPublishableKey(`clerk.${hostname2}`);
-}
 function isValidDecodedPublishableKey(decoded) {
   if (!decoded.endsWith("$")) return false;
   const withoutTrailing = decoded.slice(0, -1);
@@ -28932,9 +28923,6 @@ function createDevOrStagingUrlCache() {
     }
   };
 }
-function isDevelopmentFromPublishableKey(apiKey) {
-  return apiKey.startsWith("test_") || apiKey.startsWith("pk_test_");
-}
 function isProductionFromPublishableKey(apiKey) {
   return apiKey.startsWith("live_") || apiKey.startsWith("pk_live_");
 }
@@ -28946,7 +28934,7 @@ async function getCookieSuffix(publishableKey, subtle = globalThis.crypto.subtle
   const digest = await subtle.digest("sha-1", data);
   return isomorphicBtoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/gi, "-").replace(/\//gi, "_").substring(0, 8);
 }
-var PUBLISHABLE_KEY_LIVE_PREFIX, PUBLISHABLE_KEY_TEST_PREFIX, PUBLISHABLE_FRONTEND_API_DEV_REGEX, getSuffixedCookieName;
+var PUBLISHABLE_KEY_LIVE_PREFIX, PUBLISHABLE_KEY_TEST_PREFIX, getSuffixedCookieName;
 var init_keys = __esm({
   "../../node_modules/.pnpm/@clerk+shared@4.22.0_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/@clerk/shared/dist/keys.mjs"() {
     init_constants();
@@ -28954,7 +28942,6 @@ var init_keys = __esm({
     init_isomorphicBtoa();
     PUBLISHABLE_KEY_LIVE_PREFIX = "pk_live_";
     PUBLISHABLE_KEY_TEST_PREFIX = "pk_test_";
-    PUBLISHABLE_FRONTEND_API_DEV_REGEX = /^(([a-z]+)-){2}([0-9]{1,2})\.clerk\.accounts([a-z.]*)(dev|com)$/i;
     getSuffixedCookieName = (cookieName, cookieSuffix) => {
       return `${cookieName}_${cookieSuffix}`;
     };
@@ -106854,7 +106841,6 @@ var import_express36 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_dist2();
-init_keys();
 import path2 from "path";
 import { fileURLToPath } from "url";
 
@@ -137540,14 +137526,7 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
 app.use(import_express36.default.json());
 app.use(import_express36.default.urlencoded({ extended: true }));
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY
-    )
-  }))
-);
+app.use(clerkMiddleware());
 app.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const __dirname2 = path2.dirname(fileURLToPath(import.meta.url));
