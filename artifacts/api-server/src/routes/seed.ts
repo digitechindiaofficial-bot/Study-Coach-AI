@@ -68,6 +68,13 @@ router.get("/seed/status", async (_req, res) => {
  * Builds a parameterized INSERT ... ON CONFLICT (id) DO NOTHING
  * from an array of plain objects. All objects must have the same keys.
  */
+/** Serialize a value for pg: objects/arrays become JSON strings so pg casts them to jsonb correctly. */
+function serializeParam(v: unknown): unknown {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "object") return JSON.stringify(v); // handles jsonb, arrays
+  return v;
+}
+
 async function upsertRows(table: string, rows: Record<string, unknown>[]): Promise<number> {
   if (rows.length === 0) return 0;
   const cols = Object.keys(rows[0]);
@@ -83,7 +90,7 @@ async function upsertRows(table: string, rows: Record<string, unknown>[]): Promi
     for (const row of batch) {
       const placeholders = cols.map(() => `$${idx++}`).join(", ");
       valueSets.push(`(${placeholders})`);
-      for (const col of cols) params.push(row[col] ?? null);
+      for (const col of cols) params.push(serializeParam(row[col]));
     }
     const sql = `INSERT INTO ${table} (${colList}) VALUES ${valueSets.join(", ")} ON CONFLICT (id) DO NOTHING`;
     const r = await pool.query(sql, params);

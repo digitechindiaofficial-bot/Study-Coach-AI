@@ -133181,6 +133181,11 @@ router19.get("/seed/status", async (_req, res) => {
   }
   res.json(counts);
 });
+function serializeParam(v) {
+  if (v === null || v === void 0) return null;
+  if (typeof v === "object") return JSON.stringify(v);
+  return v;
+}
 async function upsertRows(table, rows) {
   if (rows.length === 0) return 0;
   const cols = Object.keys(rows[0]);
@@ -133195,7 +133200,7 @@ async function upsertRows(table, rows) {
     for (const row of batch) {
       const placeholders = cols.map(() => `$${idx++}`).join(", ");
       valueSets.push(`(${placeholders})`);
-      for (const col of cols) params.push(row[col] ?? null);
+      for (const col of cols) params.push(serializeParam(row[col]));
     }
     const sql3 = `INSERT INTO ${table} (${colList}) VALUES ${valueSets.join(", ")} ON CONFLICT (id) DO NOTHING`;
     const r2 = await pool.query(sql3, params);
