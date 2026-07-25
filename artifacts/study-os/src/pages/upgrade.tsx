@@ -46,7 +46,7 @@ export default function UpgradePage() {
   const qc = useQueryClient();
   const plan = usePlan();
   const { data: profileData } = useGetMyProfile();
-  const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const [billing, setBilling] = useState<BillingPeriod>("yearly");
 
   const isAlreadyPro = plan.isPro;
 
