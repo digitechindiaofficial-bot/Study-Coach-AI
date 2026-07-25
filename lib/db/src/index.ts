@@ -13,12 +13,12 @@ if (!process.env.DATABASE_URL) {
 // Strip sslmode from URL so pg's own SSL option takes full precedence.
 // pg v8 treats sslmode=require as verify-full which breaks Supabase's cert.
 const rawUrl = process.env.DATABASE_URL!;
-const cleanUrl = rawUrl.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]$/, "");
-const isSupabase = rawUrl.includes("supabase.co");
+const cleanUrl = rawUrl.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]$/, "").replace(/\?$/, "");
+const useSSL = process.env.NODE_ENV === "production" || rawUrl.includes("supabase.co");
 
 export const pool = new Pool({
   connectionString: cleanUrl,
-  ...(isSupabase ? { ssl: { rejectUnauthorized: false } } : {}),
+  ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 export const db = drizzle(pool, { schema });
 

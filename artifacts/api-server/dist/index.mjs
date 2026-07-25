@@ -67028,7 +67028,7 @@ __export(src_exports, {
   syllabusTopicsTable: () => syllabusTopicsTable,
   userTopicProgressTable: () => userTopicProgressTable
 });
-var Pool3, rawUrl, cleanUrl, isSupabase, pool, db;
+var Pool3, rawUrl, cleanUrl, useSSL, pool, db;
 var init_src = __esm({
   "../../lib/db/src/index.ts"() {
     "use strict";
@@ -67043,11 +67043,11 @@ var init_src = __esm({
       );
     }
     rawUrl = process.env.DATABASE_URL;
-    cleanUrl = rawUrl.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]$/, "");
-    isSupabase = rawUrl.includes("supabase.co");
+    cleanUrl = rawUrl.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]$/, "").replace(/\?$/, "");
+    useSSL = process.env.NODE_ENV === "production" || rawUrl.includes("supabase.co");
     pool = new Pool3({
       connectionString: cleanUrl,
-      ...isSupabase ? { ssl: { rejectUnauthorized: false } } : {}
+      ...useSSL ? { ssl: { rejectUnauthorized: false } } : {}
     });
     db = drizzle(pool, { schema: schema_exports });
   }
