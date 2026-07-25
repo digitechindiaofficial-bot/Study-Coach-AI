@@ -17,6 +17,7 @@ import contactRouter from "./contact";
 import otpRouter from "./otp";
 import blogRouter from "./blog";
 import paymentRouter from "./payment";
+import seedRouter from "./seed";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -37,5 +38,6 @@ router.use(contactRouter);
 router.use(otpRouter);
 router.use(blogRouter);
 router.use(paymentRouter);
+router.use(seedRouter);
 
 export default router;
