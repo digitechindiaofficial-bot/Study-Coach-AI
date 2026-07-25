@@ -46896,27 +46896,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router20;
+    module.exports = Router21;
     module.exports.Route = Route;
-    function Router20(options) {
-      if (!(this instanceof Router20)) {
-        return new Router20(options);
+    function Router21(options) {
+      if (!(this instanceof Router21)) {
+        return new Router21(options);
       }
       const opts = options || {};
-      function router20(req, res, next) {
-        router20.handle(req, res, next);
+      function router21(req, res, next) {
+        router21.handle(req, res, next);
       }
-      Object.setPrototypeOf(router20, this);
-      router20.caseSensitive = opts.caseSensitive;
-      router20.mergeParams = opts.mergeParams;
-      router20.params = {};
-      router20.strict = opts.strict;
-      router20.stack = [];
-      return router20;
+      Object.setPrototypeOf(router21, this);
+      router21.caseSensitive = opts.caseSensitive;
+      router21.mergeParams = opts.mergeParams;
+      router21.params = {};
+      router21.strict = opts.strict;
+      router21.stack = [];
+      return router21;
     }
-    Router20.prototype = function() {
+    Router21.prototype = function() {
     };
-    Router20.prototype.param = function param(name, fn) {
+    Router21.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -46936,7 +46936,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router20.prototype.handle = function handle(req, res, callback) {
+    Router21.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -47063,7 +47063,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router20.prototype.use = function use(handler) {
+    Router21.prototype.use = function use(handler) {
       let offset = 0;
       let path3 = "/";
       if (typeof handler !== "function") {
@@ -47096,7 +47096,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router20.prototype.route = function route(path3) {
+    Router21.prototype.route = function route(path3) {
       const route2 = new Route(path3);
       const layer = new Layer(path3, {
         sensitive: this.caseSensitive,
@@ -47111,7 +47111,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router20.prototype[method] = function(path3) {
+      Router21.prototype[method] = function(path3) {
         const route = this.route(path3);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -47294,13 +47294,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils5().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router20 = null;
+      var router21 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -47309,13 +47309,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router20 === null) {
-            router20 = new Router20({
+          if (router21 === null) {
+            router21 = new Router21({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router20;
+          return router21;
         }
       });
     };
@@ -47386,15 +47386,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router20 = this.router;
+      var router21 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router20.use(path3, fn2);
+          return router21.use(path3, fn2);
         }
         debug(".use app under %s", path3);
         fn2.mountpath = path3;
         fn2.parent = this;
-        router20.use(path3, function mounted_app(req, res, next) {
+        router21.use(path3, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -49967,7 +49967,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router20 = require_router();
+    var Router21 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -49989,8 +49989,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router20.Route;
-    exports.Router = Router20;
+    exports.Route = Router21.Route;
+    exports.Router = Router21;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -103727,7 +103727,7 @@ var require_razorpay = __commonJS({
 init_src();
 
 // src/app.ts
-var import_express36 = __toESM(require_express2(), 1);
+var import_express37 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib5(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_dist2();
@@ -103735,7 +103735,7 @@ import path2 from "path";
 import { fileURLToPath } from "url";
 
 // src/routes/index.ts
-var import_express35 = __toESM(require_express2(), 1);
+var import_express36 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -133137,30 +133137,194 @@ router18.post("/payment/verify", async (req, res) => {
 });
 var payment_default = router18;
 
-// src/routes/index.ts
+// src/routes/seed.ts
+var import_express35 = __toESM(require_express2(), 1);
+init_src();
 var router19 = (0, import_express35.Router)();
-router19.use(health_default);
-router19.use(profiles_default);
-router19.use(study_plans_default);
-router19.use(daily_tasks_default);
-router19.use(syllabus_default);
-router19.use(current_affairs_default);
-router19.use(quiz_default);
-router19.use(progress_default);
-router19.use(admin_default);
-router19.use(question_bank_admin_default);
-router19.use(mock_tests_default);
-router19.use(mock_tests_admin_default);
-router19.use(exam_patterns_admin_default);
-router19.use(exams_admin_default);
-router19.use(contact_default);
-router19.use(otp_default);
-router19.use(blog_default);
-router19.use(payment_default);
-var routes_default = router19;
+function requireSeedToken(req, res, next) {
+  const token = process.env.SEED_TOKEN;
+  if (!token) {
+    res.status(503).json({ error: "SEED_TOKEN not configured on this server" });
+    return;
+  }
+  const auth = req.headers.authorization ?? "";
+  const provided = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (provided !== token) {
+    res.status(401).json({ error: "Invalid seed token" });
+    return;
+  }
+  next();
+}
+router19.use("/seed", requireSeedToken);
+router19.get("/seed/status", async (_req, res) => {
+  const tables = [
+    "syllabus_exams",
+    "syllabus_subjects",
+    "syllabus_topics",
+    "question_bank",
+    "current_affairs",
+    "blog_posts",
+    "exam_patterns",
+    "mock_tests"
+  ];
+  const counts = {};
+  for (const t2 of tables) {
+    try {
+      const r2 = await pool.query(`SELECT COUNT(*)::int c FROM ${t2}`);
+      counts[t2] = r2.rows[0].c;
+    } catch {
+      counts[t2] = -1;
+    }
+  }
+  res.json(counts);
+});
+async function upsertRows(table, rows) {
+  if (rows.length === 0) return 0;
+  const cols = Object.keys(rows[0]);
+  let inserted = 0;
+  const BATCH = 50;
+  for (let i2 = 0; i2 < rows.length; i2 += BATCH) {
+    const batch = rows.slice(i2, i2 + BATCH);
+    const colList = cols.map((c) => `"${c}"`).join(", ");
+    const valueSets = [];
+    const params = [];
+    let idx = 1;
+    for (const row of batch) {
+      const placeholders = cols.map(() => `$${idx++}`).join(", ");
+      valueSets.push(`(${placeholders})`);
+      for (const col of cols) params.push(row[col] ?? null);
+    }
+    const sql3 = `INSERT INTO ${table} (${colList}) VALUES ${valueSets.join(", ")} ON CONFLICT (id) DO NOTHING`;
+    const r2 = await pool.query(sql3, params);
+    inserted += r2.rowCount ?? 0;
+  }
+  return inserted;
+}
+router19.post("/seed/exams", async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE syllabus_exams
+        ADD COLUMN IF NOT EXISTS exam_full_name    text,
+        ADD COLUMN IF NOT EXISTS category          text NOT NULL DEFAULT 'central',
+        ADD COLUMN IF NOT EXISTS conducting_body   text,
+        ADD COLUMN IF NOT EXISTS eligibility       text,
+        ADD COLUMN IF NOT EXISTS exam_level        text NOT NULL DEFAULT 'national',
+        ADD COLUMN IF NOT EXISTS target_state      text,
+        ADD COLUMN IF NOT EXISTS is_active         boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS is_featured       boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS icon_emoji        text NOT NULL DEFAULT '\u{1F4DD}',
+        ADD COLUMN IF NOT EXISTS display_order     integer NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS updated_at        timestamptz DEFAULT now()
+    `);
+    const rows = req.body;
+    const inserted = await upsertRows("syllabus_exams", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/subjects", async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE syllabus_subjects
+        ADD COLUMN IF NOT EXISTS subject_code      text,
+        ADD COLUMN IF NOT EXISTS subject_full_name text,
+        ADD COLUMN IF NOT EXISTS syllabus_topics   text[],
+        ADD COLUMN IF NOT EXISTS total_questions   integer DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS total_marks       integer,
+        ADD COLUMN IF NOT EXISTS duration_minutes  integer,
+        ADD COLUMN IF NOT EXISTS difficulty_level  text NOT NULL DEFAULT 'medium',
+        ADD COLUMN IF NOT EXISTS is_active         boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS updated_at        timestamptz DEFAULT now()
+    `);
+    const rows = req.body;
+    const inserted = await upsertRows("syllabus_subjects", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/topics", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("syllabus_topics", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/questions", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("question_bank", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/current-affairs", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("current_affairs", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/blog-posts", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("blog_posts", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/exam-patterns", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("exam_patterns", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+router19.post("/seed/mock-tests", async (req, res) => {
+  try {
+    const rows = req.body;
+    const inserted = await upsertRows("mock_tests", rows);
+    res.json({ inserted, total: rows.length });
+  } catch (e2) {
+    res.status(500).json({ error: e2.message });
+  }
+});
+var seed_default = router19;
+
+// src/routes/index.ts
+var router20 = (0, import_express36.Router)();
+router20.use(health_default);
+router20.use(profiles_default);
+router20.use(study_plans_default);
+router20.use(daily_tasks_default);
+router20.use(syllabus_default);
+router20.use(current_affairs_default);
+router20.use(quiz_default);
+router20.use(progress_default);
+router20.use(admin_default);
+router20.use(question_bank_admin_default);
+router20.use(mock_tests_default);
+router20.use(mock_tests_admin_default);
+router20.use(exam_patterns_admin_default);
+router20.use(exams_admin_default);
+router20.use(contact_default);
+router20.use(otp_default);
+router20.use(blog_default);
+router20.use(payment_default);
+router20.use(seed_default);
+var routes_default = router20;
 
 // src/app.ts
-var app = (0, import_express36.default)();
+var app = (0, import_express37.default)();
 var pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 var skSet = !!process.env.CLERK_SECRET_KEY;
 var nodeEnv = process.env.NODE_ENV ?? "unset";
@@ -133195,8 +133359,8 @@ app.use(
     credentials: true
   })
 );
-app.use(import_express36.default.json());
-app.use(import_express36.default.urlencoded({ extended: true }));
+app.use(import_express37.default.json());
+app.use(import_express37.default.urlencoded({ extended: true }));
 app.use((req, _res, next) => {
   const auth = req.headers["authorization"];
   const cookie = req.headers["cookie"] ?? "";
@@ -133214,7 +133378,7 @@ app.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const __dirname2 = path2.dirname(fileURLToPath(import.meta.url));
   const staticDir = path2.resolve(__dirname2, "../../../artifacts/study-os/dist/public");
-  app.use(import_express36.default.static(staticDir));
+  app.use(import_express37.default.static(staticDir));
   app.get("/{*path}", (_req, res) => {
     res.sendFile(path2.join(staticDir, "index.html"));
   });
