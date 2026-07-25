@@ -4,14 +4,15 @@ import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { clerkMiddleware } from "@clerk/express";
-import {
-  CLERK_PROXY_PATH,
-  clerkProxyMiddleware,
-} from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// ── Debug: log Clerk key presence at startup ──────────────────────────────────
+const pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
+const skSet = !!process.env.CLERK_SECRET_KEY;
+logger.info({ clerkPkPrefix: pk.substring(0, 20), clerkSkSet: skSet }, "Clerk env check");
 
 app.use(
   pinoHttp({
@@ -33,23 +34,46 @@ app.use(
   }),
 );
 
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const allowedOrigins = [
+  "https://govtguru.com",
+  "https://www.govtguru.com",
+];
 
-app.use(cors({ credentials: true, origin: true }));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Allow same-origin (no Origin header) and listed origins
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      // In dev, allow any localhost / replit.dev origin
+      if (process.env.NODE_ENV !== "production") return cb(null, true);
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ── Clerk auth middleware ─────────────────────────────────────────────────────
 app.use(clerkMiddleware());
+
+// ── Per-request debug: log auth header / cookie presence ─────────────────────
+app.use((req, _res, next) => {
+  const hasAuthHeader = !!req.headers["authorization"];
+  const hasSessionCookie = !!(req.headers["cookie"] ?? "").includes("__session");
+  req.log?.debug({ hasAuthHeader, hasSessionCookie }, "auth tokens present");
+  next();
+});
 
 app.use("/api", router);
 
-// In production (Hostinger), serve the built React frontend static files
+// ── Static + SPA fallback (production only) ───────────────────────────────────
 if (process.env.NODE_ENV === "production") {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  // From artifacts/api-server/dist/ → up to repo root → artifacts/study-os/dist/public
   const staticDir = path.resolve(__dirname, "../../../artifacts/study-os/dist/public");
   app.use(express.static(staticDir));
-  // SPA fallback — serve index.html for all non-API routes
   app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
