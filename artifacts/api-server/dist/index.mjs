@@ -133084,6 +133084,18 @@ function getRazorpay() {
     key_secret: process.env.RAZORPAY_KEY_SECRET
   });
 }
+async function recordPayment(userId, orderId, amount, billingPeriod) {
+  try {
+    await pool.query(
+      `INSERT INTO payments (user_id, order_id, amount, currency, status, plan)
+       VALUES ($1, $2, $3, 'INR', 'pending', $4)
+       ON CONFLICT (order_id) DO NOTHING`,
+      [userId, orderId, amount, `pro_${billingPeriod}`]
+    );
+  } catch (err) {
+    logger2.warn({ err }, "payments INSERT failed (table may not exist \u2014 run migration SQL)");
+  }
+}
 router18.post("/payment/create-order", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -133097,10 +133109,7 @@ router18.post("/payment/create-order", async (req, res) => {
       receipt: `rcpt_${Date.now().toString(36)}`,
       notes: { userId, plan: "pro", billingPeriod }
     });
-    await db.execute(`
-      INSERT INTO payments (user_id, order_id, amount, currency, status, plan)
-      VALUES ('${userId}', '${order.id}', ${amount}, 'INR', 'pending', 'pro_${billingPeriod}')
-    `);
+    void recordPayment(userId, order.id, amount, billingPeriod);
     res.json({
       order_id: order.id,
       amount: order.amount,
@@ -133109,7 +133118,10 @@ router18.post("/payment/create-order", async (req, res) => {
     });
   } catch (err) {
     logger2.error({ err }, "Razorpay create-order failed");
-    res.status(500).json({ error: "Failed to create payment order" });
+    res.status(500).json({
+      error: "Failed to create payment order",
+      detail: err?.message ?? String(err)
+    });
   }
 });
 router18.post("/payment/verify", async (req, res) => {
@@ -133126,11 +133138,15 @@ router18.post("/payment/verify", async (req, res) => {
     logger2.warn({ userId, razorpay_order_id }, "Razorpay signature mismatch");
     return res.status(400).json({ error: "Invalid payment signature" });
   }
-  const paymentRecord = await db.execute(
-    `SELECT plan FROM payments WHERE order_id = '${razorpay_order_id}' AND user_id = '${userId}' LIMIT 1`
-  );
-  const planField = paymentRecord.rows[0]?.plan ?? "pro_monthly";
-  const isYearly = planField === "pro_yearly";
+  let isYearly = false;
+  try {
+    const rec = await pool.query(
+      `SELECT plan FROM payments WHERE order_id = $1 AND user_id = $2 LIMIT 1`,
+      [razorpay_order_id, userId]
+    );
+    isYearly = (rec.rows[0]?.plan ?? "") === "pro_yearly";
+  } catch {
+  }
   const planExpiry = /* @__PURE__ */ new Date();
   if (isYearly) {
     planExpiry.setFullYear(planExpiry.getFullYear() + 1);
@@ -133138,11 +133154,14 @@ router18.post("/payment/verify", async (req, res) => {
     planExpiry.setMonth(planExpiry.getMonth() + 1);
   }
   await db.update(profilesTable).set({ planType: "pro", planExpiry }).where(eq(profilesTable.clerkUserId, userId));
-  await db.execute(`
-    UPDATE payments
-    SET status = 'captured', payment_id = '${razorpay_payment_id}'
-    WHERE order_id = '${razorpay_order_id}' AND user_id = '${userId}'
-  `);
+  try {
+    await pool.query(
+      `UPDATE payments SET status = 'captured', payment_id = $1
+       WHERE order_id = $2 AND user_id = $3`,
+      [razorpay_payment_id, razorpay_order_id, userId]
+    );
+  } catch {
+  }
   res.json({ ok: true, planType: "pro", planExpiry: planExpiry.toISOString() });
 });
 var payment_default = router18;
