@@ -67028,6 +67028,7 @@ __export(src_exports, {
   syllabusTopicsTable: () => syllabusTopicsTable,
   userTopicProgressTable: () => userTopicProgressTable
 });
+import { setDefaultResultOrder } from "dns";
 var Pool3, rawUrl, cleanUrl, useSSL, pool, db;
 var init_src = __esm({
   "../../lib/db/src/index.ts"() {
@@ -67036,6 +67037,7 @@ var init_src = __esm({
     init_esm();
     init_schema2();
     init_schema2();
+    setDefaultResultOrder("ipv4first");
     ({ Pool: Pool3 } = esm_default);
     if (!process.env.DATABASE_URL) {
       throw new Error(
