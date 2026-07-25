@@ -67028,7 +67028,7 @@ __export(src_exports, {
   syllabusTopicsTable: () => syllabusTopicsTable,
   userTopicProgressTable: () => userTopicProgressTable
 });
-var Pool3, pool, db;
+var Pool3, isSupabase, pool, db;
 var init_src = __esm({
   "../../lib/db/src/index.ts"() {
     "use strict";
@@ -67042,7 +67042,11 @@ var init_src = __esm({
         "DATABASE_URL must be set. Did you forget to provision a database?"
       );
     }
-    pool = new Pool3({ connectionString: process.env.DATABASE_URL });
+    isSupabase = process.env.DATABASE_URL?.includes("supabase.co");
+    pool = new Pool3({
+      connectionString: process.env.DATABASE_URL,
+      ...isSupabase ? { ssl: { rejectUnauthorized: false } } : {}
+    });
     db = drizzle(pool, { schema: schema_exports });
   }
 });
