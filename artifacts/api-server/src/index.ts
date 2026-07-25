@@ -1,5 +1,9 @@
+import { initDb } from "@workspace/db";
 import app from "./app";
 import { logger } from "./lib/logger";
+
+// Resolve DB hostname to IPv4 before accepting any requests
+await initDb();
 
 const rawPort = process.env["PORT"] ?? "3000";
 const port = Number(rawPort);
