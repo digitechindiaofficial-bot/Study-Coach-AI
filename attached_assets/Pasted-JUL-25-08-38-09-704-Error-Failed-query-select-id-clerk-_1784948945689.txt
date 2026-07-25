@@ -1,0 +1,29 @@
+JUL 25,08:38:09.704
+Error: Failed query: select "id", "clerk_user_id", "full_name", "phone_number", "phone_verified", "exam_type", "exam_date", "daily_study_hours", "plan_type", "streak_count", "longest_streak", "last_active_date", "quiz_count_today", "quiz_count_date", "plan_expiry", "created_at" from "profiles" where "profiles"."clerk_user_id" = $1 limit $2
+params: user_3Gya7LQOWHNmdGS5BiKf23O9mBW,1
+at NodePgPreparedQuery.queryWithCache (file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:53886:19)
+at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+at async file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:54173:26
+at async getOrCreateProfile (file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:112665:20)
+at async file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:112671:19
+JUL 25,08:38:09.959
+Error: Failed query:
+SELECT e.*,
+COUNT(s.id)::int AS subject_count
+FROM syllabus_exams e
+LEFT JOIN syllabus_subjects s ON s.exam_id = e.id AND s.is_active = true
+WHERE e.is_active = true
+GROUP BY e.id
+ORDER BY e.display_order, e.name
+params:
+at NodePgPreparedQuery.queryWithCache (file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:53886:19)
+at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+at async file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:136907:18
+JUL 25,08:38:09.964
+Error: Failed query: select "id", "clerk_user_id", "full_name", "phone_number", "phone_verified", "exam_type", "exam_date", "daily_study_hours", "plan_type", "streak_count", "longest_streak", "last_active_date", "quiz_count_today", "quiz_count_date", "plan_expiry", "created_at" from "profiles" where "profiles"."clerk_user_id" = $1 limit $2
+params: user_3Gya7LQOWHNmdGS5BiKf23O9mBW,1
+at NodePgPreparedQuery.queryWithCache (file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:53886:19)
+at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+at async file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:54173:26
+at async getOrCreateProfile (file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:112665:20)
+at async file:///home/u130971241/domains/govtguru.com/nodejs/artifacts/api-server/dist/index.mjs:112671:19
