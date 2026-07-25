@@ -21,19 +21,22 @@ router.post("/payment/create-order", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+  const billingPeriod: "monthly" | "yearly" = req.body?.billingPeriod === "yearly" ? "yearly" : "monthly";
+  const amount = billingPeriod === "yearly" ? 99900 : 12900; // paise: ₹999 or ₹129
+
   try {
     const razorpay = getRazorpay();
     const order = await razorpay.orders.create({
-      amount: 19900, // paise
+      amount,
       currency: "INR",
       receipt: `rcpt_${Date.now().toString(36)}`,
-      notes: { userId, plan: "pro" },
+      notes: { userId, plan: "pro", billingPeriod },
     });
 
     // Insert pending payment record
     await db.execute(`
       INSERT INTO payments (user_id, order_id, amount, currency, status, plan)
-      VALUES ('${userId}', '${order.id}', 19900, 'INR', 'pending', 'pro')
+      VALUES ('${userId}', '${order.id}', ${amount}, 'INR', 'pending', 'pro_${billingPeriod}')
     `);
 
     res.json({
@@ -69,9 +72,20 @@ router.post("/payment/verify", async (req, res) => {
     return res.status(400).json({ error: "Invalid payment signature" });
   }
 
-  // Upgrade user to pro, set expiry 1 month from now
+  // Determine billing period from the payment record
+  const paymentRecord = await db.execute(
+    `SELECT plan FROM payments WHERE order_id = '${razorpay_order_id}' AND user_id = '${userId}' LIMIT 1`
+  );
+  const planField = (paymentRecord.rows[0] as any)?.plan ?? "pro_monthly";
+  const isYearly = planField === "pro_yearly";
+
+  // Upgrade user to pro, set expiry based on billing period
   const planExpiry = new Date();
-  planExpiry.setMonth(planExpiry.getMonth() + 1);
+  if (isYearly) {
+    planExpiry.setFullYear(planExpiry.getFullYear() + 1);
+  } else {
+    planExpiry.setMonth(planExpiry.getMonth() + 1);
+  }
 
   await db
     .update(profilesTable)

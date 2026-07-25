@@ -16,7 +16,6 @@ function loadRazorpayScript(): Promise<void> {
       resolve();
       return;
     }
-    // Remove any stale failed script tags first
     const existing = document.querySelector('script[src*="razorpay"]');
     if (existing) existing.remove();
 
@@ -36,26 +35,39 @@ function loadRazorpayScript(): Promise<void> {
 }
 
 interface PaymentButtonProps {
+  billingPeriod?: "monthly" | "yearly";
   userName?: string;
   userEmail?: string;
   onSuccess?: () => void;
+  className?: string;
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function PaymentButton({ userName, userEmail, onSuccess }: PaymentButtonProps) {
+export function PaymentButton({
+  billingPeriod = "monthly",
+  userName,
+  userEmail,
+  onSuccess,
+  className,
+  size = "default",
+}: PaymentButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  const label = billingPeriod === "yearly"
+    ? "Upgrade to Pro → ₹999/year"
+    : "Upgrade to Pro →";
 
   const handlePayment = async () => {
     setLoading(true);
     try {
-      // Step 1: Ensure Razorpay SDK is loaded
       await loadRazorpayScript();
 
-      // Step 2: Create Razorpay order via backend
       const orderRes = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ billingPeriod }),
       });
 
       if (!orderRes.ok) {
@@ -65,13 +77,16 @@ export function PaymentButton({ userName, userEmail, onSuccess }: PaymentButtonP
 
       const { order_id, amount, currency, key_id } = await orderRes.json();
 
-      // Step 3: Open Razorpay checkout
+      const description = billingPeriod === "yearly"
+        ? "Pro Plan — 1 Year (₹999)"
+        : "Pro Plan — 1 Month (₹129)";
+
       const options = {
         key: key_id,
         amount,
         currency,
         name: "GovtGuru",
-        description: "Pro Plan — 1 Month",
+        description,
         image: "/logo-icon.png",
         order_id,
         theme: { color: "#1B2A4A" },
@@ -146,14 +161,15 @@ export function PaymentButton({ userName, userEmail, onSuccess }: PaymentButtonP
     <Button
       onClick={handlePayment}
       disabled={loading}
-      className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm"
+      size={size}
+      className={`bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm font-semibold ${className ?? ""}`}
     >
       {loading ? (
         <Loader2 className="mr-2 w-4 h-4 animate-spin" />
       ) : (
         <Sparkles className="mr-2 w-4 h-4" />
       )}
-      {loading ? "Opening checkout…" : "Upgrade to Pro — ₹199/month"}
+      {loading ? "Opening checkout…" : label}
     </Button>
   );
 }

@@ -133087,18 +133087,19 @@ function getRazorpay() {
 router18.post("/payment/create-order", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  const billingPeriod = req.body?.billingPeriod === "yearly" ? "yearly" : "monthly";
+  const amount = billingPeriod === "yearly" ? 99900 : 12900;
   try {
     const razorpay = getRazorpay();
     const order = await razorpay.orders.create({
-      amount: 19900,
-      // paise
+      amount,
       currency: "INR",
       receipt: `rcpt_${Date.now().toString(36)}`,
-      notes: { userId, plan: "pro" }
+      notes: { userId, plan: "pro", billingPeriod }
     });
     await db.execute(`
       INSERT INTO payments (user_id, order_id, amount, currency, status, plan)
-      VALUES ('${userId}', '${order.id}', 19900, 'INR', 'pending', 'pro')
+      VALUES ('${userId}', '${order.id}', ${amount}, 'INR', 'pending', 'pro_${billingPeriod}')
     `);
     res.json({
       order_id: order.id,
@@ -133125,8 +133126,17 @@ router18.post("/payment/verify", async (req, res) => {
     logger2.warn({ userId, razorpay_order_id }, "Razorpay signature mismatch");
     return res.status(400).json({ error: "Invalid payment signature" });
   }
+  const paymentRecord = await db.execute(
+    `SELECT plan FROM payments WHERE order_id = '${razorpay_order_id}' AND user_id = '${userId}' LIMIT 1`
+  );
+  const planField = paymentRecord.rows[0]?.plan ?? "pro_monthly";
+  const isYearly = planField === "pro_yearly";
   const planExpiry = /* @__PURE__ */ new Date();
-  planExpiry.setMonth(planExpiry.getMonth() + 1);
+  if (isYearly) {
+    planExpiry.setFullYear(planExpiry.getFullYear() + 1);
+  } else {
+    planExpiry.setMonth(planExpiry.getMonth() + 1);
+  }
   await db.update(profilesTable).set({ planType: "pro", planExpiry }).where(eq(profilesTable.clerkUserId, userId));
   await db.execute(`
     UPDATE payments

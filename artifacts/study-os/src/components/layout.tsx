@@ -112,7 +112,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-md cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-sm hover:from-amber-600 hover:to-orange-600 transition-all">
               <Sparkles className="h-4 w-4 shrink-0" />
               <span>Upgrade to Pro</span>
-              <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px] px-1.5">₹199/mo</Badge>
+              <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px] px-1.5">₹129/mo</Badge>
             </div>
           </Link>
         )}
@@ -121,8 +121,8 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
           <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10">
             <Zap className="h-4 w-4 text-amber-600 shrink-0" />
             <span className="text-sm font-semibold text-amber-700">Pro Plan Active</span>
-            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
-              Test
+            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white uppercase tracking-wide">
+              Pro
             </span>
           </div>
         )}
