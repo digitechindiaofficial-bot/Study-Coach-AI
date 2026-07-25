@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
+import seedRouter from "./routes/seed";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -61,6 +62,9 @@ app.use((req, _res, next) => {
   console.error(`[req] ${req.method} ${req.path} bearer=${hasBearer} session=${hasSession}`);
   next();
 });
+
+// ── Seed routes (bypass Clerk — use their own SEED_TOKEN auth) ───────────────
+app.use("/api", seedRouter);
 
 // ── Clerk middleware ──────────────────────────────────────────────────────────
 // authorizedParties: whitelist the frontend origin so Clerk doesn't reject

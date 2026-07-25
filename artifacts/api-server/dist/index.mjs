@@ -133369,6 +133369,7 @@ app.use((req, _res, next) => {
   console.error(`[req] ${req.method} ${req.path} bearer=${hasBearer} session=${hasSession}`);
   next();
 });
+app.use("/api", seed_default);
 app.use(
   clerkMiddleware({
     authorizedParties: ALLOWED_ORIGINS
