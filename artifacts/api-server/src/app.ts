@@ -9,33 +9,31 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// ── Debug: log Clerk key presence at startup ──────────────────────────────────
+// ── Startup diagnostics (stderr — visible in Hostinger realtime log) ──────────
 const pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 const skSet = !!process.env.CLERK_SECRET_KEY;
-logger.info({ clerkPkPrefix: pk.substring(0, 20), clerkSkSet: skSet }, "Clerk env check");
+const nodeEnv = process.env.NODE_ENV ?? "unset";
+console.error(`[startup] NODE_ENV=${nodeEnv}`);
+console.error(`[startup] CLERK_PK prefix=${pk.substring(0, 24)}`);
+console.error(`[startup] CLERK_SK set=${skSet}`);
+console.error(`[startup] DATABASE_URL set=${!!process.env.DATABASE_URL}`);
 
 app.use(
   pinoHttp({
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
 );
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
+const ALLOWED_ORIGINS = [
   "https://govtguru.com",
   "https://www.govtguru.com",
 ];
@@ -43,9 +41,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow same-origin (no Origin header) and listed origins
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      // In dev, allow any localhost / replit.dev origin
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
       if (process.env.NODE_ENV !== "production") return cb(null, true);
       cb(new Error(`CORS: origin ${origin} not allowed`));
     },
@@ -56,16 +52,24 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── Clerk auth middleware ─────────────────────────────────────────────────────
-app.use(clerkMiddleware());
-
-// ── Per-request debug: log auth header / cookie presence ─────────────────────
+// ── Per-request debug (stderr) ────────────────────────────────────────────────
 app.use((req, _res, next) => {
-  const hasAuthHeader = !!req.headers["authorization"];
-  const hasSessionCookie = !!(req.headers["cookie"] ?? "").includes("__session");
-  req.log?.debug({ hasAuthHeader, hasSessionCookie }, "auth tokens present");
+  const auth = req.headers["authorization"];
+  const cookie = req.headers["cookie"] ?? "";
+  const hasBearer = auth?.startsWith("Bearer ");
+  const hasSession = cookie.includes("__session");
+  console.error(`[req] ${req.method} ${req.path} bearer=${hasBearer} session=${hasSession}`);
   next();
 });
+
+// ── Clerk middleware ──────────────────────────────────────────────────────────
+// authorizedParties: whitelist the frontend origin so Clerk doesn't reject
+// tokens where azp=https://govtguru.com
+app.use(
+  clerkMiddleware({
+    authorizedParties: ALLOWED_ORIGINS,
+  }),
+);
 
 app.use("/api", router);
 

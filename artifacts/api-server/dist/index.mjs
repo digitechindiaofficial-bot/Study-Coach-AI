@@ -61065,10 +61065,10 @@ var init_chunk_7KNTREEZ = __esm({
       }
     };
     Instance = class _Instance {
-      constructor(id, environmentType, allowedOrigins2) {
+      constructor(id, environmentType, allowedOrigins) {
         this.id = id;
         this.environmentType = environmentType;
-        this.allowedOrigins = allowedOrigins2;
+        this.allowedOrigins = allowedOrigins;
       }
       static fromJSON(data) {
         return new _Instance(data.id, data.environment_type, data.allowed_origins);
@@ -133163,34 +133163,32 @@ var routes_default = router19;
 var app = (0, import_express36.default)();
 var pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 var skSet = !!process.env.CLERK_SECRET_KEY;
-logger2.info({ clerkPkPrefix: pk.substring(0, 20), clerkSkSet: skSet }, "Clerk env check");
+var nodeEnv = process.env.NODE_ENV ?? "unset";
+console.error(`[startup] NODE_ENV=${nodeEnv}`);
+console.error(`[startup] CLERK_PK prefix=${pk.substring(0, 24)}`);
+console.error(`[startup] CLERK_SK set=${skSet}`);
+console.error(`[startup] DATABASE_URL set=${!!process.env.DATABASE_URL}`);
 app.use(
   (0, import_pino_http.default)({
     logger: logger2,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0]
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode
-        };
+        return { statusCode: res.statusCode };
       }
     }
   })
 );
-var allowedOrigins = [
+var ALLOWED_ORIGINS = [
   "https://govtguru.com",
   "https://www.govtguru.com"
 ];
 app.use(
   (0, import_cors.default)({
     origin: (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
       if (process.env.NODE_ENV !== "production") return cb(null, true);
       cb(new Error(`CORS: origin ${origin} not allowed`));
     },
@@ -133199,13 +133197,19 @@ app.use(
 );
 app.use(import_express36.default.json());
 app.use(import_express36.default.urlencoded({ extended: true }));
-app.use(clerkMiddleware());
 app.use((req, _res, next) => {
-  const hasAuthHeader = !!req.headers["authorization"];
-  const hasSessionCookie = !!(req.headers["cookie"] ?? "").includes("__session");
-  req.log?.debug({ hasAuthHeader, hasSessionCookie }, "auth tokens present");
+  const auth = req.headers["authorization"];
+  const cookie = req.headers["cookie"] ?? "";
+  const hasBearer = auth?.startsWith("Bearer ");
+  const hasSession = cookie.includes("__session");
+  console.error(`[req] ${req.method} ${req.path} bearer=${hasBearer} session=${hasSession}`);
   next();
 });
+app.use(
+  clerkMiddleware({
+    authorizedParties: ALLOWED_ORIGINS
+  })
+);
 app.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const __dirname2 = path2.dirname(fileURLToPath(import.meta.url));

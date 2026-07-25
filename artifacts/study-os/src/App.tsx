@@ -240,9 +240,9 @@ function SignUpPage() {
 function Router() {
   const { getToken } = useAuth();
 
-  useEffect(() => {
-    setAuthTokenGetter(getToken);
-  }, [getToken]);
+  // Set synchronously on every render so the getter is always available
+  // before any child query fires (avoids race with useEffect timing).
+  setAuthTokenGetter(getToken);
 
   return (
     <Switch>
