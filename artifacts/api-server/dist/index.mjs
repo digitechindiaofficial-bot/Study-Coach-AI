@@ -137230,11 +137230,12 @@ router16.post("/otp/send", async (req, res) => {
     if (data.return) {
       return res.json({ success: true, message: "OTP sent successfully" });
     }
+    const reason = data.message?.join("; ") ?? JSON.stringify(data);
     req.log.error({ data }, "Fast2SMS returned failure");
-    return res.status(500).json({ error: "Failed to send OTP. Please try again." });
+    return res.status(500).json({ error: `Fast2SMS error: ${reason}` });
   } catch (err) {
     req.log.error({ err }, "Fast2SMS request threw");
-    return res.status(500).json({ error: "Failed to send OTP. Please try again." });
+    return res.status(500).json({ error: `Fast2SMS exception: ${err?.message ?? err}` });
   }
 });
 router16.post("/otp/verify", async (req, res) => {
