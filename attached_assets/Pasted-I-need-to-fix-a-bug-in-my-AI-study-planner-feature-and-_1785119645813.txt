@@ -1,0 +1,20 @@
+I need to fix a bug in my AI study planner feature and integrate Claude AI to generate dynamic study plans instead of a static/hardcoded weekly pattern.
+
+CURRENT PROBLEM:
+The study planner currently generates the same weekly pattern for every user (e.g., Mon-Fri study, Sat-Sun revision) regardless of when the user joined or how much they've actually studied. So a user who joins on Friday with zero progress still gets a "revision" plan for Sat-Sun, which makes no sense since they haven't covered anything yet.
+
+WHAT I WANT:
+1. Find the current study planner generation logic in the codebase (likely in the backend, related to study plans/exam prep)
+2. Replace it with a Claude API integration using @anthropic-ai/sdk
+3. Use the ANTHROPIC_API_KEY from environment secrets (add this as a new Replit secret if not present)
+4. Before generating a plan, gather this user context from the database (using our existing Drizzle ORM schema):
+   - User's exam date and target exam
+   - Number of days since the user joined
+   - List of topics/subjects the user has actually completed (from quiz/progress history)
+   - User's weak areas (from existing progress tracking tables)
+5. Send this context to Claude (model: claude-sonnet-4-6) with a prompt that generates a 7-day study plan as JSON, with this critical rule: if the user has completed zero or very few topics, DO NOT suggest revision days — only suggest new topic introduction, prioritized by exam date proximity and subject weightage.
+6. Parse Claude's JSON response and save the generated plan to the database (cache it) so we don't call the API on every dashboard load — only regenerate when: it's a new day, or the user's progress has changed (completed a new quiz).
+7. Add error handling: if the Claude API call fails, fall back to a simple default plan instead of showing a blank/broken screen.
+8. Update the frontend dashboard component to render this dynamically generated plan (same UI, just fed from the new dynamic source instead of the static one).
+
+Please show me the specific files you're planning to modify before making changes, especially the current planner logic file so I can review the existing pattern first.
