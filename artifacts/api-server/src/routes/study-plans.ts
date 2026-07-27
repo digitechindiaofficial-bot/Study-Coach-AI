@@ -3,10 +3,13 @@ import { getAuth } from "@clerk/express";
 import { db, pool } from "@workspace/db";
 import { profilesTable, studyPlansTable, dailyTasksTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const router = Router();
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,9 +68,18 @@ interface FullPlanData {
   strategy: string;
   subjects: SubjectEntry[];
   daily_plan: DayEntry[];
+  _meta?: {
+    generated_date: string;           // IST date, "YYYY-MM-DD"
+    completed_subjects_snapshot: number;
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Current date in IST as YYYY-MM-DD */
+function getTodayIST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 function getPlanTypeLabel(days: number): string {
   if (days > 90) return "Comprehensive Plan";
@@ -115,6 +127,20 @@ async function fetchWeakAreas(profileId: string, examCode: string): Promise<Weak
   return rows;
 }
 
+/**
+ * Count how many distinct subjects the user has meaningfully attempted
+ * (at least 1 correct answer). Zero means they haven't covered any topics yet.
+ */
+async function fetchCompletedSubjectCount(profileId: string): Promise<number> {
+  const { rows } = await pool.query<{ cnt: string }>(
+    `SELECT COUNT(DISTINCT subject_code)::int AS cnt
+     FROM question_attempts
+     WHERE user_id = $1 AND is_correct = true`,
+    [profileId]
+  );
+  return Number(rows[0]?.cnt ?? 0);
+}
+
 async function getProfileByClerkId(clerkUserId: string) {
   const rows = await db.select().from(profilesTable)
     .where(eq(profilesTable.clerkUserId, clerkUserId)).limit(1);
@@ -123,13 +149,21 @@ async function getProfileByClerkId(clerkUserId: string) {
 
 // ─── Calendar builder ─────────────────────────────────────────────────────────
 
+/**
+ * Builds the full calendar plan.
+ *
+ * allowWeekendRevision — pass false when the user hasn't covered any topics yet.
+ * Without this flag, a brand-new user joining on Friday gets Sat/Sun "revision"
+ * sessions despite having studied nothing, which makes no sense.
+ */
 function buildFullPlan(
   examDate: Date,
   today: Date,
   dbSubjects: DbSubject[],
   weaksMap: Record<string, number>,
   dailyHours: number,
-  examType: string
+  examType: string,
+  allowWeekendRevision: boolean,
 ): FullPlanData {
   const MS_DAY = 86_400_000;
   const daysRemaining = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / MS_DAY));
@@ -189,6 +223,10 @@ function buildFullPlan(
     const isMockZone  = !isFinalRev && daysLeft <= finalRevDays + mockTestDays;
     const isRevZone   = !isFinalRev && !isMockZone && daysLeft <= reservedDays;
 
+    // KEY FIX: weekends are only revision days when the user has actually
+    // studied something — a brand-new user should get study sessions, not revision.
+    const isRevisionDay = isRevZone || (isWeekend && allowWeekendRevision);
+
     let dayType: DayEntry["day_type"];
     let sessions: Session[];
 
@@ -224,7 +262,7 @@ function buildFullPlan(
         tip: "Treat every mock as the real exam — same focus, same timing.",
       }];
 
-    } else if (isRevZone || isWeekend) {
+    } else if (isRevisionDay) {
       dayType = "revision";
       const mcqCount = Math.round(dailyHours * 12);
       sessions = [{
@@ -352,10 +390,138 @@ function buildFullPlan(
     total_hours: Math.round(daysRemaining * dailyHours),
     exam_date: examDate.toISOString().split("T")[0],
     plan_start: today.toISOString().split("T")[0],
-    strategy: `${planTypeLabel} for ${examType}: ${daysRemaining} days, ${totalTopics} topics. Weekdays for new topics, weekends for revision, last ${finalRevDays + mockTestDays + revZoneDays} days reserved for mock tests and final revision.`,
+    strategy: `${planTypeLabel} for ${examType}: ${daysRemaining} days, ${totalTopics} topics. ${allowWeekendRevision ? "Weekdays for new topics, weekends for revision." : "All days focused on new topic introduction — revision starts once topics are covered."} Last ${finalRevDays + mockTestDays + revZoneDays} days reserved for mock tests and final revision.`,
     subjects,
     daily_plan,
   };
+}
+
+// ─── Claude AI enhancement ────────────────────────────────────────────────────
+
+/**
+ * Calls Claude to:
+ *   1. Write a personalized 2-sentence strategy
+ *   2. Generate one-sentence exam tips per topic
+ *
+ * Falls back gracefully if the API key is missing or the call fails.
+ */
+async function enhanceWithClaude(
+  planData: FullPlanData,
+  examType: string,
+  daysRemaining: number,
+  daysSinceJoined: number,
+  completedSubjectCount: number,
+  totalSubjects: number,
+  weakAreas: WeakArea[],
+  dailyHours: number,
+): Promise<void> {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) {
+    // No key configured — skip silently
+    return;
+  }
+
+  try {
+    const client = getAnthropic();
+
+    // Build topic list from the first 80 unique study sessions
+    const topicList: Array<{ key: string; label: string }> = [];
+    const seen = new Set<string>();
+    for (const day of planData.daily_plan) {
+      if (day.day_type !== "study") continue;
+      for (const s of day.sessions) {
+        const cleanTopic = s.topic.replace(/ — (Practice|Revision)$/, "");
+        const key = `${s.subject_code ?? s.subject}|${cleanTopic}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          topicList.push({ key, label: `${s.subject} — ${cleanTopic}` });
+        }
+      }
+      if (topicList.length >= 80) break;
+    }
+
+    const weakNote = weakAreas.length > 0
+      ? `Weak areas: ${weakAreas.map(w => `${w.subject_code} (${w.score_pct}%)`).join(", ")}.`
+      : "No weak areas identified yet (not enough quiz data).";
+
+    const coverageNote = completedSubjectCount === 0
+      ? "The student has NOT started studying yet — zero subjects covered."
+      : `The student has covered ${completedSubjectCount} out of ${totalSubjects} subjects so far.`;
+
+    const prompt = `You are an expert coach for the ${examType} Indian government exam.
+
+Student profile:
+- Days until exam: ${daysRemaining}
+- Plan type: ${planData.plan_type}
+- Days since joining: ${daysSinceJoined}
+- ${coverageNote}
+- ${weakNote}
+- Daily study hours: ${dailyHours}
+
+TASKS:
+1. Write a 2-sentence, motivating, and SPECIFIC study strategy tailored to this student's current progress. If they are a beginner (0 subjects covered), focus on building foundations, NOT revision.
+2. For each topic below, write a single practical exam tip specific to ${examType} (not generic advice).
+
+Topics (format: "SubjectCode|TopicName: Subject — Topic"):
+${topicList.map(t => `${t.key}: ${t.label}`).join("\n")}
+
+Return ONLY valid JSON (no markdown, no code fences):
+{
+  "strategy": "...",
+  "tips": {
+    "${topicList[0]?.key ?? "example|topic"}": "one-sentence exam tip",
+    ...
+  }
+}`;
+
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 6000,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const rawText = message.content
+      .filter(b => b.type === "text")
+      .map(b => (b as { type: "text"; text: string }).text)
+      .join("")
+      .replace(/```json\n?|\n?```/g, "")
+      .trim();
+
+    const aiData = JSON.parse(rawText);
+
+    // Apply strategy
+    if (aiData.strategy && typeof aiData.strategy === "string") {
+      planData.strategy = aiData.strategy;
+    }
+
+    // Apply per-topic tips to daily_plan sessions
+    if (aiData.tips && typeof aiData.tips === "object") {
+      for (const day of planData.daily_plan) {
+        for (const session of day.sessions) {
+          const cleanTopic = session.topic.replace(/ — (Practice|Revision)$/, "");
+          const key = `${session.subject_code ?? session.subject}|${cleanTopic}`;
+          const tip = aiData.tips[key];
+          if (tip) session.tip = tip;
+        }
+      }
+      // Apply to subject topic list too
+      for (const sub of planData.subjects) {
+        for (const t of sub.topics) {
+          const key = `${sub.subject_code ?? sub.name}|${t.name}`;
+          if (aiData.tips[key]) t.tip = aiData.tips[key];
+        }
+      }
+    }
+  } catch (err: any) {
+    // Non-fatal — plan is still useful without AI tips
+    const msg = String(err?.message ?? err);
+    const isAuthErr = msg.includes("401") || msg.includes("authentication") || msg.includes("API key");
+    if (isAuthErr) {
+      console.warn("Claude: invalid ANTHROPIC_API_KEY — add the key in Replit Secrets");
+    } else {
+      console.warn("Claude enhancement failed (non-fatal):", msg.slice(0, 200));
+    }
+  }
 }
 
 // ─── Persist + seed daily tasks ───────────────────────────────────────────────
@@ -381,7 +547,7 @@ async function savePlanAndSeedTasks(
   const fp = planData as FullPlanData;
 
   if (fp.daily_plan) {
-    // New format: seed first 14 days
+    // Seed first 14 days
     for (const day of fp.daily_plan.slice(0, 14)) {
       for (const session of day.sessions) {
         taskRows.push({
@@ -429,7 +595,29 @@ router.get("/study-plans/current", async (req, res) => {
     .orderBy(desc(studyPlansTable.createdAt)).limit(1);
 
   if (!plans[0]) return res.json({ plan: null });
-  res.json({ plan: plans[0] });
+
+  const plan = plans[0];
+  const meta = (plan.planData as any)?._meta as { generated_date?: string; completed_subjects_snapshot?: number } | undefined;
+
+  // ── Cache staleness check ──────────────────────────────────────────────────
+  // Invalidate if: (a) plan is from a previous IST date, or
+  //               (b) user completed a new subject since the plan was generated.
+  if (meta?.generated_date) {
+    const todayIST = getTodayIST();
+    const currentCompleted = await fetchCompletedSubjectCount(profile.id);
+
+    const dateStale = meta.generated_date !== todayIST;
+    const progressChanged = meta.completed_subjects_snapshot !== undefined &&
+      currentCompleted !== meta.completed_subjects_snapshot;
+
+    if (dateStale || progressChanged) {
+      // Delete the stale plan — the frontend's empty-state will auto-trigger /generate
+      await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
+      return res.json({ plan: null, stale: true });
+    }
+  }
+
+  res.json({ plan });
 });
 
 router.delete("/study-plans/current", async (req, res) => {
@@ -460,7 +648,6 @@ router.post("/study-plans/generate", async (req, res) => {
   const examDate   = profile.examDate;
   const dailyHours = profile.dailyStudyHours ?? 4;
 
-  // Require exam date for the new dynamic plan
   if (!examDate) {
     return res.status(400).json({
       error: "Please set your exam date in Settings to generate a personalised study plan.",
@@ -483,81 +670,45 @@ router.post("/study-plans/generate", async (req, res) => {
 
   const weeksRemaining = Math.max(1, Math.ceil(daysRemaining / 7));
 
-  const [dbSubjects, weakAreas] = await Promise.all([
+  // Days since the user joined (for Claude context)
+  const daysSinceJoined = Math.max(0, Math.ceil(
+    (today.getTime() - new Date(profile.createdAt).getTime()) / 86_400_000
+  ));
+
+  const [dbSubjects, weakAreas, completedSubjectCount] = await Promise.all([
     fetchExamData(examType),
     fetchWeakAreas(profile.id, examType),
+    fetchCompletedSubjectCount(profile.id),
   ]);
 
   const weaksMap: Record<string, number> = {};
   for (const w of weakAreas) if (w.subject_code) weaksMap[w.subject_code] = w.score_pct;
 
-  // Build full calendar server-side
-  const planData = buildFullPlan(examDateObj, today, dbSubjects, weaksMap, dailyHours, examType);
+  // Only allow weekend revision if the user has actually covered some topics
+  const allowWeekendRevision = completedSubjectCount > 0;
 
-  // Enhance with AI: strategy + per-topic tips (compact single call)
-  try {
-    const topicList = dbSubjects.flatMap(s =>
-      (s.topics.length > 0 ? s.topics : ["General Topics"]).map(t => ({
-        key: `${s.subject_code ?? s.name}|${t}`,
-        label: `${s.name} — ${t}`,
-      }))
-    );
+  // Build the full calendar plan
+  const planData = buildFullPlan(
+    examDateObj, today, dbSubjects, weaksMap, dailyHours, examType, allowWeekendRevision
+  );
 
-    const weakNote = weakAreas.length > 0
-      ? `\nStudent weak areas: ${weakAreas.map(w => `${w.subject_code} (${w.score_pct}%)`).join(", ")}.`
-      : "";
+  // Enhance with Claude: personalized strategy + per-topic tips
+  await enhanceWithClaude(
+    planData,
+    examType,
+    daysRemaining,
+    daysSinceJoined,
+    completedSubjectCount,
+    dbSubjects.length,
+    weakAreas,
+    dailyHours,
+  );
 
-    const aiPrompt = `You are an expert coach for the ${examType} Indian government exam.
-Student has ${daysRemaining} days remaining. Plan type: ${planData.plan_type}.${weakNote}
-
-Task 1 — Write a 2-sentence motivating and specific study strategy for this student.
-Task 2 — For each topic below, write a 1-sentence practical exam tip (specific to ${examType}).
-
-Topics:
-${topicList.slice(0, 80).map(t => `${t.key}: ${t.label}`).join("\n")}
-
-Return JSON:
-{
-  "strategy": "...",
-  "tips": {
-    "${topicList[0]?.key ?? ""}": "tip text",
-    ...
-  }
-}`;
-
-    const aiResp = await genai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: aiPrompt,
-      config: { maxOutputTokens: 6000, responseMimeType: "application/json" },
-    });
-
-    const aiData = JSON.parse((aiResp.text ?? "{}").replace(/```json\n?|\n?```/g, "").trim());
-
-    if (aiData.strategy) planData.strategy = aiData.strategy;
-
-    if (aiData.tips && typeof aiData.tips === "object") {
-      // Merge tips into daily plan sessions
-      for (const day of planData.daily_plan) {
-        for (const session of day.sessions) {
-          const baseTopicKey = `${session.subject_code ?? ""}|${session.topic.replace(/ — (Practice|Revision)$/, "")}`;
-          const tip = aiData.tips[baseTopicKey];
-          if (tip) session.tip = tip;
-        }
-      }
-      // Also merge into subjects topics
-      for (const sub of planData.subjects) {
-        for (const t of sub.topics) {
-          const key = `${sub.subject_code ?? sub.name}|${t.name}`;
-          if (aiData.tips[key]) t.tip = aiData.tips[key];
-        }
-      }
-    }
-  } catch (aiErr: any) {
-    const errStr = String(aiErr?.message ?? aiErr);
-    const isQuota = errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED") || errStr.includes("quota");
-    if (!isQuota) req.log.warn({ err: errStr }, "AI tips failed — using template plan without tips");
-    // Plan is still usable without AI tips
-  }
+  // Store cache metadata in the plan so GET /current can validate freshness
+  planData._meta = {
+    generated_date: getTodayIST(),
+    completed_subjects_snapshot: completedSubjectCount,
+  };
 
   try {
     const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
