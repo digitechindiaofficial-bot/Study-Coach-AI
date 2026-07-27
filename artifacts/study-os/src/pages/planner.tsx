@@ -407,7 +407,7 @@ export default function PlannerPage() {
       }}>
         <span style={{ fontSize: '16px', lineHeight: '1.5' }}>ℹ️</span>
         <p style={{ margin: 0, color: '#1E40AF', fontSize: '14px', lineHeight: '1.5' }}>
-          <strong>Changed your target exam?</strong><br />
+          <strong>Changed your target exam or exam date?</strong><br />
           Click the <strong>"Regenerate"</strong> button above and refresh the page once to get your updated study plan.
         </p>
       </div>
