@@ -112339,6 +112339,21 @@ async function getProfileByClerkId(clerkUserId) {
   const rows = await db.select().from(profilesTable).where(eq(profilesTable.clerkUserId, clerkUserId)).limit(1);
   return rows[0] ?? null;
 }
+function buildRevisionQueue(dbSubjects, weaksMap) {
+  const sorted = [...dbSubjects].sort((a, b) => {
+    const scoreA = weaksMap[a.subject_code ?? ""] ?? 101;
+    const scoreB = weaksMap[b.subject_code ?? ""] ?? 101;
+    return scoreA - scoreB;
+  });
+  const result = [];
+  for (const s3 of sorted) {
+    const topics = s3.topics.length > 0 ? s3.topics : ["General Topics"];
+    for (const t2 of topics) {
+      result.push({ topic: t2, subject: s3.name, code: s3.subject_code ?? "" });
+    }
+  }
+  return result;
+}
 function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examType, allowWeekendRevision) {
   const MS_DAY = 864e5;
   const daysRemaining = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / MS_DAY));
@@ -112356,6 +112371,8 @@ function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examTy
       if (isWeak) topicQueue.push({ topic: `${t2} \u2014 Revision`, subject: s3.name, code: s3.subject_code ?? "" });
     }
   }
+  const revisionQueue = buildRevisionQueue(dbSubjects, weaksMap);
+  const safeRevQueue = revisionQueue.length > 0 ? revisionQueue : [{ topic: "General Topics", subject: dbSubjects[0]?.name ?? "All Subjects", code: "" }];
   const totalTopics = dbSubjects.reduce((sum, s3) => sum + (s3.topics.length || 1), 0);
   let studySlots = 0;
   {
@@ -112375,6 +112392,10 @@ function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examTy
   for (const s3 of dbSubjects) subjectRanges[s3.subject_code ?? s3.name] = { start: null, end: null, days: 0 };
   const daily_plan = [];
   let topicCursor = 0;
+  let revCursor = 0;
+  let flexDayCount = 0;
+  let revDayCount = 0;
+  const MAX_REV_RATIO = 0.4;
   const cur = new Date(today);
   cur.setHours(0, 0, 0, 0);
   while (cur < examDate) {
@@ -112385,7 +112406,6 @@ function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examTy
     const isFinalRev = daysLeft <= finalRevDays;
     const isMockZone = !isFinalRev && daysLeft <= finalRevDays + mockTestDays;
     const isRevZone = !isFinalRev && !isMockZone && daysLeft <= reservedDays;
-    const isRevisionDay = isRevZone || isWeekend && allowWeekendRevision;
     let dayType;
     let sessions;
     if (isFinalRev) {
@@ -112418,85 +112438,137 @@ function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examTy
         ],
         tip: "Treat every mock as the real exam \u2014 same focus, same timing."
       }];
-    } else if (isRevisionDay) {
-      dayType = "revision";
-      const mcqCount = Math.round(dailyHours * 12);
-      sessions = [{
-        time: "Full Day",
-        topic: isWeekend ? "Weekly Revision" : "Revision Sprint",
-        subject: "All Subjects",
-        duration: dailyHours * 60,
-        tasks: [
-          "Review notes from this week's topics",
-          `Solve ${mcqCount} mixed practice MCQs`,
-          "Flag weak topics for next session",
-          "Quick-read important facts and formulas"
-        ],
-        tip: "Active recall (practice questions) beats re-reading every time."
-      }];
-    } else if (topicCursor >= topicQueue.length) {
-      dayType = "revision";
-      sessions = [{
-        time: "Full Day",
-        topic: "Extra Revision",
-        subject: "All Subjects",
-        duration: dailyHours * 60,
-        tasks: [
-          "All syllabus topics are covered!",
-          "Focus entirely on your weak areas",
-          "Attempt section-wise mock tests",
-          "Review previous year question patterns"
-        ],
-        tip: "Great work \u2014 now build speed, accuracy, and confidence."
-      }];
     } else {
-      dayType = "study";
-      const topicsThisDay = Math.min(topicsPerDay, topicQueue.length - topicCursor);
-      const sessions_out = [];
-      for (let t2 = 0; t2 < topicsThisDay; t2++) {
-        const { topic, subject, code } = topicQueue[topicCursor + t2];
-        const rng = subjectRanges[code] ?? (subjectRanges[code] = { start: null, end: null, days: 0 });
-        if (!rng.start) rng.start = dateStr;
-        rng.end = dateStr;
-        if (t2 === 0) rng.days++;
-        const mcqs = Math.max(15, Math.round(dailyHours * 8 / topicsThisDay));
-        const dur = topicsThisDay > 1 ? Math.round(dailyHours * 60 / topicsThisDay) : morningMins;
-        sessions_out.push({
-          time: topicsThisDay === 1 ? "Morning" : t2 === 0 ? "Morning" : "Evening",
-          topic,
-          subject,
-          subject_code: code,
-          duration: dur,
+      flexDayCount++;
+      const firstPassRatio = topicQueue.length > 0 ? Math.min(1, topicCursor / topicQueue.length) : 1;
+      const wantsRevision = isRevZone || isWeekend && allowWeekendRevision && firstPassRatio >= 0.5;
+      const revRatio = revDayCount / Math.max(1, flexDayCount - 1);
+      const capHit = revRatio >= MAX_REV_RATIO;
+      const topicsExhausted = topicCursor >= topicQueue.length;
+      if (wantsRevision && !capHit) {
+        revDayCount++;
+        const revEntry = safeRevQueue[revCursor % safeRevQueue.length];
+        revCursor++;
+        dayType = "revision";
+        const mcqCount = Math.max(20, Math.round(dailyHours * 12));
+        sessions = [{
+          time: "Full Day",
+          topic: `Revise: ${revEntry.topic}`,
+          subject: revEntry.subject,
+          subject_code: revEntry.code || void 0,
+          duration: dailyHours * 60,
           tasks: [
-            `Study ${topic} in depth`,
-            "Make concise revision notes",
-            `Solve ${mcqs} practice MCQs`,
-            "Note key facts and dates"
+            `Deep revision of ${revEntry.topic} (${revEntry.subject})`,
+            `Solve ${mcqCount} focused MCQs on this topic`,
+            "Re-read key formulas and shortcuts",
+            "Attempt previous year questions on this topic"
           ],
-          tip: `Focus: ${topic}`
-          // replaced by AI tips below
-        });
+          tip: `Targeted revision of ${revEntry.topic} builds accuracy faster than broad review.`
+        }];
+      } else if (topicsExhausted) {
+        const assignRevision = !capHit && revCursor % 3 === 2;
+        const revEntry = safeRevQueue[revCursor % safeRevQueue.length];
+        revCursor++;
+        if (assignRevision) {
+          revDayCount++;
+          dayType = "revision";
+          const mcqCount = Math.max(20, Math.round(dailyHours * 12));
+          sessions = [{
+            time: "Full Day",
+            topic: `Revise: ${revEntry.topic}`,
+            subject: revEntry.subject,
+            subject_code: revEntry.code || void 0,
+            duration: dailyHours * 60,
+            tasks: [
+              `Targeted revision of ${revEntry.topic}`,
+              `Solve ${mcqCount} MCQs on ${revEntry.topic}`,
+              "Note error patterns and correct them",
+              "Review previous year questions on this topic"
+            ],
+            tip: `Revisiting ${revEntry.topic} now deepens retention and boosts accuracy.`
+          }];
+        } else {
+          dayType = "study";
+          const mcqs = Math.max(20, Math.round(dailyHours * 10));
+          sessions = [
+            {
+              time: "Morning",
+              topic: `Deep Study: ${revEntry.topic}`,
+              subject: revEntry.subject,
+              subject_code: revEntry.code || void 0,
+              duration: morningMins,
+              tasks: [
+                `In-depth study of ${revEntry.topic} (advanced level)`,
+                "Solve harder practice problems",
+                `Solve ${mcqs} MCQs with focus on accuracy`,
+                "Build comprehensive notes on this topic"
+              ],
+              tip: `A second pass on ${revEntry.topic} uncovers gaps the first pass missed.`
+            },
+            {
+              time: "Evening",
+              topic: `${revEntry.topic} \u2014 Practice`,
+              subject: revEntry.subject,
+              subject_code: revEntry.code || void 0,
+              duration: eveningMins,
+              tasks: [
+                "Attempt timed practice set",
+                "Review any mistakes immediately",
+                "Note tricky question patterns"
+              ],
+              tip: "Evening practice consolidates morning learning."
+            }
+          ];
+        }
+      } else {
+        dayType = "study";
+        const topicsThisDay = Math.min(topicsPerDay, topicQueue.length - topicCursor);
+        const sessions_out = [];
+        for (let t2 = 0; t2 < topicsThisDay; t2++) {
+          const { topic, subject, code } = topicQueue[topicCursor + t2];
+          const rng = subjectRanges[code] ?? (subjectRanges[code] = { start: null, end: null, days: 0 });
+          if (!rng.start) rng.start = dateStr;
+          rng.end = dateStr;
+          if (t2 === 0) rng.days++;
+          const mcqs = Math.max(15, Math.round(dailyHours * 8 / topicsThisDay));
+          const dur = topicsThisDay > 1 ? Math.round(dailyHours * 60 / topicsThisDay) : morningMins;
+          sessions_out.push({
+            time: topicsThisDay === 1 ? "Morning" : t2 === 0 ? "Morning" : "Evening",
+            topic,
+            subject,
+            subject_code: code,
+            duration: dur,
+            tasks: [
+              `Study ${topic} in depth`,
+              "Make concise revision notes",
+              `Solve ${mcqs} practice MCQs`,
+              "Note key facts and dates"
+            ],
+            tip: `Focus: ${topic}`
+            // replaced by AI tips below
+          });
+        }
+        if (topicsThisDay === 1) {
+          const { topic, subject, code } = topicQueue[topicCursor];
+          const mcqs2 = Math.max(10, Math.round(dailyHours * 5));
+          sessions_out.push({
+            time: "Evening",
+            topic: `${topic} \u2014 Practice`,
+            subject,
+            subject_code: code,
+            duration: eveningMins,
+            tasks: [
+              "Revisit morning notes quickly",
+              `Solve ${mcqs2} more MCQs on this topic`,
+              "Review previous year questions",
+              "Note any remaining weak points"
+            ],
+            tip: "Evening practice locks in what you studied in the morning."
+          });
+        }
+        topicCursor += topicsThisDay;
+        sessions = sessions_out;
       }
-      if (topicsThisDay === 1) {
-        const { topic, subject, code } = topicQueue[topicCursor];
-        const mcqs2 = Math.max(10, Math.round(dailyHours * 5));
-        sessions_out.push({
-          time: "Evening",
-          topic: `${topic} \u2014 Practice`,
-          subject,
-          subject_code: code,
-          duration: eveningMins,
-          tasks: [
-            "Revisit morning notes quickly",
-            `Solve ${mcqs2} more MCQs on this topic`,
-            "Review previous year questions",
-            "Note any remaining weak points"
-          ],
-          tip: "Evening practice locks in what you studied in the morning."
-        });
-      }
-      topicCursor += topicsThisDay;
-      sessions = sessions_out;
     }
     daily_plan.push({ date: dateStr, day_name: DAY_NAMES[dow], day_type: dayType, days_left: daysLeft, sessions });
     cur.setDate(cur.getDate() + 1);
