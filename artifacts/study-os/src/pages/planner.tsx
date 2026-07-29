@@ -420,7 +420,7 @@ export default function PlannerPage() {
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-400">
             <span className="font-semibold">Free plan:</span> Upgrade to Pro to regenerate your plan anytime.
-            {" "}<span className="underline font-medium">Upgrade for ₹199/month →</span>
+            {" "}<span className="underline font-medium">Upgrade for ₹129/month →</span>
           </p>
         </div>
       )}

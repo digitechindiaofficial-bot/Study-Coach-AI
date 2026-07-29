@@ -16,7 +16,7 @@ const SUBJECTS = [
 const QUICK_HELP = [
   {
     q: "How to upgrade to Pro?",
-    a: "Go to Settings → Upgrade to Pro → Pay ₹199/month via Razorpay.",
+    a: "Go to Settings → Upgrade to Pro → Pay ₹129/month or ₹999/year via Razorpay.",
   },
   {
     q: "I was charged but plan not activated?",

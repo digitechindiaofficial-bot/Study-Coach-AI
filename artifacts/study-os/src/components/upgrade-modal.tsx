@@ -98,9 +98,9 @@ export default function UpgradeModal({ open, onClose, variant }: Props) {
         <div className="px-5 pb-5 space-y-3">
           <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
             <div>
-              <span className="text-2xl font-bold">₹199</span>
+              <span className="text-2xl font-bold">₹129</span>
               <span className="text-muted-foreground text-sm">/month</span>
-              <p className="text-xs text-muted-foreground">or ₹999/year — save 58%</p>
+              <p className="text-xs text-muted-foreground">or ₹999/year — save 36%</p>
             </div>
             <Badge className="bg-green-100 text-green-700 border-green-200">Best Value</Badge>
           </div>
@@ -111,7 +111,7 @@ export default function UpgradeModal({ open, onClose, variant }: Props) {
               size="lg"
             >
               <Sparkles className="mr-2 w-4 h-4" />
-              Upgrade to Pro — ₹199/month
+              Upgrade to Pro — ₹129/month
             </Button>
           </Link>
 

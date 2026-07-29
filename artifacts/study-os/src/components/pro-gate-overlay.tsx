@@ -33,7 +33,7 @@ export function ProGateOverlay({ featureName }: { featureName: string }) {
         </div>
 
         <div className="pt-2">
-          <p className="text-2xl font-bold mb-4">₹199<span className="text-sm text-muted-foreground font-normal">/month</span></p>
+          <p className="text-2xl font-bold mb-4">₹129<span className="text-sm text-muted-foreground font-normal">/month</span></p>
           <Link href="/upgrade">
             <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
               Upgrade to Pro

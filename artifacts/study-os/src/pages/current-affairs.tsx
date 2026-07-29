@@ -464,7 +464,7 @@ export default function CurrentAffairsPage() {
               Unlock All 15 Articles + MCQ Practice
             </Button>
           </Link>
-          <p className="text-xs text-muted-foreground">₹199/month · Cancel anytime</p>
+          <p className="text-xs text-muted-foreground">₹129/month · Cancel anytime</p>
         </div>
       )}
     </div>

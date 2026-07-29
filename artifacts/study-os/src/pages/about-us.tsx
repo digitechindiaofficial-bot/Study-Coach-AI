@@ -24,7 +24,7 @@ const FEATURES = [
   { emoji: "🎯", title: "AI Study Planner", desc: "Personalised to YOUR exam date and available time" },
   { emoji: "📚", title: "4000+ Questions",  desc: "Across 10+ major government exams" },
   { emoji: "🔍", title: "Weak Area Detection", desc: "AI automatically finds where you need more practice" },
-  { emoji: "💰", title: "Affordable",       desc: "₹199/month — less than the cost of one coaching class!" },
+  { emoji: "💰", title: "Affordable",       desc: "₹129/month — less than the cost of one coaching class!" },
   { emoji: "📱", title: "Available 24/7",   desc: "Study anytime, anywhere on any device" },
 ];
 

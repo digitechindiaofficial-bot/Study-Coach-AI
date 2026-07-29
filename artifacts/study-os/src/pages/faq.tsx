@@ -21,7 +21,7 @@ const SECTIONS: Array<{ title: string; faqs: FAQ[] }> = [
       },
       {
         q: "Is GovtGuru free?",
-        a: "Yes! Basic features are free with 10 questions per day. Pro plan at ₹199/month gives unlimited access to all features including AI study planner and detailed analytics.",
+        a: "Yes! Basic features are free with 10 questions per day. Pro plan at ₹129/month (or ₹999/year) gives unlimited access to all features including AI study planner and detailed analytics.",
       },
     ],
   },
@@ -47,7 +47,7 @@ const SECTIONS: Array<{ title: string; faqs: FAQ[] }> = [
     faqs: [
       {
         q: "What is included in the Pro plan?",
-        a: "Unlimited questions, AI-powered personalised study planner, detailed progress analytics, weak area drill, full current affairs access, and priority support — all for ₹199/month.",
+        a: "Unlimited questions, AI-powered personalised study planner, detailed progress analytics, weak area drill, full current affairs access, and priority support — all for ₹129/month or ₹999/year.",
       },
       {
         q: "Can I cancel anytime?",

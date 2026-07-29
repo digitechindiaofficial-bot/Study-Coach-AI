@@ -203,7 +203,7 @@ export default function SettingsPage() {
                 ))}
               </div>
               <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground mb-3">Unlock all Pro features for just ₹199/month</p>
+                <p className="text-xs text-muted-foreground mb-3">Unlock all Pro features for just ₹129/month</p>
                 <PaymentButton
                   userName={user?.fullName ?? ""}
                   userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
