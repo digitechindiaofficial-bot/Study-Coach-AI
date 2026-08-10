@@ -1,0 +1,21 @@
+I want to make the AI Study Planner a paid (Pro-only) feature, with a preview model for free users:
+
+BEHAVIOR NEEDED:
+- Free users: can see only the first 1-2 days of their generated study plan in full detail
+- Beyond day 2, the plan should be blurred/locked in the UI with an upgrade prompt (e.g. "Upgrade to Pro for ₹129/month to unlock your full personalized plan")
+- Pro users: see the complete plan as normal, no restrictions
+
+IMPORTANT — backend must enforce this too, not just the frontend:
+1. In the backend route that returns the study plan (GET /api/study-plans/current or wherever it lives in study-plans.ts), check the user's subscription status (however it's currently checked — reuse the same source of truth used for the "Pro" badge and "Regenerate (Pro)" lock we fixed earlier, so it's consistent).
+2. If the user is on the Free plan, truncate the returned plan data server-side to only include the first 2 days' full details. For days beyond that, either omit the data entirely or return only day/date labels without topic/subject details — so a free user calling the API directly cannot see the full plan even by inspecting network requests.
+3. If the user is Pro, return the full plan as normal.
+
+FRONTEND CHANGES:
+1. Update the Study Planner page component to render days 1-2 normally.
+2. For days beyond the free limit, show a visually blurred/locked card per day with a lock icon and "Upgrade to Pro" CTA linking to the existing upgrade/payment flow.
+3. Reuse the existing Pro upgrade banner/flow already used for the "Regenerate (Pro)" feature — keep this consistent with existing UI patterns, not a new design.
+4. This should work the same on both the web app and the Expo mobile WebView (since mobile just loads govtguru.com, no separate mobile-specific change should be needed — confirm this is the case).
+
+Also confirm: is the underlying subscription/Pro check a single reusable function or is it duplicated in multiple places? If duplicated, consolidate it into one function so the header badge, Regenerate lock, and this new planner gating all read from the exact same source of truth — this avoids the kind of Pro/Free mismatch bug we found earlier.
+
+Show me the current plan API response structure and the current Pro-check logic before making changes.
