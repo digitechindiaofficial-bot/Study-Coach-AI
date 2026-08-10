@@ -732,6 +732,31 @@ router.get("/study-plans/current", async (req, res) => {
     }
   }
 
+  // ── Pro gating: free users only receive the first 2 days in full detail ──
+  // Days beyond index 1 are replaced with locked stubs (date/name only).
+  // This enforces the gate server-side so inspecting network requests
+  // never reveals the full plan to a free user.
+  if (profile.planType !== "pro") {
+    const pd = plan.planData as any;
+    if (pd?.daily_plan && Array.isArray(pd.daily_plan)) {
+      const truncated = {
+        ...pd,
+        daily_plan: pd.daily_plan.map((day: any, idx: number) => {
+          if (idx < 2) return day; // first 2 days: full detail
+          return {
+            date: day.date,
+            day_name: day.day_name,
+            day_type: day.day_type,
+            days_left: day.days_left,
+            sessions: [],
+            _locked: true,
+          };
+        }),
+      };
+      return res.json({ plan: { ...plan, planData: truncated }, is_truncated: true });
+    }
+  }
+
   res.json({ plan });
 });
 

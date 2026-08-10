@@ -13,6 +13,7 @@ export interface PlanStatus {
   canTakeQuiz: boolean;
   canRegeneratePlan: boolean;
   canViewFullCurrentAffairs: boolean;
+  canViewFullPlan: boolean;       // Study Planner: Pro sees all days, free sees first 2
 }
 
 export function usePlan(): PlanStatus {
@@ -45,5 +46,6 @@ export function usePlan(): PlanStatus {
     canTakeQuiz: isPro || quizCountToday < FREE_DAILY_QUIZ_LIMIT,
     canRegeneratePlan: isPro,
     canViewFullCurrentAffairs: isPro,
+    canViewFullPlan: isPro,
   };
 }

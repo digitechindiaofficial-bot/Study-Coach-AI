@@ -112747,6 +112747,26 @@ router3.get("/study-plans/current", async (req, res) => {
       return res.json({ plan: null, stale: true });
     }
   }
+  if (profile.planType !== "pro") {
+    const pd = plan.planData;
+    if (pd?.daily_plan && Array.isArray(pd.daily_plan)) {
+      const truncated = {
+        ...pd,
+        daily_plan: pd.daily_plan.map((day, idx) => {
+          if (idx < 2) return day;
+          return {
+            date: day.date,
+            day_name: day.day_name,
+            day_type: day.day_type,
+            days_left: day.days_left,
+            sessions: [],
+            _locked: true
+          };
+        })
+      };
+      return res.json({ plan: { ...plan, planData: truncated }, is_truncated: true });
+    }
+  }
   res.json({ plan });
 });
 router3.delete("/study-plans/current", async (req, res) => {

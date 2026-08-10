@@ -33,6 +33,7 @@ interface DayEntry {
   day_type: "study" | "revision" | "mock_test" | "final_revision";
   days_left: number;
   sessions: Session[];
+  _locked?: boolean;  // server sets this for free users on days 3+
 }
 
 interface SubjectEntry {
@@ -189,6 +190,56 @@ function DayCard({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Locked Day Card (free users, days 3+) ────────────────────────────────────
+
+function LockedDayCard({ entry, isToday, onUpgrade }: {
+  entry: DayEntry;
+  isToday: boolean;
+  onUpgrade: () => void;
+}) {
+  const dateObj = new Date(entry.date + "T00:00:00");
+  const cfg = DAY_TYPE_CONFIG[entry.day_type] ?? DAY_TYPE_CONFIG.study;
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${
+      isToday ? "border-primary/40 ring-1 ring-primary/20" : "border-border/60"
+    }`}>
+      {/* Header row — same layout as DayCard but not clickable */}
+      <div className="flex items-center gap-3 p-3 bg-muted/30">
+        <div className="shrink-0 w-10 text-center rounded-lg py-1 bg-muted opacity-60">
+          <div className="text-[10px] font-medium uppercase">{entry.day_name}</div>
+          <div className="text-sm font-bold leading-none mt-0.5">{dateObj.getDate()}</div>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full opacity-50 ${cfg.color}`}>
+              {cfg.icon}{cfg.label}
+            </span>
+            <span className="text-xs text-muted-foreground/60 italic">Content hidden</span>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-xs text-muted-foreground/60">{entry.days_left}d left</div>
+      </div>
+
+      {/* Upgrade prompt */}
+      <div
+        className="border-t bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+        onClick={onUpgrade}
+      >
+        <p className="text-xs text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+          <Lock className="w-3 h-3 shrink-0" />
+          <span><span className="font-semibold">Pro only.</span> Upgrade to unlock your full personalised plan.</span>
+        </p>
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline shrink-0 whitespace-nowrap">
+          ₹129/mo →
+        </span>
+      </div>
     </div>
   );
 }
@@ -566,6 +617,17 @@ export default function PlannerPage() {
                       {isToday ? "Today — not in plan range" : "Not in plan range"}
                     </span>
                   </div>
+                );
+              }
+
+              if (entry._locked) {
+                return (
+                  <LockedDayCard
+                    key={dateStr}
+                    entry={entry}
+                    isToday={isToday}
+                    onUpgrade={() => setShowUpgradeModal(true)}
+                  />
                 );
               }
 
