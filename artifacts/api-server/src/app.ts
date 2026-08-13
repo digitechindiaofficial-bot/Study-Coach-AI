@@ -14,10 +14,12 @@ const app: Express = express();
 const pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 const skSet = !!process.env.CLERK_SECRET_KEY;
 const nodeEnv = process.env.NODE_ENV ?? "unset";
+const adminEmail = process.env.ADMIN_EMAIL ?? "";
 console.error(`[startup] NODE_ENV=${nodeEnv}`);
 console.error(`[startup] CLERK_PK prefix=${pk.substring(0, 24)}`);
 console.error(`[startup] CLERK_SK set=${skSet}`);
 console.error(`[startup] DATABASE_URL set=${!!process.env.DATABASE_URL}`);
+console.error(`[startup] ADMIN_EMAIL prefix=${adminEmail ? adminEmail.slice(0, 4) + "***" : "NOT_SET"}`);
 
 app.use(
   pinoHttp({

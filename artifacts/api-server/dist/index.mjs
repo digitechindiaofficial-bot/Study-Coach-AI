@@ -134667,14 +134667,21 @@ async function requireAdmin(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail2 = process.env.ADMIN_EMAIL;
   try {
     const user = await clerkClient.users.getUser(userId);
     const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    req.log.info({ userId, email: email3, adminEmail: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
-    if (!adminEmail || !email3 || email3.toLowerCase() !== adminEmail.toLowerCase()) {
+    req.log.info({ userId, email: email3, adminEmail: adminEmail2 ? `${adminEmail2.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
+    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
       req.log.warn({ userId, email: email3 }, "Admin access denied \u2014 email mismatch or ADMIN_EMAIL not set");
-      res.status(403).json({ error: "forbidden", message: "Admin access only." });
+      res.status(403).json({
+        error: "forbidden",
+        message: "Admin access only.",
+        // Masked hints so the admin can diagnose without exposing full emails
+        clerkEmail: email3 ? `${email3.slice(0, 3)}***@${email3.split("@")[1] ?? "?"}` : "none",
+        adminEmailConfigured: !!adminEmail2,
+        adminEmailPrefix: adminEmail2 ? `${adminEmail2.slice(0, 3)}***` : "NOT_SET"
+      });
       return;
     }
   } catch (err) {
@@ -135070,11 +135077,11 @@ async function requireAdmin2(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail2 = process.env.ADMIN_EMAIL;
   try {
     const user = await clerkClient.users.getUser(userId);
     const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail || !email3 || email3.toLowerCase() !== adminEmail.toLowerCase()) {
+    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -136025,11 +136032,11 @@ async function requireAdmin3(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail2 = process.env.ADMIN_EMAIL;
   try {
     const user = await clerkClient.users.getUser(userId);
     const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail || !email3 || email3.toLowerCase() !== adminEmail.toLowerCase()) {
+    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -136517,11 +136524,11 @@ async function requireAdmin4(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail2 = process.env.ADMIN_EMAIL;
   try {
     const user = await clerkClient.users.getUser(userId);
     const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail || !email3 || email3.toLowerCase() !== adminEmail.toLowerCase()) {
+    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -136627,11 +136634,11 @@ async function requireAdmin5(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail2 = process.env.ADMIN_EMAIL;
   try {
     const user = await clerkClient.users.getUser(userId);
     const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail || !email3 || email3.toLowerCase() !== adminEmail.toLowerCase()) {
+    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -137027,8 +137034,8 @@ async function assertAdmin(req, res) {
     res.status(401).json({ error: "Unauthorized" });
     return false;
   }
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) {
+  const adminEmail2 = process.env.ADMIN_EMAIL;
+  if (!adminEmail2) {
     res.status(403).json({ error: "Admin not configured" });
     return false;
   }
@@ -137039,7 +137046,7 @@ async function assertAdmin(req, res) {
   try {
     const user = await clerkClient2.users.getUser(userId);
     const emails = user.emailAddresses.map((e2) => e2.emailAddress.toLowerCase());
-    if (!emails.includes(adminEmail.toLowerCase())) {
+    if (!emails.includes(adminEmail2.toLowerCase())) {
       res.status(403).json({ error: "Forbidden" });
       return false;
     }
@@ -137452,10 +137459,12 @@ var app = (0, import_express37.default)();
 var pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 var skSet = !!process.env.CLERK_SECRET_KEY;
 var nodeEnv = process.env.NODE_ENV ?? "unset";
+var adminEmail = process.env.ADMIN_EMAIL ?? "";
 console.error(`[startup] NODE_ENV=${nodeEnv}`);
 console.error(`[startup] CLERK_PK prefix=${pk.substring(0, 24)}`);
 console.error(`[startup] CLERK_SK set=${skSet}`);
 console.error(`[startup] DATABASE_URL set=${!!process.env.DATABASE_URL}`);
+console.error(`[startup] ADMIN_EMAIL prefix=${adminEmail ? adminEmail.slice(0, 4) + "***" : "NOT_SET"}`);
 app.use(
   (0, import_pino_http.default)({
     logger: logger2,

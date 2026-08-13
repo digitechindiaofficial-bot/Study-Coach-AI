@@ -48,7 +48,14 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction): Pr
     req.log.info({ userId, email, adminEmail: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
     if (!adminEmail || !email || email.toLowerCase() !== adminEmail.toLowerCase()) {
       req.log.warn({ userId, email }, "Admin access denied — email mismatch or ADMIN_EMAIL not set");
-      res.status(403).json({ error: "forbidden", message: "Admin access only." });
+      res.status(403).json({
+        error: "forbidden",
+        message: "Admin access only.",
+        // Masked hints so the admin can diagnose without exposing full emails
+        clerkEmail: email ? `${email.slice(0, 3)}***@${email.split("@")[1] ?? "?"}` : "none",
+        adminEmailConfigured: !!adminEmail,
+        adminEmailPrefix: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET",
+      });
       return;
     }
   } catch (err) {

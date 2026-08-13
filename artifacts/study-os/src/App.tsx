@@ -109,6 +109,7 @@ function AdminRoute({ component: Component }: any) {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const [, setLocation] = useLocation();
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "unauthenticated">("checking");
+  const [denyHint, setDenyHint] = useState<{ clerkEmail?: string; adminEmailPrefix?: string } | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -119,11 +120,15 @@ function AdminRoute({ component: Component }: any) {
     }
     let cancelled = false;
     fetch("/api/admin/check", { credentials: "include", headers: { "Cache-Control": "no-cache" } })
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return;
         if (res.ok) {
           setStatus("allowed");
         } else {
+          try {
+            const body = await res.json();
+            setDenyHint({ clerkEmail: body.clerkEmail, adminEmailPrefix: body.adminEmailPrefix });
+          } catch { /* ignore */ }
           setStatus("denied");
         }
       })
@@ -152,9 +157,15 @@ function AdminRoute({ component: Component }: any) {
         </div>
         <h1 className="text-2xl font-bold text-red-700">Access Denied</h1>
         <p className="text-muted-foreground max-w-sm">
-          Your account is not authorised to access the admin panel. Make sure you are signed in with the admin email address set in the <strong>ADMIN_EMAIL</strong> secret.
+          Your account is not authorised to access the admin panel. The email Clerk returned for your account must exactly match the <strong>ADMIN_EMAIL</strong> environment variable on the server.
         </p>
-        <p className="text-xs text-muted-foreground">Signed-in Clerk ID: <code className="bg-muted px-1 rounded">{userId}</code></p>
+        {denyHint && (
+          <div className="text-xs text-muted-foreground bg-muted rounded px-4 py-2 text-left space-y-1 max-w-sm">
+            <p>Your Clerk email: <code className="font-mono">{denyHint.clerkEmail ?? "unknown"}</code></p>
+            <p>ADMIN_EMAIL starts with: <code className="font-mono">{denyHint.adminEmailPrefix ?? "NOT_SET"}</code></p>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">Clerk User ID: <code className="bg-muted px-1 rounded">{userId}</code></p>
         <button
           onClick={() => setLocation("/dashboard")}
           className="mt-2 px-4 py-2 rounded bg-primary text-primary-foreground text-sm font-medium"
