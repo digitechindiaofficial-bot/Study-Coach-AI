@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
+import { requireAdmin as sharedRequireAdmin } from "../lib/require-admin.js";
 import { db } from "@workspace/db";
 import {
   profilesTable,
@@ -17,56 +18,7 @@ import { deriveSubjectCode, buildTopicCode } from "../lib/syllabus-codes.js";
 
 const router = Router();
 
-async function isAdminEmail(userId: string): Promise<boolean> {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) return false;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email =
-      user.emailAddresses.find((e: { id: string }) => e.id === user.primaryEmailAddressId)?.emailAddress ??
-      user.emailAddresses[0]?.emailAddress ??
-      null;
-    return !!email && email.toLowerCase() === adminEmail.toLowerCase();
-  } catch {
-    return false;
-  }
-}
-
-async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email =
-      user.emailAddresses.find((e: { id: string }) => e.id === user.primaryEmailAddressId)?.emailAddress ??
-      user.emailAddresses[0]?.emailAddress ??
-      null;
-    req.log.info({ userId, email, adminEmail: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
-    if (!adminEmail || !email || email.toLowerCase() !== adminEmail.toLowerCase()) {
-      req.log.warn({ userId, email }, "Admin access denied — email mismatch or ADMIN_EMAIL not set");
-      res.status(403).json({
-        error: "forbidden",
-        message: "Admin access only.",
-        // Masked hints so the admin can diagnose without exposing full emails
-        clerkEmail: email ? `${email.slice(0, 3)}***@${email.split("@")[1] ?? "?"}` : "none",
-        adminEmailConfigured: !!adminEmail,
-        adminEmailPrefix: adminEmail ? `${adminEmail.slice(0, 3)}***` : "NOT_SET",
-      });
-      return;
-    }
-  } catch (err) {
-    req.log.error({ userId, err: String(err) }, "Admin check failed — Clerk lookup error");
-    res.status(403).json({ error: "forbidden", message: "Admin check failed." });
-    return;
-  }
-  next();
-}
-
-router.use("/admin", requireAdmin);
+router.use("/admin", sharedRequireAdmin);
 
 router.get("/admin/check", async (_req, res) => {
   res.json({ isAdmin: true });

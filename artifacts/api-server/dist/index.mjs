@@ -103727,7 +103727,7 @@ var require_razorpay = __commonJS({
 init_src();
 
 // src/app.ts
-var import_express37 = __toESM(require_express2(), 1);
+var import_express34 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib5(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 init_dist2();
@@ -103735,7 +103735,7 @@ import path3 from "path";
 import { fileURLToPath } from "url";
 
 // src/routes/index.ts
-var import_express36 = __toESM(require_express2(), 1);
+var import_express33 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -134610,8 +134610,50 @@ router8.get("/progress/heatmap", async (req, res) => {
 var progress_default = router8;
 
 // src/routes/admin.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_dist2();
+
+// src/lib/require-admin.ts
+init_dist2();
+async function requireAdmin2(req, res, next) {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized", message: "No session found." });
+    return;
+  }
+  const adminEmail2 = process.env.ADMIN_EMAIL;
+  let email3 = null;
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    email3 = user.emailAddresses.find(
+      (e2) => e2.id === user.primaryEmailAddressId
+    )?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
+  } catch (err) {
+    req.log?.error({ userId, err: String(err) }, "requireAdmin \u2014 Clerk lookup failed");
+    res.status(403).json({
+      error: "forbidden",
+      reason: "clerk_api_error",
+      message: "Could not verify your identity with Clerk. Try signing out and back in.",
+      adminEmailConfigured: !!adminEmail2
+    });
+    return;
+  }
+  if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
+    req.log?.warn({ userId, email: email3 }, "requireAdmin \u2014 email mismatch or ADMIN_EMAIL not set");
+    res.status(403).json({
+      error: "forbidden",
+      reason: "email_mismatch",
+      message: "Admin access only.",
+      clerkEmail: email3 ? `${email3.slice(0, 3)}***@${email3.split("@")[1] ?? "?"}` : "none",
+      adminEmailConfigured: !!adminEmail2,
+      adminEmailPrefix: adminEmail2 ? `${adminEmail2.slice(0, 3)}***` : "NOT_SET"
+    });
+    return;
+  }
+  next();
+}
+
+// src/routes/admin.ts
 init_src();
 init_src();
 init_drizzle_orm();
@@ -134660,38 +134702,8 @@ function buildTopicCode(examCode, subjectCode, topicIndex) {
 }
 
 // src/routes/admin.ts
-var router9 = (0, import_express16.Router)();
-async function requireAdmin(req, res, next) {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail2 = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    req.log.info({ userId, email: email3, adminEmail: adminEmail2 ? `${adminEmail2.slice(0, 3)}***` : "NOT_SET" }, "Admin check");
-    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
-      req.log.warn({ userId, email: email3 }, "Admin access denied \u2014 email mismatch or ADMIN_EMAIL not set");
-      res.status(403).json({
-        error: "forbidden",
-        message: "Admin access only.",
-        // Masked hints so the admin can diagnose without exposing full emails
-        clerkEmail: email3 ? `${email3.slice(0, 3)}***@${email3.split("@")[1] ?? "?"}` : "none",
-        adminEmailConfigured: !!adminEmail2,
-        adminEmailPrefix: adminEmail2 ? `${adminEmail2.slice(0, 3)}***` : "NOT_SET"
-      });
-      return;
-    }
-  } catch (err) {
-    req.log.error({ userId, err: String(err) }, "Admin check failed \u2014 Clerk lookup error");
-    res.status(403).json({ error: "forbidden", message: "Admin check failed." });
-    return;
-  }
-  next();
-}
-router9.use("/admin", requireAdmin);
+var router9 = (0, import_express17.Router)();
+router9.use("/admin", requireAdmin2);
 router9.get("/admin/check", async (_req, res) => {
   res.json({ isAdmin: true });
 });
@@ -135065,32 +135077,11 @@ router9.get("/admin/question-stats", requireAdmin, async (req, res) => {
 var admin_default = router9;
 
 // src/routes/question-bank-admin.ts
-var import_express18 = __toESM(require_express2(), 1);
-init_dist2();
+var import_express19 = __toESM(require_express2(), 1);
 init_src();
 init_src();
 init_drizzle_orm();
-var router10 = (0, import_express18.Router)();
-async function requireAdmin2(req, res, next) {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail2 = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
-  } catch {
-    res.status(403).json({ error: "forbidden" });
-    return;
-  }
-  next();
-}
+var router10 = (0, import_express19.Router)();
 router10.use("/admin/question-bank", requireAdmin2);
 var questionSchema = external_exports2.object({
   examCode: external_exports2.string().min(1),
@@ -136021,32 +136012,11 @@ var mock_tests_default = router11;
 
 // src/routes/mock-tests-admin.ts
 var import_express22 = __toESM(require_express2(), 1);
-init_dist2();
 init_src();
 init_src();
 init_drizzle_orm();
 var router12 = (0, import_express22.Router)();
-async function requireAdmin3(req, res, next) {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail2 = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-  } catch {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  next();
-}
-router12.use("/admin/mock-tests", requireAdmin3);
+router12.use("/admin/mock-tests", requireAdmin2);
 async function getMockWithSections(id) {
   const mock = await db.select().from(mockTestsTable).where(eq(mockTestsTable.id, id)).limit(1);
   if (!mock[0]) return null;
@@ -136512,37 +136482,16 @@ router12.post("/admin/mock-tests/import/json", async (req, res) => {
 var mock_tests_admin_default = router12;
 
 // src/routes/exam-patterns-admin.ts
-var import_express24 = __toESM(require_express2(), 1);
-init_dist2();
+var import_express23 = __toESM(require_express2(), 1);
 init_src();
 init_src();
 init_drizzle_orm();
-var router13 = (0, import_express24.Router)();
-async function requireAdmin4(req, res, next) {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail2 = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-  } catch {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  next();
-}
+var router13 = (0, import_express23.Router)();
 router13.get("/exam-patterns", async (req, res) => {
   const patterns = await db.select().from(examPatternsTable).where(eq(examPatternsTable.isActive, true)).orderBy(asc(examPatternsTable.examName));
   res.json(patterns);
 });
-router13.use("/admin/exam-patterns", requireAdmin4);
+router13.use("/admin/exam-patterns", requireAdmin2);
 var patternSchema = external_exports2.object({
   examCode: external_exports2.string().min(1),
   examName: external_exports2.string().min(1),
@@ -136623,31 +136572,10 @@ router13.post("/admin/exam-patterns/seed", async (req, res) => {
 var exam_patterns_admin_default = router13;
 
 // src/routes/exams-admin.ts
-var import_express26 = __toESM(require_express2(), 1);
-init_dist2();
+var import_express24 = __toESM(require_express2(), 1);
 init_src();
 init_drizzle_orm();
-var router14 = (0, import_express26.Router)();
-async function requireAdmin5(req, res, next) {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const adminEmail2 = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email3 = user.emailAddresses.find((e2) => e2.id === user.primaryEmailAddressId)?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail2 || !email3 || email3.toLowerCase() !== adminEmail2.toLowerCase()) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-  } catch {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  next();
-}
+var router14 = (0, import_express24.Router)();
 router14.get("/exams", async (_req, res) => {
   const result = await db.execute(sql`
     SELECT e.*,
@@ -136670,7 +136598,7 @@ router14.get("/exams/:code/subjects", async (req, res) => {
   `);
   res.json(result.rows);
 });
-router14.use("/admin/exams", requireAdmin5);
+router14.use("/admin/exams", requireAdmin2);
 var examSchema = external_exports2.object({
   code: external_exports2.string().min(1).max(32).transform((s3) => s3.toUpperCase()),
   name: external_exports2.string().min(1),
@@ -136857,9 +136785,9 @@ router14.post("/admin/exams/:code/subjects/:id/sync-count", async (req, res) => 
 var exams_admin_default = router14;
 
 // src/routes/contact.ts
-var import_express28 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_src();
-var router15 = (0, import_express28.Router)();
+var router15 = (0, import_express25.Router)();
 var ContactSchema = external_exports2.object({
   name: external_exports2.string().min(1).max(100),
   email: external_exports2.string().email().max(200),
@@ -136900,13 +136828,13 @@ router15.post("/contact", async (req, res) => {
 var contact_default = router15;
 
 // src/routes/otp.ts
-var import_express29 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 init_dist2();
 init_src();
 init_src();
 init_drizzle_orm();
 init_v4();
-var router16 = (0, import_express29.Router)();
+var router16 = (0, import_express26.Router)();
 router16.post("/otp/send", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -136983,13 +136911,13 @@ router16.post("/otp/verify", async (req, res) => {
 var otp_default = router16;
 
 // src/routes/blog.ts
-var import_express31 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 init_dist2();
 init_src();
 init_src();
 init_drizzle_orm();
 init_v4();
-var router17 = (0, import_express31.Router)();
+var router17 = (0, import_express28.Router)();
 router17.get("/blog", async (req, res) => {
   const { category, search } = req.query;
   let posts = await db.select().from(blogPostsTable).where(eq(blogPostsTable.isPublished, true)).orderBy(desc(blogPostsTable.publishedAt));
@@ -137144,7 +137072,7 @@ router17.delete("/admin/blog/posts/:id", async (req, res) => {
 var blog_default = router17;
 
 // src/routes/payment.ts
-var import_express33 = __toESM(require_express2(), 1);
+var import_express30 = __toESM(require_express2(), 1);
 init_dist2();
 init_src();
 init_src();
@@ -137171,7 +137099,7 @@ var logger2 = (0, import_pino.default)({
 });
 
 // src/routes/payment.ts
-var router18 = (0, import_express33.Router)();
+var router18 = (0, import_express30.Router)();
 function getRazorpay() {
   return new import_razorpay.default({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -137261,9 +137189,9 @@ router18.post("/payment/verify", async (req, res) => {
 var payment_default = router18;
 
 // src/routes/seed.ts
-var import_express35 = __toESM(require_express2(), 1);
+var import_express32 = __toESM(require_express2(), 1);
 init_src();
-var router19 = (0, import_express35.Router)();
+var router19 = (0, import_express32.Router)();
 function requireSeedToken(req, res, next) {
   const token = (process.env.SEED_TOKEN ?? "").trim();
   if (!token) {
@@ -137432,7 +137360,7 @@ router19.post("/seed/mock-tests", async (req, res) => {
 var seed_default = router19;
 
 // src/routes/index.ts
-var router20 = (0, import_express36.Router)();
+var router20 = (0, import_express33.Router)();
 router20.use(health_default);
 router20.use(profiles_default);
 router20.use(study_plans_default);
@@ -137455,7 +137383,7 @@ router20.use(seed_default);
 var routes_default = router20;
 
 // src/app.ts
-var app = (0, import_express37.default)();
+var app = (0, import_express34.default)();
 var pk = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 var skSet = !!process.env.CLERK_SECRET_KEY;
 var nodeEnv = process.env.NODE_ENV ?? "unset";
@@ -137492,8 +137420,8 @@ app.use(
     credentials: true
   })
 );
-app.use(import_express37.default.json());
-app.use(import_express37.default.urlencoded({ extended: true }));
+app.use(import_express34.default.json());
+app.use(import_express34.default.urlencoded({ extended: true }));
 app.use((req, _res, next) => {
   const auth = req.headers["authorization"];
   const cookie = req.headers["cookie"] ?? "";
@@ -137512,7 +137440,7 @@ app.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const __dirname2 = path3.dirname(fileURLToPath(import.meta.url));
   const staticDir = path3.resolve(__dirname2, "../../../artifacts/study-os/dist/public");
-  app.use(import_express37.default.static(staticDir));
+  app.use(import_express34.default.static(staticDir));
   app.get("/{*path}", (_req, res) => {
     res.sendFile(path3.join(staticDir, "index.html"));
   });

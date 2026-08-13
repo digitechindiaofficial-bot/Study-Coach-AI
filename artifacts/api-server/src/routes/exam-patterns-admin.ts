@@ -9,32 +9,14 @@
  * GET    /api/exam-patterns                — public list (for user-facing selects)
  */
 
-import { Router, type Request, type Response, type NextFunction } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
+import { Router } from "express";
+import { requireAdmin } from "../lib/require-admin.js";
 import { db } from "@workspace/db";
 import { examPatternsTable, DEFAULT_EXAM_PATTERNS } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
-
-// ── Admin guard ─────────────────────────────────────────────────────────────
-
-async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const { userId } = getAuth(req);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const adminEmail = process.env.ADMIN_EMAIL;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const email =
-      user.emailAddresses.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress ??
-      user.emailAddresses[0]?.emailAddress ?? null;
-    if (!adminEmail || !email || email.toLowerCase() !== adminEmail.toLowerCase()) {
-      res.status(403).json({ error: "Forbidden" }); return;
-    }
-  } catch { res.status(403).json({ error: "Forbidden" }); return; }
-  next();
-}
 
 // ── Public route — exam patterns for user-facing dropdowns ──────────────────
 
