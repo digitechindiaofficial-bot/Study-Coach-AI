@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Upload,
   FileJson,
@@ -15,20 +16,40 @@ import {
   Loader2,
   ClipboardPaste,
   Database,
+  PackageOpen,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-interface ImportError {
-  index: number;
-  error: string;
-}
+const BATCH_SIZE = 20;
 
-interface ImportResult {
+// Shape returned by the backend for a single batch
+interface BatchApiResult {
   inserted: number;
   skipped: number;
-  errors: ImportError[];
+  errors: { index: number; error: string }[];
   dryRun: boolean;
+}
+
+// A batch that failed at the HTTP/network level (not a validation error)
+interface BatchHttpFailure {
+  batchIndex: number; // 0-based
+  startQuestion: number; // 1-based, for display
+  endQuestion: number;
+  reason: string;
+}
+
+// Aggregated result across all batches
+interface ImportSummary {
+  totalProcessed: number;
+  inserted: number;
+  skipped: number;
+  // Validation errors with GLOBAL question index (1-based for display)
+  validationErrors: { globalIndex: number; batchIndex: number; error: string }[];
+  // Batch that failed at HTTP level (import halted here)
+  httpFailure: BatchHttpFailure | null;
+  batchesCompleted: number;
+  totalBatches: number;
 }
 
 const EXAMPLE_JSON = JSON.stringify(
@@ -66,7 +87,8 @@ export default function AdminQuestionBankPage() {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [activeTab, setActiveTab] = useState("paste");
 
   const handleFileSelect = (file: File) => {
@@ -102,36 +124,119 @@ export default function AdminQuestionBankPage() {
       return;
     }
 
-    const body = Array.isArray(parsed) ? { questions: parsed } : parsed;
+    const body = Array.isArray(parsed) ? { questions: parsed } : parsed as Record<string, unknown>;
+    const allQuestions: unknown[] = Array.isArray((body as { questions?: unknown[] }).questions)
+      ? (body as { questions: unknown[] }).questions
+      : [];
+
+    if (allQuestions.length === 0) {
+      toast({ title: "No questions found", description: 'JSON must have a "questions" array with at least one item.', variant: "destructive" });
+      return;
+    }
+
+    // Split into batches
+    const batches: unknown[][] = [];
+    for (let i = 0; i < allQuestions.length; i += BATCH_SIZE) {
+      batches.push(allQuestions.slice(i, i + BATCH_SIZE));
+    }
 
     setIsImporting(true);
-    setResult(null);
-    try {
-      const res = await fetch("/api/admin/question-bank/import/json", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: "Import failed", description: data.error ?? "Server error", variant: "destructive" });
+    setSummary(null);
+
+    const agg: ImportSummary = {
+      totalProcessed: allQuestions.length,
+      inserted: 0,
+      skipped: 0,
+      validationErrors: [],
+      httpFailure: null,
+      batchesCompleted: 0,
+      totalBatches: batches.length,
+    };
+
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      setBatchProgress({ current: batchIdx + 1, total: batches.length });
+
+      const batchOffset = batchIdx * BATCH_SIZE; // global index of first item in this batch (0-based)
+
+      let res: Response;
+      let data: BatchApiResult;
+
+      try {
+        res = await fetch("/api/admin/question-bank/import/json", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ questions: batches[batchIdx] }),
+        });
+        data = await res.json();
+      } catch (err) {
+        // Network failure — stop here
+        const startQ = batchOffset + 1;
+        const endQ = batchOffset + batches[batchIdx].length;
+        agg.httpFailure = {
+          batchIndex: batchIdx,
+          startQuestion: startQ,
+          endQuestion: endQ,
+          reason: err instanceof Error ? err.message : "Network error",
+        };
+        setSummary({ ...agg });
+        setIsImporting(false);
+        setBatchProgress(null);
+        toast({
+          title: `Stopped at batch ${batchIdx + 1} of ${batches.length}`,
+          description: `Network error: ${agg.httpFailure.reason}`,
+          variant: "destructive",
+        });
         return;
       }
-      setResult(data as ImportResult);
-      if (data.inserted > 0) {
-        toast({ title: `${data.inserted} question${data.inserted === 1 ? "" : "s"} imported successfully` });
+
+      if (!res.ok) {
+        // HTTP error (4xx / 5xx) — stop here
+        const startQ = batchOffset + 1;
+        const endQ = batchOffset + batches[batchIdx].length;
+        agg.httpFailure = {
+          batchIndex: batchIdx,
+          startQuestion: startQ,
+          endQuestion: endQ,
+          reason: (data as unknown as { error?: string }).error ?? `HTTP ${res.status}`,
+        };
+        setSummary({ ...agg });
+        setIsImporting(false);
+        setBatchProgress(null);
+        toast({
+          title: `Stopped at batch ${batchIdx + 1} of ${batches.length}`,
+          description: agg.httpFailure.reason,
+          variant: "destructive",
+        });
+        return;
       }
-    } catch {
-      toast({ title: "Network error", description: "Could not reach the server.", variant: "destructive" });
-    } finally {
-      setIsImporting(false);
+
+      // Accumulate successful batch results
+      agg.inserted += data.inserted;
+      agg.skipped += data.skipped;
+
+      // Offset validation error indices to global space (convert to 1-based for display)
+      for (const err of data.errors) {
+        agg.validationErrors.push({
+          globalIndex: batchOffset + err.index + 1, // 1-based global
+          batchIndex: batchIdx,
+          error: err.error,
+        });
+      }
+
+      agg.batchesCompleted = batchIdx + 1;
+    }
+
+    setSummary({ ...agg });
+    setIsImporting(false);
+    setBatchProgress(null);
+
+    if (agg.inserted > 0) {
+      toast({ title: `${agg.inserted} question${agg.inserted === 1 ? "" : "s"} imported successfully` });
     }
   };
 
-  const totalFromResult = result
-    ? result.inserted + result.skipped + result.errors.length
-    : 0;
+  const overallSuccess = summary && !summary.httpFailure && summary.validationErrors.length === 0;
 
   return (
     <div className="space-y-6">
@@ -143,6 +248,7 @@ export default function AdminQuestionBankPage() {
         </h1>
         <p className="text-muted-foreground mt-1">
           Bulk-import questions into the Question Bank by uploading a JSON file or pasting JSON directly.
+          Large imports are sent in batches of {BATCH_SIZE} automatically.
         </p>
       </div>
 
@@ -175,8 +281,23 @@ export default function AdminQuestionBankPage() {
                     onChange={(e) => setPastedJson(e.target.value)}
                   />
                   {pastedJson.trim() && (() => {
-                    try { JSON.parse(pastedJson); return <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Valid JSON</p>; }
-                    catch { return <p className="text-xs text-destructive mt-1.5 flex items-center gap-1"><XCircle className="h-3.5 w-3.5" /> Invalid JSON — check syntax</p>; }
+                    try {
+                      const p = JSON.parse(pastedJson);
+                      const qs = Array.isArray(p) ? p : p?.questions;
+                      const count = Array.isArray(qs) ? qs.length : null;
+                      return (
+                        <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Valid JSON{count !== null ? ` · ${count} question${count === 1 ? "" : "s"}${count > BATCH_SIZE ? ` → ${Math.ceil(count / BATCH_SIZE)} batches` : ""}` : ""}
+                        </p>
+                      );
+                    } catch {
+                      return (
+                        <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+                          <XCircle className="h-3.5 w-3.5" /> Invalid JSON — check syntax
+                        </p>
+                      );
+                    }
                   })()}
                 </TabsContent>
 
@@ -230,6 +351,32 @@ export default function AdminQuestionBankPage() {
                 </TabsContent>
               </Tabs>
 
+              {/* Batch progress bar — shown during import */}
+              {isImporting && batchProgress && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin text-red-600" />
+                      Uploading batch{" "}
+                      <span className="font-semibold text-foreground">
+                        {batchProgress.current}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-semibold text-foreground">
+                        {batchProgress.total}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={(batchProgress.current / batchProgress.total) * 100}
+                    className="h-2"
+                  />
+                </div>
+              )}
+
               <div className="mt-4 flex justify-end">
                 <Button
                   onClick={handleImport}
@@ -247,60 +394,95 @@ export default function AdminQuestionBankPage() {
           </Card>
 
           {/* Import Report */}
-          {result && (
+          {summary && (
             <Card className={cn(
               "border-2",
-              result.errors.length === 0 ? "border-green-200 bg-green-50/40" : "border-orange-200 bg-orange-50/40"
+              overallSuccess
+                ? "border-green-200 bg-green-50/40"
+                : summary.httpFailure
+                  ? "border-red-200 bg-red-50/40"
+                  : "border-orange-200 bg-orange-50/40"
             )}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  {result.errors.length === 0
+                  {overallSuccess
                     ? <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    : <AlertTriangle className="h-5 w-5 text-orange-500" />}
+                    : summary.httpFailure
+                      ? <XCircle className="h-5 w-5 text-red-600" />
+                      : <AlertTriangle className="h-5 w-5 text-orange-500" />}
                   Import Report
+                  {summary.totalBatches > 1 && (
+                    <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                      <PackageOpen className="h-3.5 w-3.5" />
+                      {summary.batchesCompleted} of {summary.totalBatches} batch{summary.totalBatches === 1 ? "" : "es"} completed
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Summary tiles */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-lg bg-background border p-3 text-center">
-                    <p className="text-2xl font-bold text-foreground">{totalFromResult}</p>
+                    <p className="text-2xl font-bold text-foreground">{summary.totalProcessed}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Total Questions</p>
                   </div>
                   <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-center">
-                    <p className="text-2xl font-bold text-green-700">{result.inserted}</p>
+                    <p className="text-2xl font-bold text-green-700">{summary.inserted}</p>
                     <p className="text-xs text-green-600 mt-0.5 flex items-center justify-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> Imported
                     </p>
                   </div>
                   <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-center">
-                    <p className="text-2xl font-bold text-yellow-700">{result.skipped}</p>
+                    <p className="text-2xl font-bold text-yellow-700">{summary.skipped}</p>
                     <p className="text-xs text-yellow-600 mt-0.5 flex items-center justify-center gap-1">
                       <SkipForward className="h-3 w-3" /> Skipped
                     </p>
                   </div>
                   <div className={cn(
                     "rounded-lg border p-3 text-center",
-                    result.errors.length > 0 ? "bg-red-50 border-red-200" : "bg-muted/40 border-muted"
+                    summary.validationErrors.length > 0 ? "bg-red-50 border-red-200" : "bg-muted/40 border-muted"
                   )}>
-                    <p className={cn("text-2xl font-bold", result.errors.length > 0 ? "text-red-700" : "text-muted-foreground")}>
-                      {result.errors.length}
+                    <p className={cn("text-2xl font-bold", summary.validationErrors.length > 0 ? "text-red-700" : "text-muted-foreground")}>
+                      {summary.validationErrors.length}
                     </p>
-                    <p className={cn("text-xs mt-0.5 flex items-center justify-center gap-1", result.errors.length > 0 ? "text-red-600" : "text-muted-foreground")}>
+                    <p className={cn("text-xs mt-0.5 flex items-center justify-center gap-1", summary.validationErrors.length > 0 ? "text-red-600" : "text-muted-foreground")}>
                       <XCircle className="h-3 w-3" /> Errors
                     </p>
                   </div>
                 </div>
 
-                {/* Error list */}
-                {result.errors.length > 0 && (
+                {/* HTTP batch failure banner */}
+                {summary.httpFailure && (
+                  <div className="rounded-lg border border-red-300 bg-red-50 p-3 space-y-1">
+                    <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
+                      <XCircle className="h-4 w-4" />
+                      Import halted at batch {summary.httpFailure.batchIndex + 1} of {summary.totalBatches}
+                    </p>
+                    <p className="text-xs text-red-600">
+                      Questions {summary.httpFailure.startQuestion}–{summary.httpFailure.endQuestion} were <strong>not imported</strong>.
+                    </p>
+                    <p className="text-xs font-mono text-red-600 bg-red-100 rounded px-2 py-1 mt-1">
+                      {summary.httpFailure.reason}
+                    </p>
+                    {summary.batchesCompleted > 0 && (
+                      <p className="text-xs text-muted-foreground pt-1">
+                        Batches 1–{summary.batchesCompleted} were already imported ({summary.inserted} question{summary.inserted === 1 ? "" : "s"} saved). Re-run the import starting from question {summary.httpFailure.startQuestion} to complete.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Validation error list */}
+                {summary.validationErrors.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-destructive">Validation errors (these rows were skipped):</p>
+                    <p className="text-sm font-medium text-destructive">
+                      Validation errors — these rows were skipped:
+                    </p>
                     <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-                      {result.errors.map((err) => (
-                        <div key={err.index} className="flex items-start gap-2 text-sm bg-background rounded border border-red-100 p-2">
+                      {summary.validationErrors.map((err) => (
+                        <div key={`${err.batchIndex}-${err.globalIndex}`} className="flex items-start gap-2 text-sm bg-background rounded border border-red-100 p-2">
                           <Badge variant="outline" className="shrink-0 text-red-600 border-red-300 text-xs mt-0.5">
-                            Row {err.index + 1}
+                            Q #{err.globalIndex}
                           </Badge>
                           <span className="text-muted-foreground font-mono text-xs leading-relaxed">{err.error}</span>
                         </div>
@@ -325,6 +507,7 @@ export default function AdminQuestionBankPage() {
               <p className="text-sm text-muted-foreground">
                 Send a JSON object with a <code className="text-xs bg-muted px-1 py-0.5 rounded">questions</code> array,
                 or a bare array of question objects.
+                Large imports are split into batches of {BATCH_SIZE} automatically.
               </p>
               <div className="space-y-1.5 text-xs">
                 {[
