@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, readFile, writeFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -101,8 +101,11 @@ async function buildAll() {
     ],
     sourcemap: "linked",
     plugins: [
-      // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
-      esbuildPluginPino({ transports: ["pino-pretty"] })
+      // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it.
+      // transports:[] — pino-pretty is dev-only (see lib/logger.ts); passing it here bakes an absolute
+      // /home/runner/workspace path into the bundle which crashes on any non-Replit server (Hostinger, etc.).
+      // Plain pino JSON output (production default) needs no worker threads.
+      esbuildPluginPino({ transports: [] })
     ],
     // Make sure packages that are cjs only (e.g. express) but are bundled continue to work in our esm output file
     banner: {
@@ -118,7 +121,40 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function patchPinoWorkers(distDir) {
+  // esbuild-plugin-pino bakes the absolute BUILD-TIME output directory into
+  // pino-worker.mjs and pino-file.mjs so those workers can locate sibling files.
+  // On any server other than the build machine (e.g. Hostinger) that path doesn't
+  // exist and the app crashes with "Cannot find module /home/runner/workspace/...".
+  //
+  // Fix: replace the hardcoded string with import.meta.url-based resolution so
+  // the path is resolved at RUNTIME relative to wherever the file actually lives.
+  const workerFiles = ["pino-worker.mjs", "pino-file.mjs"];
+  for (const name of workerFiles) {
+    const filePath = path.join(distDir, name);
+    let content;
+    try {
+      content = await readFile(filePath, "utf8");
+    } catch {
+      continue; // file not emitted, nothing to patch
+    }
+    const original = content;
+    // Replace:  const outputDir = "/absolute/path/to/dist";
+    // With:     const outputDir = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
+    content = content.replace(
+      /const outputDir = "[^"]*";/g,
+      `const outputDir = new URL(".", import.meta.url).pathname.replace(/\\/$/, "");`,
+    );
+    if (content !== original) {
+      await writeFile(filePath, content);
+      console.error(`[build] Patched absolute outputDir → import.meta.url in ${name}`);
+    }
+  }
+}
+
+buildAll()
+  .then(() => patchPinoWorkers(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist")))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

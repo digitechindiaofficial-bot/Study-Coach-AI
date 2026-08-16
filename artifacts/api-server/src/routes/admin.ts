@@ -425,7 +425,7 @@ router.delete("/admin/syllabus/exams/:id", async (req, res) => {
   res.status(204).send();
 });
 
-router.get("/admin/question-stats", requireAdmin, async (req, res) => {
+router.get("/admin/question-stats", sharedRequireAdmin, async (req, res) => {
   try {
     const { pool: pgPool } = await import("@workspace/db");
 

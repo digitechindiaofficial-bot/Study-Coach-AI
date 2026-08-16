@@ -54393,7 +54393,7 @@ var require_pino = __commonJS({
         return f3(p);
       }
     }
-    globalThis.__bundlerPathsOverrides = { ...globalThis.__bundlerPathsOverrides || {}, "thread-stream-worker": pinoBundlerAbsolutePath("./thread-stream-worker.mjs"), "pino-worker": pinoBundlerAbsolutePath("./pino-worker.mjs"), "pino/file": pinoBundlerAbsolutePath("./pino-file.mjs"), "pino-pretty": pinoBundlerAbsolutePath("./pino-pretty.mjs") };
+    globalThis.__bundlerPathsOverrides = { ...globalThis.__bundlerPathsOverrides || {}, "thread-stream-worker": pinoBundlerAbsolutePath("./thread-stream-worker.mjs"), "pino-worker": pinoBundlerAbsolutePath("./pino-worker.mjs"), "pino/file": pinoBundlerAbsolutePath("./pino-file.mjs") };
     var os = __require("node:os");
     var stdSerializers = require_pino_std_serializers();
     var caller = require_caller();
@@ -134615,7 +134615,7 @@ init_dist2();
 
 // src/lib/require-admin.ts
 init_dist2();
-async function requireAdmin2(req, res, next) {
+async function requireAdmin(req, res, next) {
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized", message: "No session found." });
@@ -134703,7 +134703,7 @@ function buildTopicCode(examCode, subjectCode, topicIndex) {
 
 // src/routes/admin.ts
 var router9 = (0, import_express17.Router)();
-router9.use("/admin", requireAdmin2);
+router9.use("/admin", requireAdmin);
 router9.get("/admin/check", async (_req, res) => {
   res.json({ isAdmin: true });
 });
@@ -135082,7 +135082,7 @@ init_src();
 init_src();
 init_drizzle_orm();
 var router10 = (0, import_express19.Router)();
-router10.use("/admin/question-bank", requireAdmin2);
+router10.use("/admin/question-bank", requireAdmin);
 var questionSchema = external_exports2.object({
   examCode: external_exports2.string().min(1),
   subjectCode: external_exports2.string().min(1),
@@ -136016,7 +136016,7 @@ init_src();
 init_src();
 init_drizzle_orm();
 var router12 = (0, import_express22.Router)();
-router12.use("/admin/mock-tests", requireAdmin2);
+router12.use("/admin/mock-tests", requireAdmin);
 async function getMockWithSections(id) {
   const mock = await db.select().from(mockTestsTable).where(eq(mockTestsTable.id, id)).limit(1);
   if (!mock[0]) return null;
@@ -136491,7 +136491,7 @@ router13.get("/exam-patterns", async (req, res) => {
   const patterns = await db.select().from(examPatternsTable).where(eq(examPatternsTable.isActive, true)).orderBy(asc(examPatternsTable.examName));
   res.json(patterns);
 });
-router13.use("/admin/exam-patterns", requireAdmin2);
+router13.use("/admin/exam-patterns", requireAdmin);
 var patternSchema = external_exports2.object({
   examCode: external_exports2.string().min(1),
   examName: external_exports2.string().min(1),
@@ -136598,7 +136598,7 @@ router14.get("/exams/:code/subjects", async (req, res) => {
   `);
   res.json(result.rows);
 });
-router14.use("/admin/exams", requireAdmin2);
+router14.use("/admin/exams", requireAdmin);
 var examSchema = external_exports2.object({
   code: external_exports2.string().min(1).max(32).transform((s3) => s3.toUpperCase()),
   name: external_exports2.string().min(1),
