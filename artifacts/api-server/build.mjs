@@ -129,7 +129,9 @@ async function patchPinoWorkers(distDir) {
   //
   // Fix: replace the hardcoded string with import.meta.url-based resolution so
   // the path is resolved at RUNTIME relative to wherever the file actually lives.
-  const workerFiles = ["pino-worker.mjs", "pino-file.mjs"];
+  // Also patch index.mjs — esbuild-plugin-pino inlines the path-resolution
+  // code into the main bundle in addition to the separate worker files.
+  const workerFiles = ["index.mjs", "pino-worker.mjs", "pino-file.mjs"];
   for (const name of workerFiles) {
     const filePath = path.join(distDir, name);
     let content;
