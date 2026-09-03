@@ -266,7 +266,11 @@ export default function PlannerPage() {
   const { data: profileData } = useGetMyProfile({
     query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
   });
-  const profile = profileData ?? (preview ? readPreviewProfile() : undefined);
+  const previewProfile = useMemo(
+    () => (preview ? readPreviewProfile() : undefined),
+    [preview],
+  );
+  const profile = profileData ?? previewProfile;
   const { data: planResponse, isLoading } = useGetCurrentStudyPlan({
     query: { queryKey: getGetCurrentStudyPlanQueryKey(), enabled: !preview },
   });
@@ -346,7 +350,7 @@ export default function PlannerPage() {
 
   // Auto-regen when saved plan is for a different exam than the profile
   useEffect(() => {
-    if (isLoading || isGenerating || autoRegenTriggered.current) return;
+    if (preview || isLoading || isGenerating || autoRegenTriggered.current) return;
     if (!currentPlan || !profile) return;
 
     const planExam    = (currentPlan as any).examType as string | undefined;
@@ -383,7 +387,7 @@ export default function PlannerPage() {
         })
         .finally(() => setIsGenerating(false));
     }
-  }, [isLoading, currentPlan, profile]);
+  }, [preview, isLoading, currentPlan, profile]);
 
   if (isLoading) return (
     <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-32 bg-muted rounded animate-pulse" />)}</div>

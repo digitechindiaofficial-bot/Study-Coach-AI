@@ -12,7 +12,7 @@ import {
   Loader2, LogOut, Sparkles, FlaskConical,
   Zap, ArrowDownCircle, CheckCircle2, CalendarIcon,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +48,11 @@ export default function SettingsPage() {
   const { data: apiProfile, isLoading } = useGetMyProfile({
     query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
   });
-  const profile = apiProfile ?? (preview ? readPreviewProfile() : undefined);
+  const previewProfile = useMemo(
+    () => (preview ? readPreviewProfile() : undefined),
+    [preview],
+  );
+  const profile = apiProfile ?? previewProfile;
   const upsert = useUpsertProfile();
   const { exams, loading: examsLoading } = useExams();
 
