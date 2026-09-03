@@ -8,13 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Flame, Target, BookOpen, BrainCircuit, BookMarked, RefreshCw, Zap, Newspaper, AlertCircle, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { isPreviewEnvironment } from "@/lib/app-auth";
 
 export default function DashboardPage() {
   const today = format(new Date(), "yyyy-MM-dd");
   const queryClient = useQueryClient();
   
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({
-    query: { queryKey: getGetMyProfileQueryKey() }
+    query: {
+      queryKey: getGetMyProfileQueryKey(),
+      enabled: !isPreviewEnvironment(),
+    }
   });
   
   const { data: summary, isLoading: summaryLoading } = useGetProgressSummary({

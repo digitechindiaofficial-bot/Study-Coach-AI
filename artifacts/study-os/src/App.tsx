@@ -61,7 +61,7 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({
     query: {
       queryKey: getGetMyProfileQueryKey(),
-      enabled: !!(isLoaded && isSignedIn),
+      enabled: !!(isLoaded && isSignedIn) && !isPreviewEnvironment(),
       retry: false,
     },
   });
@@ -75,7 +75,7 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
   useEffect(() => {
     if (
       isLoaded && isSignedIn && !profileLoading &&
-      !skipOnboardingCheck && location !== "/onboarding"
+      !skipOnboardingCheck && !isPreviewEnvironment() && location !== "/onboarding"
     ) {
       if (!profile?.examType) {
         setLocation("/onboarding");

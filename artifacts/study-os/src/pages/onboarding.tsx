@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, CheckCircle2, Target, Calendar, Clock, Zap, User } from "lucide-react";
 import { format } from "date-fns";
 import { useExams } from "@/hooks/use-exams";
+import { isPreviewEnvironment } from "@/lib/app-auth";
 
 const OTHER_EXAM = { label: "Other", value: "OTHER", icon: "🎯", desc: "Other government exam" };
 const STEP_LABELS = ["Personal Details", "Choose Exam"];
@@ -48,6 +49,28 @@ export default function OnboardingPage() {
   }
 
   function handleFinish() {
+    if (isPreviewEnvironment()) {
+      const previewProfile = {
+        fullName: fullName.trim(),
+        examType,
+        examDate: examDate || null,
+        dailyStudyHours: dailyHours[0],
+        planType: "free",
+        streakCount: 0,
+        longestStreak: 0,
+        quizCountToday: 0,
+      };
+
+      try {
+        window.localStorage.setItem("govtguru-preview-profile", JSON.stringify(previewProfile));
+      } catch {
+        // The preview can continue even when browser storage is unavailable.
+      }
+      qc.setQueryData(getGetMyProfileQueryKey(), previewProfile);
+      setLocation("/dashboard");
+      return;
+    }
+
     upsert.mutate(
       {
         data: {

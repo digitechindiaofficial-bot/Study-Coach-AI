@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import Footer from "@/components/footer";
 import { Link, useLocation } from "wouter";
-import { useAppClerk, useAppUser } from "@/lib/app-auth";
+import { isPreviewEnvironment, useAppClerk, useAppUser } from "@/lib/app-auth";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlan, FREE_DAILY_QUIZ_LIMIT } from "@/hooks/use-plan";
-import { useGetMyProfile } from "@workspace/api-client-react";
+import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 
 const navItems = [
   { name: "Dashboard",       href: "/dashboard",       icon: LayoutDashboard },
@@ -44,7 +44,12 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
   const { user } = useAppUser();
   const { signOut } = useAppClerk();
   const plan = usePlan();
-  const { data: profileData } = useGetMyProfile();
+  const { data: profileData } = useGetMyProfile({
+    query: {
+      queryKey: getGetMyProfileQueryKey(),
+      enabled: !isPreviewEnvironment(),
+    },
+  });
 
   const isFree = !plan.isPro;
   const quizLeft = plan.quizQuestionsLeft;
