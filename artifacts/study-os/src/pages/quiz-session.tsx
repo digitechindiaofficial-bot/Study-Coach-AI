@@ -17,6 +17,12 @@ import { usePlan, FREE_DAILY_QUIZ_LIMIT } from "@/hooks/use-plan";
 import UpgradeModal from "@/components/upgrade-modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { isPreviewEnvironment } from "@/lib/app-auth";
+import {
+  getPreviewQuestions,
+  getPreviewSyllabus,
+  readPreviewProfile,
+} from "@/lib/preview-data";
 
 interface Question {
   id: string;
@@ -39,6 +45,7 @@ const BATCH_SIZE = 20;
 const PREFETCH_THRESHOLD = 5;
 
 export default function QuizSessionPage({ subject }: { subject: string }) {
+  const preview = isPreviewEnvironment();
   const isWeak = subject === "weak";
   const isAll = subject === "all";
   const decodedSubject = decodeURIComponent(subject);
@@ -48,12 +55,14 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   const { toast } = useToast();
 
   // Resolve exam code and subject display name from user profile + syllabus
-  const { data: profile } = useGetMyProfile({
-    query: { queryKey: getGetMyProfileQueryKey(), staleTime: 30_000 },
+  const { data: profileData } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), staleTime: 30_000, enabled: !preview },
   });
-  const { data: syllabusData = [] } = useGetSyllabus({
-    query: { queryKey: getGetSyllabusQueryKey(), staleTime: 5 * 60_000 },
+  const profile = profileData ?? (preview ? readPreviewProfile() : undefined);
+  const { data: apiSyllabusData = [] } = useGetSyllabus({
+    query: { queryKey: getGetSyllabusQueryKey(), staleTime: 5 * 60_000, enabled: !preview },
   });
+  const syllabusData = preview ? getPreviewSyllabus() : apiSyllabusData;
 
   const examCode: string = (profile as any)?.examType ?? "";
   const examData = (syllabusData as any[]).find((e: any) => e.code === examCode);
@@ -69,9 +78,9 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
   })();
 
   // Determine whether to pass subjectCode or legacy subject text
-  const isSubjectCode = !isWeak && !isAll && !!examData?.subjects?.find(
+  const isSubjectCode = !isWeak && !isAll && (preview || !!examData?.subjects?.find(
     (s: any) => s.subjectCode === decodedSubject,
-  );
+  ));
 
   // Session-only tracking (never persisted to the DB). Cleared automatically
   // whenever this component mounts fresh (e.g. re-entering the quiz), which
@@ -147,15 +156,25 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
       isFetchingMoreRef.current = true;
       setIsFetching(true);
       try {
-        let data = (await getQuizQuestions(
-          buildParams(loadedIds.current) as any,
-        )) as Question[];
+        let data = (preview
+          ? getPreviewQuestions({
+              subjectCode: isWeak || isAll ? undefined : decodedSubject,
+              examCode,
+              excludeIds: loadedIds.current,
+            })
+          : await getQuizQuestions(buildParams(loadedIds.current) as any)) as Question[];
 
         if (data.length === 0 && loadedIds.current.size > 0) {
           // Exhausted every question for this filter — cycle back to the start.
           loadedIds.current.clear();
           seenIds.current.clear();
-          data = (await getQuizQuestions(buildParams(new Set()) as any)) as Question[];
+          data = (preview
+            ? getPreviewQuestions({
+                subjectCode: isWeak || isAll ? undefined : decodedSubject,
+                examCode,
+                excludeIds: new Set(),
+              })
+            : await getQuizQuestions(buildParams(new Set()) as any)) as Question[];
           if (data.length > 0) {
             toast({
               title: "Great job!",
@@ -231,6 +250,11 @@ export default function QuizSessionPage({ subject }: { subject: string }) {
     const correct = key === current.correctOption;
     setAnswers(prev => [...prev, { qId: current.id, selected: key, correct, timeTaken }]);
     seenIds.current.add(current.id);
+
+    if (preview) {
+      setSessionAnswered(prev => prev + 1);
+      return;
+    }
 
     submitAttempt.mutate(
       { data: { questionId: current.id, selectedOption: key, timeTakenSeconds: timeTaken } },

@@ -14,6 +14,13 @@ import { format, addDays, startOfWeek } from "date-fns";
 import { usePlan } from "@/hooks/use-plan";
 import UpgradeModal from "@/components/upgrade-modal";
 import { useLocation } from "wouter";
+import { isPreviewEnvironment } from "@/lib/app-auth";
+import {
+  createPreviewStudyPlan,
+  readPreviewProfile,
+  readPreviewStudyPlan,
+  savePreviewStudyPlan,
+} from "@/lib/preview-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,12 +260,25 @@ export default function PlannerPage() {
   const [weekOffset, setWeekOffset]         = useState(0);
   const [isGenerating, setIsGenerating]     = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const preview = isPreviewEnvironment();
 
   const plan       = usePlan();
-  const { data: profile }      = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
-  const { data: planResponse, isLoading } = useGetCurrentStudyPlan({ query: { queryKey: getGetCurrentStudyPlanQueryKey() } });
+  const { data: profileData } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
+  });
+  const profile = profileData ?? (preview ? readPreviewProfile() : undefined);
+  const { data: planResponse, isLoading } = useGetCurrentStudyPlan({
+    query: { queryKey: getGetCurrentStudyPlanQueryKey(), enabled: !preview },
+  });
+  const [previewPlanResponse, setPreviewPlanResponse] = useState<any>(() => {
+    if (!preview) return null;
+    const saved = readPreviewStudyPlan();
+    return saved ? { plan: saved.plan ?? saved } : null;
+  });
 
-  const currentPlan = (planResponse as any)?.plan ?? null;
+  const currentPlan = preview
+    ? previewPlanResponse?.plan ?? null
+    : (planResponse as any)?.plan ?? null;
   const planData    = currentPlan?.planData as FullPlanData | undefined;
 
   // Subject → color map
@@ -294,6 +314,14 @@ export default function PlannerPage() {
   const callGenerate = async (force: boolean) => {
     if (force && !plan.canRegeneratePlan) { setShowUpgradeModal(true); return; }
     setIsGenerating(true);
+    if (preview) {
+      const generated = { plan: createPreviewStudyPlan(profile ?? readPreviewProfile()) };
+      setPreviewPlanResponse(generated);
+      savePreviewStudyPlan(generated);
+      toast({ title: force ? "Preview plan regenerated!" : "Preview study plan generated!" });
+      setIsGenerating(false);
+      return;
+    }
     try {
       const url  = force ? "/api/study-plans/generate?force=true" : "/api/study-plans/generate";
       const resp = await fetch(url, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } });

@@ -183,7 +183,7 @@ function BlogEditor({ post, onBack }: { post: BlogPost | null; onBack: () => voi
           <div className="space-y-1.5">
             <Label>Excerpt <span className="text-muted-foreground text-xs">(shown in blog list)</span></Label>
             <textarea
-              value={form.excerpt}
+              value={form.excerpt ?? ""}
               onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
               placeholder="Brief description (150-160 chars for SEO)"
               rows={3}

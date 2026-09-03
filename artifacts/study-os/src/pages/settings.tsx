@@ -1,5 +1,5 @@
 import { useGetMyProfile, useUpsertProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { useAppClerk, useAppUser } from "@/lib/app-auth";
+import { isPreviewEnvironment, useAppClerk, useAppUser } from "@/lib/app-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import { Link } from "wouter";
 import { PaymentButton } from "@/components/payment-button";
 import { usePlan } from "@/hooks/use-plan";
 import { useExams } from "@/hooks/use-exams";
+import { readPreviewProfile } from "@/lib/preview-data";
 
 async function setPlanType(planType: "free" | "pro"): Promise<void> {
   const resp = await fetch("/api/profiles/plan", {
@@ -40,10 +41,14 @@ export default function SettingsPage() {
   const { signOut } = useAppClerk();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const preview = isPreviewEnvironment();
   const plan = usePlan();
   const [, navigate] = useLocation();
 
-  const { data: profile, isLoading } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
+  const { data: apiProfile, isLoading } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
+  });
+  const profile = apiProfile ?? (preview ? readPreviewProfile() : undefined);
   const upsert = useUpsertProfile();
   const { exams, loading: examsLoading } = useExams();
 
@@ -80,6 +85,25 @@ export default function SettingsPage() {
     const oldExam = (profile as any)?.examType ?? "";
     const examChanged = oldExam && oldExam !== examType;
 
+    if (preview) {
+      const updatedProfile = {
+        ...readPreviewProfile(),
+        fullName,
+        examType,
+        examDate: examDate ? format(examDate, "yyyy-MM-dd") : null,
+        dailyStudyHours: hours[0],
+      };
+      try {
+        window.localStorage.setItem("govtguru-preview-profile", JSON.stringify(updatedProfile));
+      } catch {
+        // Keep the current form state when storage is unavailable.
+      }
+      qc.setQueryData(getGetMyProfileQueryKey(), updatedProfile);
+      toast({ title: examChanged ? "Exam preferences saved!" : "Settings saved!" });
+      if (examChanged) navigate("/planner");
+      return;
+    }
+
     upsert.mutate({ data: { fullName, phoneNumber: `+91${phoneNumber}`, examType, examDate: examDate?.toISOString(), dailyStudyHours: hours[0] } as any }, {
       onSuccess: async () => {
         qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
@@ -112,7 +136,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) return (
+  if (isLoading && !preview) return (
     <div className="max-w-2xl space-y-4">
       {[1,2,3,4].map(i=><div key={i} className="h-32 bg-muted rounded animate-pulse"/>)}
     </div>

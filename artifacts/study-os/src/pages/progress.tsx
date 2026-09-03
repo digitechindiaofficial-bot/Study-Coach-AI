@@ -16,7 +16,7 @@ export default function ProgressPage() {
   const { data: summary, isLoading: summaryLoading } = useGetProgressSummary({ query: { queryKey: getGetProgressSummaryQueryKey() } });
   const { data: weakAreas = [], isLoading: weakAreasLoading } = useGetWeakAreas({ query: { queryKey: getGetWeakAreasQueryKey() } });
   const { data: dailyHours = [], isLoading: dailyHoursLoading } = useGetDailyStudyHours({ days: 14 }, { query: { queryKey: getGetDailyStudyHoursQueryKey({ days: 14 }) } });
-  const { data: quizStats = [], isLoading: quizStatsLoading } = useGetQuizStats({ query: { queryKey: getGetQuizStatsQueryKey() } });
+  const { data: quizStats = [], isLoading: quizStatsLoading } = useGetQuizStats(undefined, { query: { queryKey: getGetQuizStatsQueryKey() } });
   const { data: heatmap = [], isLoading: heatmapLoading } = useGetStudyHeatmap({ query: { queryKey: getGetStudyHeatmapQueryKey() } });
 
   const isLoading = summaryLoading || weakAreasLoading || dailyHoursLoading || quizStatsLoading || heatmapLoading;

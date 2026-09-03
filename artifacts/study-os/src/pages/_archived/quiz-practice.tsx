@@ -28,7 +28,7 @@ export default function QuizHomePage() {
   });
 
   const { data: stats = [] } = useGetQuizStats(
-    { params: { query: { examCode: examCode ?? undefined } } },
+    { examCode: examCode ?? undefined },
     { query: { queryKey: getGetQuizStatsQueryKey(), enabled: !!profile } },
   );
 

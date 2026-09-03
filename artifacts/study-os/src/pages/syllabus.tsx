@@ -9,6 +9,8 @@ import {
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { isPreviewEnvironment } from "@/lib/app-auth";
+import { getPreviewSyllabus } from "@/lib/preview-data";
 
 const STATUS_CONFIG = {
   not_started: { label: "Not Started", icon: Circle, color: "text-muted-foreground", badge: "secondary" },
@@ -49,14 +51,18 @@ interface ExamWithProgress {
 
 export default function SyllabusPage() {
   const qc = useQueryClient();
+  const preview = isPreviewEnvironment();
+  const [previewExams, setPreviewExams] = useState<ExamWithProgress[]>(
+    () => (preview ? getPreviewSyllabus() as ExamWithProgress[] : []),
+  );
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [expandedTopic, setExpandedTopic]       = useState<string | null>(null);
   const [statusFilter, setStatusFilter]         = useState("all");
 
-  const { data: rawData = [], isLoading } = useGetSyllabus({}, {
-    query: { queryKey: getGetSyllabusQueryKey() },
+  const { data: rawData = [], isLoading } = useGetSyllabus({
+    query: { queryKey: getGetSyllabusQueryKey(), enabled: !preview },
   });
-  const exams = rawData as ExamWithProgress[];
+  const exams = (preview ? previewExams : rawData) as ExamWithProgress[];
   const exam  = exams[0] ?? null;
 
   const updateProgress = useUpdateTopicProgress();
@@ -72,6 +78,20 @@ export default function SyllabusPage() {
   const cycleStatus = (topic: TopicWithProgress) => {
     const order: TopicStatus[] = ["not_started", "in_progress", "completed"];
     const next = order[(order.indexOf(topic.status as TopicStatus) + 1) % 3];
+    if (preview) {
+      setPreviewExams((previous) => previous.map((item) => ({
+        ...item,
+        subjects: item.subjects.map((subject) => ({
+          ...subject,
+          topics: subject.topics.map((currentTopic) =>
+            currentTopic.id === topic.id
+              ? { ...currentTopic, status: next }
+              : currentTopic,
+          ),
+        })),
+      })));
+      return;
+    }
     updateProgress.mutate(
       { topicId: topic.id, data: { status: next } },
       { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSyllabusQueryKey() }) },

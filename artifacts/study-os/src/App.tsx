@@ -245,7 +245,7 @@ function LoginPage() {
               Continue to app preview
             </button>
             <p className="text-xs text-muted-foreground">
-              Preview data requests still require a real production sign-in.
+              Preview uses local sample data so you can inspect the app without signing in.
             </p>
           </div>
         </div>

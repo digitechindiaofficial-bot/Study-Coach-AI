@@ -11,6 +11,8 @@ import { getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import { usePlan } from "@/hooks/use-plan";
 import { PaymentButton } from "@/components/payment-button";
 import { useGetMyProfile } from "@workspace/api-client-react";
+import { isPreviewEnvironment } from "@/lib/app-auth";
+import { readPreviewProfile } from "@/lib/preview-data";
 
 const COMPARISON = [
   { feature: "Quiz questions per day",        free: "10 questions",   pro: "Unlimited" },
@@ -45,7 +47,11 @@ type BillingPeriod = "monthly" | "yearly";
 export default function UpgradePage() {
   const qc = useQueryClient();
   const plan = usePlan();
-  const { data: profileData } = useGetMyProfile();
+  const preview = isPreviewEnvironment();
+  const { data: apiProfileData } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
+  });
+  const profileData = apiProfileData ?? (preview ? readPreviewProfile() : undefined);
   const [billing, setBilling] = useState<BillingPeriod>("yearly");
 
   const isAlreadyPro = plan.isPro;

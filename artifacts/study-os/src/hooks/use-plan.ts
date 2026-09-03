@@ -1,5 +1,6 @@
 import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import { isPreviewEnvironment, useAppUser } from "@/lib/app-auth";
+import { readPreviewProfile } from "@/lib/preview-data";
 
 export const FREE_DAILY_QUIZ_LIMIT = 10;
 export const FREE_CURRENT_AFFAIRS_DAYS = 3;
@@ -18,13 +19,14 @@ export interface PlanStatus {
 
 export function usePlan(): PlanStatus {
   const { user } = useAppUser();
-  const { data: profile } = useGetMyProfile({
+  const { data: apiProfile } = useGetMyProfile({
     query: {
       queryKey: getGetMyProfileQueryKey(),
       enabled: !!user && !isPreviewEnvironment(),
       staleTime: 30_000,
     },
   });
+  const profile = apiProfile ?? (isPreviewEnvironment() ? readPreviewProfile() : undefined);
 
   const isPro = profile?.planType === "pro";
   const today = new Date().toISOString().split("T")[0];

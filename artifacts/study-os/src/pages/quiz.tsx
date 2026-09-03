@@ -11,21 +11,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BrainCircuit, Zap, Target, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
+import { isPreviewEnvironment } from "@/lib/app-auth";
+import { getPreviewSyllabus, readPreviewProfile } from "@/lib/preview-data";
 
 export default function QuizHomePage() {
-  const { data: profile } = useGetMyProfile({
-    query: { queryKey: getGetMyProfileQueryKey(), staleTime: 30_000 },
+  const preview = isPreviewEnvironment();
+  const { data: profileData } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), staleTime: 30_000, enabled: !preview },
   });
+  const profile = profileData ?? (preview ? readPreviewProfile() : undefined);
 
   const examCode = (profile as any)?.examType ?? null;
 
-  const { data: syllabusData = [] } = useGetSyllabus({
-    query: { queryKey: getGetSyllabusQueryKey(), staleTime: 5 * 60_000 },
+  const { data: apiSyllabusData = [] } = useGetSyllabus({
+    query: { queryKey: getGetSyllabusQueryKey(), staleTime: 5 * 60_000, enabled: !preview },
   });
+  const syllabusData = preview ? getPreviewSyllabus() : apiSyllabusData;
 
   const { data: stats = [] } = useGetQuizStats(
-    { params: { query: { examCode: examCode ?? undefined } } },
-    { query: { queryKey: getGetQuizStatsQueryKey(), enabled: !!profile } },
+    { examCode: examCode ?? undefined },
+    { query: { queryKey: getGetQuizStatsQueryKey(), enabled: !preview && !!profile } },
   );
 
   // Exam subjects from syllabus — shown as practice cards

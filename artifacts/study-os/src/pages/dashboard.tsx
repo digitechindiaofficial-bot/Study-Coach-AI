@@ -9,36 +9,51 @@ import { Loader2, Flame, Target, BookOpen, BrainCircuit, BookMarked, RefreshCw, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { isPreviewEnvironment } from "@/lib/app-auth";
+import { createPreviewStudyPlan, readPreviewProfile, savePreviewStudyPlan } from "@/lib/preview-data";
+import { useLocation } from "wouter";
 
 export default function DashboardPage() {
   const today = format(new Date(), "yyyy-MM-dd");
   const queryClient = useQueryClient();
+  const preview = isPreviewEnvironment();
+  const [, navigate] = useLocation();
   
-  const { data: profile, isLoading: profileLoading } = useGetMyProfile({
+  const { data: apiProfile, isLoading: profileLoading } = useGetMyProfile({
     query: {
       queryKey: getGetMyProfileQueryKey(),
-      enabled: !isPreviewEnvironment(),
+      enabled: !preview,
     }
   });
+  const profile = apiProfile ?? (preview ? readPreviewProfile() : undefined);
   
   const { data: summary, isLoading: summaryLoading } = useGetProgressSummary({
-    query: { queryKey: getGetProgressSummaryQueryKey() }
+    query: { queryKey: getGetProgressSummaryQueryKey(), enabled: !preview }
   });
   
   const { data: tasks, isLoading: tasksLoading } = useGetDailyTasks({ date: today }, {
-    query: { queryKey: getGetDailyTasksQueryKey({ date: today }) }
+    query: { queryKey: getGetDailyTasksQueryKey({ date: today }), enabled: !preview }
   });
   
   const { data: news, isLoading: newsLoading } = useGetCurrentAffairs({ days: 1 }, {
-    query: { queryKey: getGetCurrentAffairsQueryKey({ days: 1 }) }
+    query: { queryKey: getGetCurrentAffairsQueryKey({ days: 1 }), enabled: !preview }
   });
   
   const { data: weakAreas, isLoading: weakLoading } = useGetWeakAreas({
-    query: { queryKey: getGetWeakAreasQueryKey() }
+    query: { queryKey: getGetWeakAreasQueryKey(), enabled: !preview }
   });
 
   const completeTask = useCompleteTask();
   const generatePlan = useGenerateStudyPlan();
+
+  const handleGeneratePlan = () => {
+    if (preview) {
+      const generated = { plan: createPreviewStudyPlan(profile ?? readPreviewProfile()) };
+      savePreviewStudyPlan(generated);
+      navigate("/planner");
+      return;
+    }
+    generatePlan.mutate();
+  };
 
   const handleTaskComplete = (id: string) => {
     completeTask.mutate({ id }, {
@@ -59,7 +74,7 @@ export default function DashboardPage() {
 
   const daysToExam = profile?.examDate ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 0;
 
-  if (profileLoading) {
+  if (profileLoading && !preview) {
     return <div className="space-y-6"><Skeleton className="h-12 w-1/3" /><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /></div></div>;
   }
 
@@ -168,7 +183,7 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-lg font-bold mb-2">No tasks for today</h3>
                   <p className="text-muted-foreground mb-6 max-w-sm">You haven't generated an AI study plan yet or there are no tasks scheduled for today.</p>
-                  <Button onClick={() => generatePlan.mutate({})} disabled={generatePlan.isPending}>
+                   <Button onClick={handleGeneratePlan} disabled={generatePlan.isPending}>
                     {generatePlan.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                     Generate AI Study Plan
                   </Button>
@@ -225,7 +240,7 @@ export default function DashboardPage() {
                   {weakAreas.slice(0, 3).map((wa, i) => (
                     <div key={i} className="flex flex-col gap-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium truncate pr-2">{wa.topic}</span>
+                       <span className="text-sm font-medium truncate pr-2">{wa.topicName}</span>
                         <span className="text-xs font-bold text-destructive">{wa.accuracy}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">

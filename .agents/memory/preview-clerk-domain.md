@@ -8,4 +8,4 @@ The production Clerk publishable key is restricted to govtguru.com, so it cannot
 
 **Why:** Clerk rejects the preview origin before `isLoaded` becomes usable, which leaves the root redirect on the splash screen.
 
-**How to apply:** Keep real ClerkProvider/authentication unchanged for non-preview hosts. On localhost and Replit preview hosts, use the local preview auth provider and clearly label that API calls still require a real production session.
+**How to apply:** Keep real ClerkProvider/authentication unchanged for non-preview hosts. On localhost and Replit preview hosts, use the local preview auth provider, disable protected data queries before they run, and use clearly labeled local fixtures for inspection flows.
