@@ -1,5 +1,5 @@
 import { useGetMyProfile, useUpsertProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { useUser, useClerk } from "@clerk/react";
+import { useAppClerk, useAppUser } from "@/lib/app-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,8 +36,8 @@ async function setPlanType(planType: "free" | "pro"): Promise<void> {
 }
 
 export default function SettingsPage() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user } = useAppUser();
+  const { signOut } = useAppClerk();
   const { toast } = useToast();
   const qc = useQueryClient();
   const plan = usePlan();

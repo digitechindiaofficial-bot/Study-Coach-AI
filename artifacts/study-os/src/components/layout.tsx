@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import Footer from "@/components/footer";
 import { Link, useLocation } from "wouter";
-import { useUser, useClerk } from "@clerk/react";
+import { useAppClerk, useAppUser } from "@/lib/app-auth";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -41,8 +41,8 @@ const mobileNavItems = [
 ];
 
 function SidebarContent({ location, onNav }: { location: string; onNav?: () => void }) {
-  const { user, isLoaded: userLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { user } = useAppUser();
+  const { signOut } = useAppClerk();
   const plan = usePlan();
   const { data: profileData } = useGetMyProfile();
 
@@ -193,7 +193,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 
 function MobileHeader({ location }: { location: string }) {
-  const { user } = useUser();
+  const { user } = useAppUser();
   const plan = usePlan();
 
   return (

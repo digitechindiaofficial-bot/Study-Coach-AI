@@ -17,7 +17,7 @@ import {
   BarChart3,
   FileText,
 } from "lucide-react";
-import { useClerk } from "@clerk/react";
+import { useAppClerk } from "@/lib/app-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -37,7 +37,7 @@ const navItems = [
 ];
 
 function SidebarContent({ location, onNav }: { location: string; onNav?: () => void }) {
-  const { signOut } = useClerk();
+  const { signOut } = useAppClerk();
 
   return (
     <>

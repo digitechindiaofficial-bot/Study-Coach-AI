@@ -1,5 +1,5 @@
 import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { useUser } from "@clerk/react";
+import { useAppUser } from "@/lib/app-auth";
 
 export const FREE_DAILY_QUIZ_LIMIT = 10;
 export const FREE_CURRENT_AFFAIRS_DAYS = 3;
@@ -17,7 +17,7 @@ export interface PlanStatus {
 }
 
 export function usePlan(): PlanStatus {
-  const { user } = useUser();
+  const { user } = useAppUser();
   const { data: profile } = useGetMyProfile({
     query: {
       queryKey: getGetMyProfileQueryKey(),

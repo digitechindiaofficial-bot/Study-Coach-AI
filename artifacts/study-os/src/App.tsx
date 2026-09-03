@@ -2,10 +2,11 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth, SignIn, SignUp } from "@clerk/react";
+import { SignIn, SignUp } from "@clerk/react";
 import { setAuthTokenGetter, useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { isPreviewEnvironment, useAppAuth } from "@/lib/app-auth";
 
 import NotFound from "@/pages/not-found";
 import DashboardPage from "@/pages/dashboard";
@@ -54,7 +55,7 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: any) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppAuth();
   const [location, setLocation] = useLocation();
 
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({
@@ -106,7 +107,7 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
 }
 
 function AdminRoute({ component: Component }: any) {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAppAuth();
   const [, setLocation] = useLocation();
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "unauthenticated">("checking");
   const [denyHint, setDenyHint] = useState<{ clerkEmail?: string; adminEmailPrefix?: string } | null>(null);
@@ -116,6 +117,10 @@ function AdminRoute({ component: Component }: any) {
     if (!isSignedIn) {
       setStatus("unauthenticated");
       setLocation("/login");
+      return;
+    }
+    if (isPreviewEnvironment()) {
+      setStatus("allowed");
       return;
     }
     let cancelled = false;
@@ -184,7 +189,7 @@ function AdminRoute({ component: Component }: any) {
 }
 
 function RootRedirect() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -209,6 +214,45 @@ function RootRedirect() {
 }
 
 function LoginPage() {
+  const { enterPreview } = useAppAuth();
+  const [, setLocation] = useLocation();
+
+  if (isPreviewEnvironment()) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-muted/30 px-4 py-8">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <img
+            src="/logo-full.png"
+            alt="GovtGuru — AI se Sarkari Job Pakki"
+            width={280}
+            className="mx-auto"
+          />
+          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+            <div>
+              <h1 className="text-xl font-semibold">Preview mode</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Clerk production authentication is restricted to govtguru.com.
+                Use the local preview session to inspect the app here.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                enterPreview();
+                setLocation("/dashboard");
+              }}
+              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Continue to app preview
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Preview data requests still require a real production sign-in.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-muted/30 px-4 py-8">
       <div className="w-full max-w-md space-y-8">
@@ -249,7 +293,7 @@ function SignUpPage() {
 }
 
 function Router() {
-  const { getToken } = useAuth();
+  const { getToken } = useAppAuth();
 
   // Set synchronously on every render so the getter is always available
   // before any child query fires (avoids race with useEffect timing).
