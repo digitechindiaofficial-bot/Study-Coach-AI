@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { useAuth, useClerk, useUser } from "@clerk/react";
+import { setAdminTokenProvider } from "@/lib/admin-api";
 
 export interface AppUser {
   id: string;
@@ -41,6 +42,7 @@ export function ClerkAppAuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  setAdminTokenProvider(getToken);
 
   const value = useMemo<AppAuthValue>(() => ({
     isLoaded,
@@ -73,6 +75,7 @@ export function ClerkAppAuthProvider({ children }: { children: ReactNode }) {
  * session or changing production auth behavior.
  */
 export function PreviewAppAuthProvider({ children }: { children: ReactNode }) {
+  setAdminTokenProvider(null);
   const [isSignedIn, setIsSignedIn] = useState(() => {
     try {
       return window.localStorage.getItem("govtguru-preview-session") === "true";

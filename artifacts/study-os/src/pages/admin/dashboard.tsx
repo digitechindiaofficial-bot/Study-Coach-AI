@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adminFetch as fetch } from "@/lib/admin-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Crown, BrainCircuit, Newspaper, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { adminFetch as fetch } from "@/lib/admin-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

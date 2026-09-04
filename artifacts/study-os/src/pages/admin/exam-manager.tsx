@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, Plus, Pencil, Trash2, Star, Globe, GlobeLock,
-  Loader2, RefreshCw, LayoutGrid, BookOpen, Settings2, ShieldAlert,
+  Loader2, RefreshCw, LayoutGrid, BookOpen, Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isPreviewEnvironment, useAppAuth } from "@/lib/app-auth";
@@ -388,16 +388,6 @@ export default function ExamManagerPage() {
 
   return (
     <div className="space-y-6">
-      {preview && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="text-sm">
-            <span className="font-semibold">Read-only admin preview.</span>{" "}
-            Exam and subject data is live, but changes require a verified Clerk admin session on the live domain.
-          </p>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

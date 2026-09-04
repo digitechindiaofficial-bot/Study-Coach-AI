@@ -17,7 +17,7 @@ import {
   BarChart3,
   FileText,
 } from "lucide-react";
-import { useAppClerk } from "@/lib/app-auth";
+import { isPreviewEnvironment, useAppClerk } from "@/lib/app-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -96,6 +96,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const preview = isPreviewEnvironment();
 
   return (
     <div className="min-h-[100dvh] bg-orange-50/30 flex flex-col md:flex-row">
@@ -127,6 +128,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 md:pl-64 flex flex-col min-w-0">
         <div className="flex-1 max-w-[1280px] w-full mx-auto p-4 md:p-8">
+          {preview && (
+            <div className="mb-5 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="text-sm">
+                <span className="font-semibold">Read-only admin preview.</span>{" "}
+                Safe sample and public data is shown here. Sign in with the verified admin account on the live domain to make changes.
+              </p>
+            </div>
+          )}
           {children}
         </div>
       </main>
