@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, LogOut, Sparkles, FlaskConical,
-  Zap, ArrowDownCircle, CheckCircle2, CalendarIcon,
+  Loader2, LogOut, Sparkles,
+  Zap, CheckCircle2, CalendarIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,21 +19,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
 import { PaymentButton } from "@/components/payment-button";
 import { usePlan } from "@/hooks/use-plan";
 import { useExams } from "@/hooks/use-exams";
 import { readPreviewProfile } from "@/lib/preview-data";
-
-async function setPlanType(planType: "free" | "pro"): Promise<void> {
-  const resp = await fetch("/api/profiles/plan", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ planType }),
-  });
-  if (!resp.ok) throw new Error("Failed to update plan");
-}
 
 export default function SettingsPage() {
   const { user } = useAppUser();
@@ -62,7 +50,6 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
-  const [isTogglingPlan, setIsTogglingPlan] = useState(false);
 
   const isPhoneValid = /^\d{10}$/.test(phoneNumber);
 
@@ -127,19 +114,6 @@ export default function SettingsPage() {
     });
   };
 
-  const handleDowngrade = async () => {
-    setIsTogglingPlan(true);
-    try {
-      await setPlanType("free");
-      await qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
-      toast({ title: "Downgraded to Free Plan", description: "Pro features have been deactivated." });
-    } catch {
-      toast({ title: "Failed to downgrade", variant: "destructive" });
-    } finally {
-      setIsTogglingPlan(false);
-    }
-  };
-
   if (isLoading && !preview) return (
     <div className="max-w-2xl space-y-4">
       {[1,2,3,4].map(i=><div key={i} className="h-32 bg-muted rounded animate-pulse"/>)}
@@ -159,15 +133,7 @@ export default function SettingsPage() {
         plan.isPro ? "border-amber-300 bg-amber-50/50" : "border-border"
       )}>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Subscription Plan</CardTitle>
-            {plan.isPro && (
-              <Badge className="bg-orange-100 text-orange-700 border-orange-300 gap-1">
-                <FlaskConical className="w-3 h-3" />
-                TEST MODE
-              </Badge>
-            )}
-          </div>
+          <CardTitle className="text-base">Subscription Plan</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {plan.isPro ? (
@@ -177,11 +143,8 @@ export default function SettingsPage() {
                   <Zap className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-lg">Pro Plan</p>
-                    <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs">Test Mode</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">All Pro features are active. This is a test mode simulation.</p>
+                  <p className="font-bold text-lg">Pro Plan</p>
+                  <p className="text-sm text-muted-foreground">Your Pro subscription is active.</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -191,24 +154,6 @@ export default function SettingsPage() {
                     <span className="text-xs">{f}</span>
                   </div>
                 ))}
-              </div>
-              <div className="border-t pt-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Want to test the free experience?</p>
-                  <p className="text-xs text-muted-foreground">Downgrade to Free to see all limits.</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
-                  onClick={handleDowngrade}
-                  disabled={isTogglingPlan}
-                >
-                  {isTogglingPlan
-                    ? <Loader2 className="mr-2 w-3.5 h-3.5 animate-spin" />
-                    : <ArrowDownCircle className="mr-2 w-3.5 h-3.5" />}
-                  Downgrade to Free
-                </Button>
               </div>
             </>
           ) : (

@@ -108374,6 +108374,17 @@ function logDatabaseError(route, error40) {
   console.error(`[database-error] ${JSON.stringify({ route, ...databaseError })}`);
 }
 
+// src/lib/plan-access.ts
+function hasActiveProAccess(profile, now = /* @__PURE__ */ new Date()) {
+  if (profile?.planType !== "pro" || !profile.planExpiry) return false;
+  const expiry = profile.planExpiry instanceof Date ? profile.planExpiry : new Date(profile.planExpiry);
+  return !Number.isNaN(expiry.getTime()) && expiry.getTime() > now.getTime();
+}
+function withEffectivePlan(profile) {
+  if (profile.planType !== "pro" || hasActiveProAccess(profile)) return profile;
+  return { ...profile, planType: "free" };
+}
+
 // src/routes/profiles.ts
 var router2 = (0, import_express2.Router)();
 async function getOrCreateProfile(clerkUserId) {
@@ -108386,7 +108397,7 @@ router2.get("/profiles/me", async (req, res) => {
   const profile = await getOrCreateProfile(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
   const healed = await resetStreakIfBroken(profile);
-  res.json(healed);
+  res.json(withEffectivePlan(healed));
 });
 router2.put("/profiles/me", async (req, res) => {
   try {
@@ -108397,27 +108408,15 @@ router2.put("/profiles/me", async (req, res) => {
     const existing = await getOrCreateProfile(userId);
     if (existing) {
       const [updated] = await db.update(profilesTable).set(parsed.data).where(eq(profilesTable.clerkUserId, userId)).returning();
-      return res.json(updated);
+      return res.json(withEffectivePlan(updated));
     } else {
       const [created] = await db.insert(profilesTable).values({ clerkUserId: userId, ...parsed.data }).returning();
-      return res.json(created);
+      return res.json(withEffectivePlan(created));
     }
   } catch (err) {
     logDatabaseError("PUT /api/profiles/me", err);
     return res.status(500).json({ error: "Failed to update profile" });
   }
-});
-router2.patch("/profiles/plan", async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-  const { planType } = req.body ?? {};
-  if (planType !== "free" && planType !== "pro") {
-    return res.status(400).json({ error: "planType must be 'free' or 'pro'" });
-  }
-  const profile = await getOrCreateProfile(userId);
-  if (!profile) return res.status(404).json({ error: "Profile not found" });
-  const [updated] = await db.update(profilesTable).set({ planType }).where(eq(profilesTable.clerkUserId, userId)).returning();
-  res.json(updated);
 });
 router2.post("/profiles/me/streak", async (req, res) => {
   const { userId } = getAuth(req);
@@ -112829,6 +112828,7 @@ router3.get("/study-plans/current", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
   const plans = await db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, profile.id)).orderBy(desc(studyPlansTable.createdAt)).limit(1);
   if (!plans[0]) return res.json({ plan: null });
   const plan = plans[0];
@@ -112843,7 +112843,7 @@ router3.get("/study-plans/current", async (req, res) => {
       return res.json({ plan: null, stale: true });
     }
   }
-  if (profile.planType !== "pro") {
+  if (!isPro) {
     return res.json({ plan: lockPlanForFreeUser(plan), is_truncated: true });
   }
   res.json({ plan });
@@ -112853,6 +112853,14 @@ router3.delete("/study-plans/current", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const [existing] = await db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, profile.id)).orderBy(desc(studyPlansTable.createdAt)).limit(1);
+  const isExamChange = !!existing && existing.examType !== profile.examType;
+  if (!hasActiveProAccess(profile) && !isExamChange) {
+    return res.status(403).json({
+      error: "pro_required",
+      message: "Study plan regeneration is a Pro feature."
+    });
+  }
   await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
   res.json({ ok: true });
 });
@@ -112861,12 +112869,19 @@ router3.post("/study-plans/generate", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
   const force = req.body?.force === true || req.query?.force === "true";
+  if (force && !isPro) {
+    return res.status(403).json({
+      error: "pro_required",
+      message: "Study plan regeneration is a Pro feature."
+    });
+  }
   if (!force) {
     const existing = await db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, profile.id)).orderBy(desc(studyPlansTable.createdAt)).limit(1);
     if (existing[0]) {
-      const plan = profile.planType === "pro" ? existing[0] : lockPlanForFreeUser(existing[0]);
-      return res.json({ plan, cached: true, is_truncated: profile.planType !== "pro" });
+      const plan = isPro ? existing[0] : lockPlanForFreeUser(existing[0]);
+      return res.json({ plan, cached: true, is_truncated: !isPro });
     }
   }
   const examType = profile.examType ?? "SSC_CGL";
@@ -112926,8 +112941,8 @@ router3.post("/study-plans/generate", async (req, res) => {
   };
   try {
     const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
-    const responsePlan = profile.planType === "pro" ? plan : lockPlanForFreeUser(plan);
-    res.json({ plan: responsePlan, source: "ai", is_truncated: profile.planType !== "pro" });
+    const responsePlan = isPro ? plan : lockPlanForFreeUser(plan);
+    res.json({ plan: responsePlan, source: "ai", is_truncated: !isPro });
   } catch (err) {
     req.log.error({ err: err?.message ?? String(err) }, "failed to save study plan");
     res.status(500).json({ error: "Failed to save study plan.", detail: err?.message });
@@ -134108,7 +134123,7 @@ router6.post("/current-affairs/refresh", async (req, res) => {
   req.log.info({ hasKey: !!process.env.GEMINI_API_KEY }, "Gemini key check");
   const profiles = await db.select().from(profilesTable).where(eq(profilesTable.clerkUserId, userId)).limit(1);
   const profile = profiles[0] ?? null;
-  if (!profile || profile.planType !== "pro") {
+  if (!hasActiveProAccess(profile)) {
     return res.status(403).json({
       error: "pro_required",
       message: "News refresh is a Pro feature. Upgrade to access fresh AI-generated current affairs."
@@ -134256,12 +134271,13 @@ router7.post("/quiz/attempts", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId4(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
   const parsed = SubmitQuizAttemptBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const isCountFresh = profile.quizCountDate === today;
   const currentCount = isCountFresh ? profile.quizCountToday ?? 0 : 0;
-  if (profile.planType === "free" && currentCount >= FREE_DAILY_LIMIT) {
+  if (!isPro && currentCount >= FREE_DAILY_LIMIT) {
     return res.status(429).json({
       error: "daily_limit_reached",
       questionsLeft: 0,
@@ -134299,7 +134315,7 @@ router7.post("/quiz/attempts", async (req, res) => {
   await db.update(profilesTable).set({ quizCountToday: currentCount + 1, quizCountDate: today }).where(eq(profilesTable.clerkUserId, userId));
   res.status(201).json({
     ...attempt,
-    questionsLeft: profile.planType === "free" ? FREE_DAILY_LIMIT - currentCount - 1 : null
+    questionsLeft: isPro ? null : FREE_DAILY_LIMIT - currentCount - 1
   });
 });
 router7.get("/quiz/stats", async (req, res) => {
@@ -134388,7 +134404,7 @@ router7.post("/quiz/generate-mcq", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId4(userId);
-  if (profile?.planType === "free") {
+  if (!hasActiveProAccess(profile)) {
     return res.status(403).json({ error: "pro_required", message: "MCQ generation from news is a Pro feature." });
   }
   const parsed = GenerateMcqFromNewsBody.safeParse(req.body);
@@ -134793,7 +134809,7 @@ router9.get("/admin/check", async (_req, res) => {
 router9.get("/admin/stats", async (_req, res) => {
   const profiles = await db.select().from(profilesTable);
   const totalUsers = profiles.length;
-  const proUsers = profiles.filter((p) => p.planType === "pro").length;
+  const proUsers = profiles.filter((profile) => hasActiveProAccess(profile)).length;
   const freeUsers = totalUsers - proUsers;
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const attempts = await db.select().from(quizAttemptsTable);
@@ -134914,7 +134930,10 @@ router9.patch("/admin/users/:id/plan", async (req, res) => {
     res.status(400).json({ error: "planType must be 'free' or 'pro'" });
     return;
   }
-  const [updated] = await db.update(profilesTable).set({ planType }).where(eq(profilesTable.id, id)).returning();
+  const [updated] = await db.update(profilesTable).set({
+    planType,
+    planExpiry: planType === "pro" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3) : null
+  }).where(eq(profilesTable.id, id)).returning();
   if (!updated) {
     res.status(404).json({ error: "User not found" });
     return;

@@ -4,6 +4,7 @@ import { db, pool } from "@workspace/db";
 import { profilesTable, studyPlansTable, dailyTasksTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import { hasActiveProAccess } from "../lib/plan-access";
 
 const router = Router();
 
@@ -744,6 +745,7 @@ router.get("/study-plans/current", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
 
   const plans = await db.select().from(studyPlansTable)
     .where(eq(studyPlansTable.userId, profile.id))
@@ -775,7 +777,7 @@ router.get("/study-plans/current", async (req, res) => {
   // ── Pro gating ──────────────────────────────────────────────────────────────
   // Keep the date range visible so free users can see the value of upgrading,
   // but never return the study sessions or topic details beyond the free window.
-  if (profile.planType !== "pro") {
+  if (!isPro) {
     return res.json({ plan: lockPlanForFreeUser(plan), is_truncated: true });
   }
 
@@ -788,6 +790,17 @@ router.delete("/study-plans/current", async (req, res) => {
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
 
+  const [existing] = await db.select().from(studyPlansTable)
+    .where(eq(studyPlansTable.userId, profile.id))
+    .orderBy(desc(studyPlansTable.createdAt)).limit(1);
+  const isExamChange = !!existing && existing.examType !== profile.examType;
+  if (!hasActiveProAccess(profile) && !isExamChange) {
+    return res.status(403).json({
+      error: "pro_required",
+      message: "Study plan regeneration is a Pro feature.",
+    });
+  }
+
   await db.delete(studyPlansTable).where(eq(studyPlansTable.userId, profile.id));
   res.json({ ok: true });
 });
@@ -797,17 +810,24 @@ router.post("/study-plans/generate", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
 
   const force = req.body?.force === true || req.query?.force === "true";
+  if (force && !isPro) {
+    return res.status(403).json({
+      error: "pro_required",
+      message: "Study plan regeneration is a Pro feature.",
+    });
+  }
   if (!force) {
     const existing = await db.select().from(studyPlansTable)
       .where(eq(studyPlansTable.userId, profile.id))
       .orderBy(desc(studyPlansTable.createdAt)).limit(1);
     if (existing[0]) {
-      const plan = profile.planType === "pro"
+      const plan = isPro
         ? existing[0]
         : lockPlanForFreeUser(existing[0]);
-      return res.json({ plan, cached: true, is_truncated: profile.planType !== "pro" });
+      return res.json({ plan, cached: true, is_truncated: !isPro });
     }
   }
 
@@ -879,8 +899,8 @@ router.post("/study-plans/generate", async (req, res) => {
 
   try {
     const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
-    const responsePlan = profile.planType === "pro" ? plan : lockPlanForFreeUser(plan);
-    res.json({ plan: responsePlan, source: "ai", is_truncated: profile.planType !== "pro" });
+    const responsePlan = isPro ? plan : lockPlanForFreeUser(plan);
+    res.json({ plan: responsePlan, source: "ai", is_truncated: !isPro });
   } catch (err: any) {
     req.log.error({ err: err?.message ?? String(err) }, "failed to save study plan");
     res.status(500).json({ error: "Failed to save study plan.", detail: err?.message });

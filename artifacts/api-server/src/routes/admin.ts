@@ -15,6 +15,7 @@ import {
 import { eq, desc, inArray, count } from "drizzle-orm";
 import { z } from "zod";
 import { deriveSubjectCode, buildTopicCode } from "../lib/syllabus-codes.js";
+import { hasActiveProAccess } from "../lib/plan-access";
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.get("/admin/check", async (_req, res) => {
 router.get("/admin/stats", async (_req, res) => {
   const profiles = await db.select().from(profilesTable);
   const totalUsers = profiles.length;
-  const proUsers = profiles.filter((p) => p.planType === "pro").length;
+  const proUsers = profiles.filter((profile) => hasActiveProAccess(profile)).length;
   const freeUsers = totalUsers - proUsers;
 
   const today = new Date().toISOString().split("T")[0];
@@ -177,7 +178,12 @@ router.patch("/admin/users/:id/plan", async (req, res) => {
   }
   const [updated] = await db
     .update(profilesTable)
-    .set({ planType })
+    .set({
+      planType,
+      planExpiry: planType === "pro"
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        : null,
+    })
     .where(eq(profilesTable.id, id))
     .returning();
   if (!updated) {

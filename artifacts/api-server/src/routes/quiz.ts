@@ -10,6 +10,7 @@ import {
 import { eq, sql, SQL } from "drizzle-orm";
 import { SubmitQuizAttemptBody, GenerateMcqFromNewsBody } from "@workspace/api-zod";
 import { GoogleGenAI } from "@google/genai";
+import { hasActiveProAccess } from "../lib/plan-access";
 
 const router = Router();
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -180,6 +181,7 @@ router.post("/quiz/attempts", async (req, res) => {
 
   const profile = await getProfileByClerkId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const isPro = hasActiveProAccess(profile);
 
   const parsed = SubmitQuizAttemptBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
@@ -189,7 +191,7 @@ router.post("/quiz/attempts", async (req, res) => {
   const isCountFresh = profile.quizCountDate === today;
   const currentCount = isCountFresh ? (profile.quizCountToday ?? 0) : 0;
 
-  if (profile.planType === "free" && currentCount >= FREE_DAILY_LIMIT) {
+  if (!isPro && currentCount >= FREE_DAILY_LIMIT) {
     return res.status(429).json({
       error: "daily_limit_reached",
       questionsLeft: 0,
@@ -245,7 +247,7 @@ router.post("/quiz/attempts", async (req, res) => {
 
   res.status(201).json({
     ...attempt,
-    questionsLeft: profile.planType === "free" ? FREE_DAILY_LIMIT - currentCount - 1 : null,
+    questionsLeft: isPro ? null : FREE_DAILY_LIMIT - currentCount - 1,
   });
 });
 
@@ -370,7 +372,7 @@ router.post("/quiz/generate-mcq", async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const profile = await getProfileByClerkId(userId);
-  if (profile?.planType === "free") {
+  if (!hasActiveProAccess(profile)) {
     return res.status(403).json({ error: "pro_required", message: "MCQ generation from news is a Pro feature." });
   }
 

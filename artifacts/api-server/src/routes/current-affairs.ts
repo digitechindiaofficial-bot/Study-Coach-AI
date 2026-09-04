@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { currentAffairsTable, profilesTable } from "@workspace/db";
 import { gte, eq, and, ne } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
+import { hasActiveProAccess } from "../lib/plan-access";
 
 const router = Router();
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -171,7 +172,7 @@ router.post("/current-affairs/refresh", async (req, res) => {
     .limit(1);
   const profile = profiles[0] ?? null;
 
-  if (!profile || profile.planType !== "pro") {
+  if (!hasActiveProAccess(profile)) {
     return res.status(403).json({
       error: "pro_required",
       message: "News refresh is a Pro feature. Upgrade to access fresh AI-generated current affairs.",

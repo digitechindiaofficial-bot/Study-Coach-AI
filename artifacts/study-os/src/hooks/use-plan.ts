@@ -28,7 +28,12 @@ export function usePlan(): PlanStatus {
   });
   const profile = apiProfile ?? (isPreviewEnvironment() ? readPreviewProfile() : undefined);
 
-  const isPro = profile?.planType === "pro";
+  const preview = isPreviewEnvironment();
+  const planExpiry = (profile as any)?.planExpiry as string | Date | null | undefined;
+  const hasFutureExpiry = !!planExpiry &&
+    !Number.isNaN(new Date(planExpiry).getTime()) &&
+    new Date(planExpiry).getTime() > Date.now();
+  const isPro = profile?.planType === "pro" && (preview || hasFutureExpiry);
   const today = new Date().toISOString().split("T")[0];
 
   const rawCount = (profile as any)?.quizCountToday ?? 0;
@@ -42,7 +47,7 @@ export function usePlan(): PlanStatus {
   return {
     isLoaded: !!profile,
     isPro,
-    planType: (profile?.planType ?? "free") as "free" | "pro",
+    planType: isPro ? "pro" : "free",
     quizCountToday,
     quizQuestionsLeft,
     canTakeQuiz: isPro || quizCountToday < FREE_DAILY_QUIZ_LIMIT,
