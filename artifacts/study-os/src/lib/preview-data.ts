@@ -66,6 +66,16 @@ export function readPreviewProfile(): PreviewProfile {
   return defaultPreviewProfile();
 }
 
+export function savePreviewProfile(updates: Partial<PreviewProfile>): PreviewProfile {
+  const profile = { ...readPreviewProfile(), ...updates };
+  try {
+    window.localStorage.setItem(PREVIEW_PROFILE_KEY, JSON.stringify(profile));
+  } catch {
+    // Keep the current in-memory flow usable if preview storage is unavailable.
+  }
+  return profile;
+}
+
 function defaultPreviewProfile(): PreviewProfile {
   return {
     fullName: "Preview User",

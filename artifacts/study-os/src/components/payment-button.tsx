@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isPreviewEnvironment, useAppAuth } from "@/lib/app-auth";
+import { savePreviewProfile } from "@/lib/preview-data";
 
 declare global {
   interface Window {
@@ -53,19 +55,42 @@ export function PaymentButton({
 }: PaymentButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { getToken } = useAppAuth();
+  const preview = isPreviewEnvironment();
 
-  const label = billingPeriod === "yearly"
-    ? "Upgrade to Pro → ₹999/year"
-    : "Upgrade to Pro →";
+  const label = preview
+    ? "Preview Pro features"
+    : billingPeriod === "yearly"
+      ? "Upgrade to Pro → ₹999/year"
+      : "Upgrade to Pro →";
 
   const handlePayment = async () => {
     setLoading(true);
     try {
+      if (preview) {
+        savePreviewProfile({ planType: "pro" });
+        toast({
+          title: "Pro preview enabled",
+          description: "No payment was charged. Real Razorpay checkout is available after signing in on govtguru.com.",
+        });
+        onSuccess?.();
+        setTimeout(() => window.location.reload(), 500);
+        return;
+      }
+
+      const orderToken = await getToken();
+      if (!orderToken) {
+        throw new Error("Your sign-in session has expired. Please sign in again.");
+      }
+
       await loadRazorpayScript();
 
       const orderRes = await fetch("/api/payment/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${orderToken}`,
+        },
         credentials: "include",
         body: JSON.stringify({ billingPeriod }),
       });
@@ -100,9 +125,17 @@ export function PaymentButton({
           razorpay_signature: string;
         }) => {
           try {
+            const verifyToken = await getToken();
+            if (!verifyToken) {
+              throw new Error("Your sign-in session has expired.");
+            }
+
             const verifyRes = await fetch("/api/payment/verify", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${verifyToken}`,
+              },
               credentials: "include",
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,

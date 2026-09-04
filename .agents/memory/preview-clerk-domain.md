@@ -10,6 +10,10 @@ The production Clerk publishable key is restricted to govtguru.com, so it cannot
 
 **How to apply:** Keep real ClerkProvider/authentication unchanged for non-preview hosts. On localhost and Replit preview hosts, use the local preview auth provider, disable protected data queries before they run, and use clearly labeled local fixtures for inspection flows.
 
+Preview upgrades must be explicitly simulated with no charge: update only the local preview profile, label the action as a preview, and never call protected Razorpay order or verification endpoints without a real Clerk session.
+
+**Why:** Preview auth intentionally has no Clerk token, so calling live payment endpoints produces a legitimate 401 and cannot safely associate a payment with a real user.
+
 ## Stable preview state
 
 Preview helpers that read local storage return ordinary object values. If one of those values is used as a dependency of an effect that initializes component state, memoize it for the component lifetime or depend on stable primitive fields. Otherwise each render can create a new object, rerun the effect, and trigger React's maximum-update-depth crash.
