@@ -112280,6 +112280,33 @@ var router3 = (0, import_express4.Router)();
 function getAnthropic() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 }
+var FREE_VISIBLE_PLAN_DAYS = 3;
+function lockPlanForFreeUser(plan) {
+  const planData = plan?.planData;
+  if (!planData || typeof planData !== "object") return plan;
+  const lockedPlanData = {
+    ...planData,
+    subjects: Array.isArray(planData.subjects) ? planData.subjects.map((subject) => ({ ...subject, topics: [] })) : planData.subjects,
+    daily_plan: Array.isArray(planData.daily_plan) ? planData.daily_plan.map((day, index2) => {
+      if (index2 < FREE_VISIBLE_PLAN_DAYS) return day;
+      return {
+        date: day.date,
+        day_name: day.day_name,
+        day_type: day.day_type,
+        days_left: day.days_left,
+        sessions: [],
+        _locked: true
+      };
+    }) : planData.daily_plan,
+    weekly_schedule: Array.isArray(planData.weekly_schedule) ? planData.weekly_schedule.map((week) => ({
+      week: week.week,
+      theme: week.theme,
+      days: [],
+      daily_tasks: {}
+    })) : planData.weekly_schedule
+  };
+  return { ...plan, planData: lockedPlanData };
+}
 function getTodayIST() {
   return (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
@@ -112748,24 +112775,7 @@ router3.get("/study-plans/current", async (req, res) => {
     }
   }
   if (profile.planType !== "pro") {
-    const pd = plan.planData;
-    if (pd?.daily_plan && Array.isArray(pd.daily_plan)) {
-      const truncated = {
-        ...pd,
-        daily_plan: pd.daily_plan.map((day, idx) => {
-          if (idx < 2) return day;
-          return {
-            date: day.date,
-            day_name: day.day_name,
-            day_type: day.day_type,
-            days_left: day.days_left,
-            sessions: [],
-            _locked: true
-          };
-        })
-      };
-      return res.json({ plan: { ...plan, planData: truncated }, is_truncated: true });
-    }
+    return res.json({ plan: lockPlanForFreeUser(plan), is_truncated: true });
   }
   res.json({ plan });
 });
@@ -112785,7 +112795,10 @@ router3.post("/study-plans/generate", async (req, res) => {
   const force = req.body?.force === true || req.query?.force === "true";
   if (!force) {
     const existing = await db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, profile.id)).orderBy(desc(studyPlansTable.createdAt)).limit(1);
-    if (existing[0]) return res.json({ plan: existing[0], cached: true });
+    if (existing[0]) {
+      const plan = profile.planType === "pro" ? existing[0] : lockPlanForFreeUser(existing[0]);
+      return res.json({ plan, cached: true, is_truncated: profile.planType !== "pro" });
+    }
   }
   const examType = profile.examType ?? "SSC_CGL";
   const examDate = profile.examDate;
@@ -112844,7 +112857,8 @@ router3.post("/study-plans/generate", async (req, res) => {
   };
   try {
     const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
-    res.json({ plan, source: "ai" });
+    const responsePlan = profile.planType === "pro" ? plan : lockPlanForFreeUser(plan);
+    res.json({ plan: responsePlan, source: "ai", is_truncated: profile.planType !== "pro" });
   } catch (err) {
     req.log.error({ err: err?.message ?? String(err) }, "failed to save study plan");
     res.status(500).json({ error: "Failed to save study plan.", detail: err?.message });

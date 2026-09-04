@@ -43,6 +43,7 @@ interface DayEntry {
   day_type: "study" | "revision" | "mock_test" | "final_revision";
   days_left: number;
   sessions: Session[];
+  _locked?: boolean;
 }
 
 interface SubjectEntry {
@@ -72,6 +73,43 @@ interface FullPlanData {
     generated_date: string;           // IST date, "YYYY-MM-DD"
     completed_subjects_snapshot: number;
   };
+}
+
+const FREE_VISIBLE_PLAN_DAYS = 3;
+
+function lockPlanForFreeUser(plan: any) {
+  const planData = plan?.planData;
+  if (!planData || typeof planData !== "object") return plan;
+
+  const lockedPlanData = {
+    ...planData,
+    subjects: Array.isArray(planData.subjects)
+      ? planData.subjects.map((subject: any) => ({ ...subject, topics: [] }))
+      : planData.subjects,
+    daily_plan: Array.isArray(planData.daily_plan)
+      ? planData.daily_plan.map((day: DayEntry, index: number) => {
+          if (index < FREE_VISIBLE_PLAN_DAYS) return day;
+          return {
+            date: day.date,
+            day_name: day.day_name,
+            day_type: day.day_type,
+            days_left: day.days_left,
+            sessions: [],
+            _locked: true,
+          };
+        })
+      : planData.daily_plan,
+    weekly_schedule: Array.isArray(planData.weekly_schedule)
+      ? planData.weekly_schedule.map((week: any) => ({
+          week: week.week,
+          theme: week.theme,
+          days: [],
+          daily_tasks: {},
+        }))
+      : planData.weekly_schedule,
+  };
+
+  return { ...plan, planData: lockedPlanData };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -734,29 +772,11 @@ router.get("/study-plans/current", async (req, res) => {
     }
   }
 
-  // ── Pro gating: free users only receive the first 2 days in full detail ──
-  // Days beyond index 1 are replaced with locked stubs (date/name only).
-  // This enforces the gate server-side so inspecting network requests
-  // never reveals the full plan to a free user.
+  // ── Pro gating ──────────────────────────────────────────────────────────────
+  // Keep the date range visible so free users can see the value of upgrading,
+  // but never return the study sessions or topic details beyond the free window.
   if (profile.planType !== "pro") {
-    const pd = plan.planData as any;
-    if (pd?.daily_plan && Array.isArray(pd.daily_plan)) {
-      const truncated = {
-        ...pd,
-        daily_plan: pd.daily_plan.map((day: any, idx: number) => {
-          if (idx < 2) return day; // first 2 days: full detail
-          return {
-            date: day.date,
-            day_name: day.day_name,
-            day_type: day.day_type,
-            days_left: day.days_left,
-            sessions: [],
-            _locked: true,
-          };
-        }),
-      };
-      return res.json({ plan: { ...plan, planData: truncated }, is_truncated: true });
-    }
+    return res.json({ plan: lockPlanForFreeUser(plan), is_truncated: true });
   }
 
   res.json({ plan });
@@ -783,7 +803,12 @@ router.post("/study-plans/generate", async (req, res) => {
     const existing = await db.select().from(studyPlansTable)
       .where(eq(studyPlansTable.userId, profile.id))
       .orderBy(desc(studyPlansTable.createdAt)).limit(1);
-    if (existing[0]) return res.json({ plan: existing[0], cached: true });
+    if (existing[0]) {
+      const plan = profile.planType === "pro"
+        ? existing[0]
+        : lockPlanForFreeUser(existing[0]);
+      return res.json({ plan, cached: true, is_truncated: profile.planType !== "pro" });
+    }
   }
 
   const examType   = profile.examType ?? "SSC_CGL";
@@ -854,7 +879,8 @@ router.post("/study-plans/generate", async (req, res) => {
 
   try {
     const plan = await savePlanAndSeedTasks(profile.id, examType, weeksRemaining, planData);
-    res.json({ plan, source: "ai" });
+    const responsePlan = profile.planType === "pro" ? plan : lockPlanForFreeUser(plan);
+    res.json({ plan: responsePlan, source: "ai", is_truncated: profile.planType !== "pro" });
   } catch (err: any) {
     req.log.error({ err: err?.message ?? String(err) }, "failed to save study plan");
     res.status(500).json({ error: "Failed to save study plan.", detail: err?.message });

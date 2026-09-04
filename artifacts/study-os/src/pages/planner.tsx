@@ -11,7 +11,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, addDays, startOfWeek } from "date-fns";
-import { usePlan } from "@/hooks/use-plan";
+import { FREE_VISIBLE_PLAN_DAYS, usePlan } from "@/hooks/use-plan";
 import UpgradeModal from "@/components/upgrade-modal";
 import { useLocation } from "wouter";
 import { isPreviewEnvironment } from "@/lib/app-auth";
@@ -295,9 +295,26 @@ export default function PlannerPage() {
   // Build daily index for fast lookup
   const dailyIndex = useMemo<Record<string, DayEntry>>(() => {
     const idx: Record<string, DayEntry> = {};
-    if (planData?.daily_plan) for (const d of planData.daily_plan) idx[d.date] = d;
+    const days = planData?.daily_plan;
+    if (!days) return idx;
+
+    const displayDays = plan.isPro
+      ? days.map(({ _locked: _ignored, ...day }) => day)
+      : days.map((day, index) => {
+          if (index < FREE_VISIBLE_PLAN_DAYS) return day;
+          return {
+            date: day.date,
+            day_name: day.day_name,
+            day_type: day.day_type,
+            days_left: day.days_left,
+            sessions: [],
+            _locked: true,
+          };
+        });
+
+    for (const d of displayDays) idx[d.date] = d;
     return idx;
-  }, [planData?.daily_plan]);
+  }, [planData?.daily_plan, plan.isPro]);
 
   // Week days for calendar view
   const weekDays = useMemo(() => {
@@ -502,7 +519,8 @@ export default function PlannerPage() {
         >
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-400">
-            <span className="font-semibold">Free plan:</span> Upgrade to Pro to regenerate your plan anytime.
+            <span className="font-semibold">Free plan:</span> Your first {FREE_VISIBLE_PLAN_DAYS} days are included.
+            Upgrade to Pro to unlock the remaining plan and regenerate anytime.
             {" "}<span className="underline font-medium">Upgrade for ₹129/month →</span>
           </p>
         </div>

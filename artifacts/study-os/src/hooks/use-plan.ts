@@ -4,6 +4,7 @@ import { readPreviewProfile } from "@/lib/preview-data";
 
 export const FREE_DAILY_QUIZ_LIMIT = 10;
 export const FREE_CURRENT_AFFAIRS_DAYS = 3;
+export const FREE_VISIBLE_PLAN_DAYS = 3;
 
 export interface PlanStatus {
   isLoaded: boolean;
@@ -14,7 +15,7 @@ export interface PlanStatus {
   canTakeQuiz: boolean;
   canRegeneratePlan: boolean;
   canViewFullCurrentAffairs: boolean;
-  canViewFullPlan: boolean;       // Study Planner: Pro sees all days, free sees first 2
+  canViewFullPlan: boolean;       // Study Planner: Pro sees all days, free sees first 3
 }
 
 export function usePlan(): PlanStatus {
