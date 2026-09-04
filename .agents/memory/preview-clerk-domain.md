@@ -14,6 +14,10 @@ Preview upgrades must be explicitly simulated with no charge: update only the lo
 
 **Why:** Preview auth intentionally has no Clerk token, so calling live payment endpoints produces a legitimate 401 and cannot safely associate a payment with a real user.
 
+Admin screens in preview must be read-only. Use public GET endpoints or local fixtures for display, validate response envelopes before storing list state, and block mutations with a clear message.
+
+**Why:** Allowing the preview admin shell does not create a verified Clerk admin session; protected admin APIs correctly return 401 and their error objects must never be treated as list data.
+
 ## Stable preview state
 
 Preview helpers that read local storage return ordinary object values. If one of those values is used as a dependency of an effect that initializes component state, memoize it for the component lifetime or depend on stable primitive fields. Otherwise each render can create a new object, rerun the effect, and trigger React's maximum-update-depth crash.

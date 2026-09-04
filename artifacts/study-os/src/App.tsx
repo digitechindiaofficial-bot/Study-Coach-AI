@@ -107,7 +107,7 @@ function ProtectedRoute({ component: Component, skipOnboardingCheck, ...rest }: 
 }
 
 function AdminRoute({ component: Component }: any) {
-  const { isLoaded, isSignedIn, userId } = useAppAuth();
+  const { isLoaded, isSignedIn, userId, getToken } = useAppAuth();
   const [, setLocation] = useLocation();
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "unauthenticated">("checking");
   const [denyHint, setDenyHint] = useState<{ clerkEmail?: string; adminEmailPrefix?: string } | null>(null);
@@ -124,7 +124,14 @@ function AdminRoute({ component: Component }: any) {
       return;
     }
     let cancelled = false;
-    fetch("/api/admin/check", { credentials: "include", headers: { "Cache-Control": "no-cache" } })
+    getToken()
+      .then((token) => fetch("/api/admin/check", {
+        credentials: "include",
+        headers: {
+          "Cache-Control": "no-cache",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }))
       .then(async (res) => {
         if (cancelled) return;
         if (res.ok) {
@@ -144,7 +151,7 @@ function AdminRoute({ component: Component }: any) {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, setLocation]);
+  }, [getToken, isLoaded, isSignedIn, setLocation]);
 
   if (status === "checking") {
     return (

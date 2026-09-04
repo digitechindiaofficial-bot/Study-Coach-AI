@@ -19,9 +19,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, Plus, Pencil, Trash2, Star, Globe, GlobeLock,
-  Loader2, RefreshCw, LayoutGrid, BookOpen, Settings2,
+  Loader2, RefreshCw, LayoutGrid, BookOpen, Settings2, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isPreviewEnvironment, useAppAuth } from "@/lib/app-auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,8 @@ const blankSubject = () => ({
 
 export default function ExamManagerPage() {
   const { toast } = useToast();
+  const { getToken } = useAppAuth();
+  const preview = isPreviewEnvironment();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -129,16 +132,49 @@ export default function ExamManagerPage() {
   const [topicInput, setTopicInput] = useState("");
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
-  const api = (path: string, opts?: RequestInit) =>
-    fetch(path, { credentials: "include", ...opts });
+  const api = async (path: string, opts?: RequestInit) => {
+    const token = preview ? null : await getToken();
+    const headers = new Headers(opts?.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return fetch(path, { credentials: "include", ...opts, headers });
+  };
+
+  const parseList = <T,>(data: unknown, key: string): T[] => {
+    if (Array.isArray(data)) return data as T[];
+    if (data && typeof data === "object") {
+      const nested = (data as Record<string, unknown>)[key];
+      if (Array.isArray(nested)) return nested as T[];
+    }
+    throw new Error("The server returned an invalid list response.");
+  };
+
+  const blockPreviewMutation = () => {
+    if (!preview) return false;
+    toast({
+      title: "Read-only admin preview",
+      description: "Admin changes require a real Clerk admin session on the live domain.",
+    });
+    return true;
+  };
 
   // ── Load exams ──────────────────────────────────────────────────────────────
 
   const loadExams = async () => {
     setLoading(true);
     try {
-      const r = await api("/api/admin/exams");
-      setExams(await r.json());
+      const r = await api(preview ? "/api/exams" : "/api/admin/exams");
+      const data = await r.json().catch(() => null);
+      if (!r.ok) {
+        throw new Error((data as any)?.message ?? (data as any)?.error ?? "Failed to load exams");
+      }
+      setExams(parseList<Exam>(data, "exams"));
+    } catch (error: any) {
+      setExams([]);
+      toast({
+        title: "Could not load exams",
+        description: error?.message ?? "Please try again.",
+        variant: "destructive",
+      });
     } finally { setLoading(false); }
   };
 
@@ -149,8 +185,22 @@ export default function ExamManagerPage() {
   const loadSubjects = async (examCode: string) => {
     setSubjectsLoading(true);
     try {
-      const r = await api(`/api/admin/exams/${examCode}/subjects`);
-      setSubjects(await r.json());
+      const path = preview
+        ? `/api/exams/${examCode}/subjects`
+        : `/api/admin/exams/${examCode}/subjects`;
+      const r = await api(path);
+      const data = await r.json().catch(() => null);
+      if (!r.ok) {
+        throw new Error((data as any)?.message ?? (data as any)?.error ?? "Failed to load subjects");
+      }
+      setSubjects(parseList<Subject>(data, "subjects"));
+    } catch (error: any) {
+      setSubjects([]);
+      toast({
+        title: "Could not load subjects",
+        description: error?.message ?? "Please try again.",
+        variant: "destructive",
+      });
     } finally { setSubjectsLoading(false); }
   };
 
@@ -185,6 +235,7 @@ export default function ExamManagerPage() {
   };
 
   const saveExam = async () => {
+    if (blockPreviewMutation()) return;
     if (!examForm.code.trim() || !examForm.name.trim()) {
       toast({ title: "Code and Name are required", variant: "destructive" }); return;
     }
@@ -212,6 +263,7 @@ export default function ExamManagerPage() {
   };
 
   const deleteExam = async () => {
+    if (blockPreviewMutation()) return;
     if (!deleteExamId) return;
     const exam = exams.find(e => e.id === deleteExamId);
     if (!exam) return;
@@ -224,12 +276,14 @@ export default function ExamManagerPage() {
   };
 
   const toggleActive = async (exam: Exam) => {
+    if (blockPreviewMutation()) return;
     await api(`/api/admin/exams/${exam.code}/toggle-active`, { method: "PUT" });
     await loadExams();
     if (selectedExam?.id === exam.id) setSelectedExam(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
   };
 
   const toggleFeatured = async (exam: Exam) => {
+    if (blockPreviewMutation()) return;
     await api(`/api/admin/exams/${exam.code}/toggle-featured`, { method: "PUT" });
     await loadExams();
     if (selectedExam?.id === exam.id) setSelectedExam(prev => prev ? { ...prev, is_featured: !prev.is_featured } : null);
@@ -260,6 +314,7 @@ export default function ExamManagerPage() {
   };
 
   const saveSubject = async () => {
+    if (blockPreviewMutation()) return;
     if (!subjectForm.subject_code.trim() || !subjectForm.name.trim()) {
       toast({ title: "Code and Name are required", variant: "destructive" }); return;
     }
@@ -291,6 +346,7 @@ export default function ExamManagerPage() {
   };
 
   const deleteSubject = async () => {
+    if (blockPreviewMutation()) return;
     if (!deleteSubjectId || !selectedExam) return;
     const r = await api(`/api/admin/exams/${selectedExam.code}/subjects/${deleteSubjectId}`, { method: "DELETE" });
     if (!r.ok) { toast({ title: "Failed to delete", variant: "destructive" }); return; }
@@ -301,6 +357,7 @@ export default function ExamManagerPage() {
   };
 
   const syncCount = async (sub: Subject) => {
+    if (blockPreviewMutation()) return;
     if (!selectedExam) return;
     setSyncingId(sub.id);
     try {
@@ -331,6 +388,16 @@ export default function ExamManagerPage() {
 
   return (
     <div className="space-y-6">
+      {preview && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="text-sm">
+            <span className="font-semibold">Read-only admin preview.</span>{" "}
+            Exam and subject data is live, but changes require a verified Clerk admin session on the live domain.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
