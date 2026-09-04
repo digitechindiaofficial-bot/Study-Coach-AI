@@ -22,7 +22,7 @@ import { requireAdmin } from "../lib/require-admin.js";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
-import { logger } from "../lib/logger";
+import { logDatabaseError } from "../lib/database-error";
 
 const router = Router();
 
@@ -43,7 +43,7 @@ router.get("/exams", async (_req, res) => {
     `);
     return res.json(result.rows);
   } catch (err) {
-    logger.error({ err }, "Failed to load public exams");
+    logDatabaseError("GET /api/exams", err);
     return res.status(500).json({ error: "Failed to load exams" });
   }
 });

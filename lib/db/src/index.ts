@@ -28,6 +28,10 @@ const isSupabase =
 // explicit connection-string intent and known hosted providers instead of
 // forcing SSL for every production deployment (including local Hostinger DBs).
 const useSSL = sslMode !== "disable" && (sslRequested || isSupabase);
+console.error(
+  `[db] Config host=${parsedDatabaseUrl.hostname} port=${parsedDatabaseUrl.port || "default"} ` +
+    `sslmode=${sslMode ?? "unset"} ssl=${useSSL}`,
+);
 
 // Resolve hostname → IPv4 via A-record lookup (bypasses OS resolver which
 // may prefer IPv6 on Hostinger, causing ECONNREFUSED on Supabase's IPv6 addr)

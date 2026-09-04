@@ -5,7 +5,7 @@ import { profilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertProfileBody } from "@workspace/api-zod";
 import { recordActivityForStreak, resetStreakIfBroken } from "../lib/streak";
-import { logger } from "../lib/logger";
+import { logDatabaseError } from "../lib/database-error";
 
 const router = Router();
 
@@ -53,7 +53,7 @@ router.put("/profiles/me", async (req, res) => {
       return res.json(created);
     }
   } catch (err) {
-    logger.error({ err }, "Failed to upsert profile");
+    logDatabaseError("PUT /api/profiles/me", err);
     return res.status(500).json({ error: "Failed to update profile" });
   }
 });

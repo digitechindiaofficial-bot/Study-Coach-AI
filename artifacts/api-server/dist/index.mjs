@@ -26288,6 +26288,9 @@ var init_src = __esm({
     sslRequested = sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
     isSupabase = parsedDatabaseUrl.hostname.endsWith(".supabase.co") || parsedDatabaseUrl.hostname.endsWith(".supabase.com");
     useSSL = sslMode !== "disable" && (sslRequested || isSupabase);
+    console.error(
+      `[db] Config host=${parsedDatabaseUrl.hostname} port=${parsedDatabaseUrl.port || "default"} sslmode=${sslMode ?? "unset"} ssl=${useSSL}`
+    );
   }
 });
 
@@ -108332,6 +108335,45 @@ var logger2 = (0, import_pino.default)({
   }
 });
 
+// src/lib/database-error.ts
+var DATABASE_ERROR_FIELDS = [
+  "code",
+  "severity",
+  "detail",
+  "hint",
+  "where",
+  "schema",
+  "table",
+  "column",
+  "constraint",
+  "syscall",
+  "address",
+  "port"
+];
+function serializeError(error40, depth = 0) {
+  if (depth > 3) return { message: "Nested error depth exceeded" };
+  if (!(error40 instanceof Error)) return { message: String(error40) };
+  const source = error40;
+  const serialized = {
+    name: error40.name,
+    message: error40.message,
+    stack: error40.stack
+  };
+  for (const field of DATABASE_ERROR_FIELDS) {
+    const value = source[field];
+    if (value !== void 0 && value !== null) serialized[field] = value;
+  }
+  if (source.cause !== void 0) {
+    serialized.cause = serializeError(source.cause, depth + 1);
+  }
+  return serialized;
+}
+function logDatabaseError(route, error40) {
+  const databaseError = serializeError(error40);
+  logger2.error({ route, databaseError }, "Database request failed");
+  console.error(`[database-error] ${JSON.stringify({ route, ...databaseError })}`);
+}
+
 // src/routes/profiles.ts
 var router2 = (0, import_express2.Router)();
 async function getOrCreateProfile(clerkUserId) {
@@ -108361,7 +108403,7 @@ router2.put("/profiles/me", async (req, res) => {
       return res.json(created);
     }
   } catch (err) {
-    logger2.error({ err }, "Failed to upsert profile");
+    logDatabaseError("PUT /api/profiles/me", err);
     return res.status(500).json({ error: "Failed to update profile" });
   }
 });
@@ -136630,7 +136672,7 @@ router14.get("/exams", async (_req, res) => {
     `);
     return res.json(result.rows);
   } catch (err) {
-    logger2.error({ err }, "Failed to load public exams");
+    logDatabaseError("GET /api/exams", err);
     return res.status(500).json({ error: "Failed to load exams" });
   }
 });
