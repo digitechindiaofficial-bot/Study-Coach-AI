@@ -112398,7 +112398,7 @@ function buildFullPlan(examDate, today, dbSubjects, weaksMap, dailyHours, examTy
   const MAX_REV_RATIO = 0.4;
   const cur = new Date(today);
   cur.setHours(0, 0, 0, 0);
-  while (cur < examDate) {
+  while (cur <= examDate) {
     const dateStr = cur.toISOString().split("T")[0];
     const dow = cur.getDay();
     const isWeekend = dow === 0 || dow === 6;

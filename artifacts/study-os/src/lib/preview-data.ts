@@ -1,3 +1,5 @@
+import canonicalSyllabus from "../../../../scripts/output/SSC_CGL.json";
+
 export interface PreviewProfile {
   fullName: string;
   examType: string;
@@ -78,45 +80,22 @@ function defaultPreviewProfile(): PreviewProfile {
 }
 
 export function getPreviewSyllabus(): PreviewExam[] {
-  const topics = (subject: string, names: string[]): PreviewTopic[] =>
-    names.map((name, index) => ({
-      id: `preview-${subject.toLowerCase()}-${index + 1}`,
-      name,
-      status: "not_started",
-      lastRevisedAt: null,
-    }));
-
   return [{
     id: "preview-ssc-cgl",
-    name: "SSC CGL",
-    code: "SSC_CGL",
-    description: "Staff Selection Commission Combined Graduate Level",
-    subjects: [
-      {
-        id: "preview-qa",
-        name: "Quantitative Aptitude",
-        subjectCode: "QA",
-        topics: topics("qa", ["Percentages", "Profit and Loss", "Time and Work"]),
-      },
-      {
-        id: "preview-reasoning",
-        name: "Reasoning",
-        subjectCode: "REASONING",
-        topics: topics("reasoning", ["Analogy", "Series", "Coding-Decoding"]),
-      },
-      {
-        id: "preview-english",
-        name: "English",
-        subjectCode: "ENGLISH",
-        topics: topics("english", ["Grammar", "Vocabulary", "Reading Comprehension"]),
-      },
-      {
-        id: "preview-ga",
-        name: "General Awareness",
-        subjectCode: "GA",
-        topics: topics("ga", ["Indian History", "Geography", "Current Affairs"]),
-      },
-    ],
+    name: canonicalSyllabus.exam,
+    code: canonicalSyllabus.code,
+    description: canonicalSyllabus.description,
+    subjects: canonicalSyllabus.subjects.map((subject) => ({
+      id: `preview-${subject.subjectCode.toLowerCase()}`,
+      name: subject.name,
+      subjectCode: subject.subjectCode,
+      topics: subject.topics.map((topic) => ({
+        id: `preview-${topic.topicCode}`,
+        name: topic.name,
+        status: "not_started",
+        lastRevisedAt: null,
+      })),
+    })),
   }];
 }
 
@@ -193,27 +172,48 @@ export function createPreviewStudyPlan(profile: {
   const examDate = profile.examDate || futureDate(30);
   const dailyStudyHours = profile.dailyStudyHours || 4;
   const start = new Date();
-  const planDays = Array.from({ length: 7 }, (_, index) => {
+  start.setHours(0, 0, 0, 0);
+  const examDateValue = new Date(`${examDate}T00:00:00`);
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((examDateValue.getTime() - start.getTime()) / 86_400_000),
+  );
+  const totalPlanDays = Math.max(1, daysRemaining + 1);
+  const syllabus = getPreviewSyllabus()[0];
+  const syllabusTopics = syllabus.subjects.flatMap((subject) =>
+    subject.topics.map((topic) => ({
+      ...topic,
+      subject: subject.name,
+      subjectCode: subject.subjectCode,
+    })),
+  );
+
+  const planDays = Array.from({ length: totalPlanDays }, (_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
     const dateString = date.toISOString().slice(0, 10);
-    const topics = ["Percentages", "Reasoning Series", "English Grammar", "Indian History"];
-    const topic = topics[index % topics.length];
+    const selectedTopic = syllabusTopics[index % syllabusTopics.length];
+    const isExamDay = index === totalPlanDays - 1 && daysRemaining > 0;
+    const topic = selectedTopic?.name ?? "Full Syllabus Revision";
     return {
       date: dateString,
       day_name: date.toLocaleDateString("en-US", { weekday: "short" }),
-      day_type: index === 6 ? "revision" : "study",
+      day_type: isExamDay ? "final_revision" : index % 7 === 6 ? "revision" : "study",
       days_left: Math.max(0, Math.ceil(
         (new Date(examDate).getTime() - date.getTime()) / 86_400_000,
       )),
       sessions: [{
-        time: "Morning",
+        time: isExamDay ? "Full Day" : "Morning",
         topic,
-        subject: index % 2 === 0 ? "Quantitative Aptitude" : "Reasoning",
-        subject_code: index % 2 === 0 ? "QA" : "REASONING",
-        duration: Math.max(30, dailyStudyHours * 15),
-        tasks: [`Review ${topic}`, "Solve 10 practice questions"],
-        tip: `Focus on ${topic} and note any repeated mistakes.`,
+        subject: selectedTopic?.subject ?? "All Subjects",
+        subject_code: selectedTopic?.subjectCode,
+        duration: Math.max(30, dailyStudyHours * (isExamDay ? 60 : 30)),
+        tasks: isExamDay
+          ? ["Review formulas and key facts", "Stay calm and follow your exam strategy"]
+          : [`Study ${topic} in depth`, "Solve practice questions", "Note repeated mistakes"],
+        tip: isExamDay
+          ? "Final review only — conserve energy for the exam."
+          : `Focus on ${topic} and note any repeated mistakes.`,
       }],
     };
   });
@@ -223,38 +223,44 @@ export function createPreviewStudyPlan(profile: {
     planData: {
       exam: examType,
       plan_type: "Focused Preview Plan",
-      days_remaining: Math.max(0, Math.ceil(
-        (new Date(examDate).getTime() - start.getTime()) / 86_400_000,
-      )),
-      total_topics: 12,
-      total_hours: dailyStudyHours * 7,
+      days_remaining: daysRemaining,
+      total_topics: syllabusTopics.length,
+      total_hours: dailyStudyHours * totalPlanDays,
       exam_date: examDate,
       plan_start: start.toISOString().slice(0, 10),
-      strategy: "Build consistency with focused daily sessions, then revise the week's topics.",
-      subjects: [
-        {
-          name: "Quantitative Aptitude",
-          subject_code: "QA",
-          weightage_percent: 30,
-          recommended_hours: dailyStudyHours * 2,
-          topic_count: 3,
-          allocated_study_days: 3,
-          start_date: planDays[0].date,
-          end_date: planDays[4].date,
-          topics: [{ name: "Percentages", priority: "high", tip: "Practice short calculations." }],
-        },
-        {
-          name: "Reasoning",
-          subject_code: "REASONING",
-          weightage_percent: 25,
-          recommended_hours: dailyStudyHours * 2,
-          topic_count: 3,
-          allocated_study_days: 2,
-          start_date: planDays[1].date,
-          end_date: planDays[5].date,
-          topics: [{ name: "Series", priority: "high", tip: "Look for repeating patterns." }],
-        },
-      ],
+      strategy: `Cover all ${syllabusTopics.length} syllabus topics with daily practice, then use the final days for revision before the exam.`,
+      subjects: syllabus.subjects.map((subject, index) => {
+        const subjectDays = planDays.filter((day) =>
+          day.sessions.some((session) => session.subject_code === subject.subjectCode),
+        );
+        const weightage = Math.round((subject.topics.length / syllabusTopics.length) * 100);
+        return {
+          name: subject.name,
+          subject_code: subject.subjectCode,
+          weightage_percent: index === syllabus.subjects.length - 1
+            ? Math.max(
+                1,
+                100 - syllabus.subjects
+                  .slice(0, -1)
+                  .reduce((total, item) => total + Math.round((item.topics.length / syllabusTopics.length) * 100), 0),
+              )
+            : weightage,
+          recommended_hours: Math.max(1, Math.round((subject.topics.length / syllabusTopics.length) * totalPlanDays * dailyStudyHours)),
+          topic_count: subject.topics.length,
+          allocated_study_days: subjectDays.length,
+          start_date: subjectDays[0]?.date ?? null,
+          end_date: subjectDays.at(-1)?.date ?? null,
+          topics: subject.topics.map((topic, topicIndex) => ({
+            name: topic.name,
+            priority: topicIndex < Math.ceil(subject.topics.length / 3)
+              ? "high"
+              : topicIndex < Math.ceil((subject.topics.length * 2) / 3)
+                ? "medium"
+                : "low",
+            tip: `Practice ${topic.name} and review your mistakes.`,
+          })),
+        };
+      }),
       daily_plan: planDays,
     },
   };

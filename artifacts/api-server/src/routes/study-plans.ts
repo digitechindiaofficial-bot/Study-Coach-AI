@@ -257,7 +257,9 @@ function buildFullPlan(
   const cur = new Date(today);
   cur.setHours(0, 0, 0, 0);
 
-  while (cur < examDate) {
+  // Include the exam date as the final full-day revision entry so the
+  // calendar covers the configured date instead of stopping one day early.
+  while (cur <= examDate) {
     const dateStr = cur.toISOString().split("T")[0];
     const dow = cur.getDay();
     const isWeekend = dow === 0 || dow === 6;
