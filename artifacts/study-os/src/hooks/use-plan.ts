@@ -4,7 +4,6 @@ import { readPreviewProfile } from "@/lib/preview-data";
 
 export const FREE_DAILY_QUIZ_LIMIT = 10;
 export const FREE_CURRENT_AFFAIRS_DAYS = 3;
-export const FREE_VISIBLE_PLAN_DAYS = 3;
 
 export interface PlanStatus {
   isLoaded: boolean;

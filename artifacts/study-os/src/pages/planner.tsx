@@ -11,10 +11,11 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, addDays, startOfWeek } from "date-fns";
-import { FREE_VISIBLE_PLAN_DAYS, usePlan } from "@/hooks/use-plan";
+import { usePlan } from "@/hooks/use-plan";
 import UpgradeModal from "@/components/upgrade-modal";
 import { useLocation } from "wouter";
 import { isPreviewEnvironment } from "@/lib/app-auth";
+import { applyPlanDayVisibility, FREE_VISIBLE_PLAN_DAYS } from "@/lib/plan-access";
 import {
   createPreviewStudyPlan,
   readPreviewProfile,
@@ -298,19 +299,7 @@ export default function PlannerPage() {
     const days = planData?.daily_plan;
     if (!days) return idx;
 
-    const displayDays = plan.isPro
-      ? days.map(({ _locked: _ignored, ...day }) => day)
-      : days.map((day, index) => {
-          if (index < FREE_VISIBLE_PLAN_DAYS) return day;
-          return {
-            date: day.date,
-            day_name: day.day_name,
-            day_type: day.day_type,
-            days_left: day.days_left,
-            sessions: [],
-            _locked: true,
-          };
-        });
+    const displayDays = applyPlanDayVisibility(days, plan.isPro);
 
     for (const d of displayDays) idx[d.date] = d;
     return idx;

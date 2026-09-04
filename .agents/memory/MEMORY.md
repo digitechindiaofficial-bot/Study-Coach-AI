@@ -1,4 +1,4 @@
-- [Freemium plan enforcement](freemium-plan.md) — quiz daily limit (10/day free) enforced server-side in POST /quiz/attempts; frontend tracks locally via usePlan hook
+- [Freemium plan enforcement](freemium-plan.md) — free users get 10 quiz questions/day and the first 3 study-plan days; limits are enforced server-side
 - [Gemini API usage pattern](gemini-usage.md) — @google/genai v2.x: contents is plain string, response is response.text, use responseMimeType:"application/json"; quota 429 must be caught and handled with template fallback
 - [Quiz question pool approach](quiz-pool.md) — batched (20/fetch) growing pool with background prefetch + exhaustion reset; bulk generation script at scripts/src/generate-questions.ts (1800 questions, 180 topics)
 - [Testing hardcoded admin-email gating](admin-email-testing.md) — can't verify the admin-authorized path via runTest since the ADMIN_EMAIL secret is never readable; test only the deny path, ask the user to confirm the allow path
