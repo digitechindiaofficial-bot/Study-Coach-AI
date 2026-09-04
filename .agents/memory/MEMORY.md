@@ -8,3 +8,4 @@
 - [Question Bank architecture](question-bank-arch.md) — canonical store is question_bank (not quiz_questions); quiz routes read question_bank + write dual to question_attempts+quiz_attempts; admin import at /admin/question-bank/import/{json,csv,bulk}
 - [Mock Test System](mock-test-system.md) — 7-table schema (mock_tests→sections→rules→fixed_questions + attempts→attempt_questions→responses); JSON import at POST /api/admin/mock-tests/import/json; lib rebuild needed after adding tables
 - [Clerk preview behavior](preview-clerk-domain.md) — production Clerk keys reject preview origins; protected screens use local fixtures instead of unauthenticated API calls; memoize preview objects used by effects
+- [Database TLS selection](database-tls.md) — never infer PostgreSQL TLS support from NODE_ENV; honor sslmode or known provider requirements

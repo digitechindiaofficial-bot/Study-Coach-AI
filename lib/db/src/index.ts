@@ -10,12 +10,24 @@ if (!process.env.DATABASE_URL) {
 }
 
 const rawUrl = process.env.DATABASE_URL!;
+const parsedDatabaseUrl = new URL(rawUrl);
+const sslMode = parsedDatabaseUrl.searchParams.get("sslmode")?.toLowerCase();
 // Strip sslmode= so pg's code-level ssl option takes full precedence
 const cleanUrl = rawUrl
   .replace(/[?&]sslmode=[^&]*/g, "")
   .replace(/[?&]$/, "")
   .replace(/\?$/, "");
-const useSSL = process.env.NODE_ENV === "production" || rawUrl.includes("supabase.co");
+const sslRequested =
+  sslMode === "require" ||
+  sslMode === "verify-ca" ||
+  sslMode === "verify-full";
+const isSupabase =
+  parsedDatabaseUrl.hostname.endsWith(".supabase.co") ||
+  parsedDatabaseUrl.hostname.endsWith(".supabase.com");
+// NODE_ENV does not describe the database server's TLS capabilities. Respect
+// explicit connection-string intent and known hosted providers instead of
+// forcing SSL for every production deployment (including local Hostinger DBs).
+const useSSL = sslMode !== "disable" && (sslRequested || isSupabase);
 
 // Resolve hostname → IPv4 via A-record lookup (bypasses OS resolver which
 // may prefer IPv6 on Hostinger, causing ECONNREFUSED on Supabase's IPv6 addr)

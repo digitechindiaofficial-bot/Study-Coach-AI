@@ -5,6 +5,7 @@ import { profilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertProfileBody } from "@workspace/api-zod";
 import { recordActivityForStreak, resetStreakIfBroken } from "../lib/streak";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -28,27 +29,32 @@ router.get("/profiles/me", async (req, res) => {
 });
 
 router.put("/profiles/me", async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const parsed = UpsertProfileBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
+    const parsed = UpsertProfileBody.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error });
 
-  const existing = await getOrCreateProfile(userId);
+    const existing = await getOrCreateProfile(userId);
 
-  if (existing) {
-    const [updated] = await db
-      .update(profilesTable)
-      .set(parsed.data)
-      .where(eq(profilesTable.clerkUserId, userId))
-      .returning();
-    return res.json(updated);
-  } else {
-    const [created] = await db
-      .insert(profilesTable)
-      .values({ clerkUserId: userId, ...parsed.data })
-      .returning();
-    return res.json(created);
+    if (existing) {
+      const [updated] = await db
+        .update(profilesTable)
+        .set(parsed.data)
+        .where(eq(profilesTable.clerkUserId, userId))
+        .returning();
+      return res.json(updated);
+    } else {
+      const [created] = await db
+        .insert(profilesTable)
+        .values({ clerkUserId: userId, ...parsed.data })
+        .returning();
+      return res.json(created);
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to upsert profile");
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 

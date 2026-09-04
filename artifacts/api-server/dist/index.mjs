@@ -26269,7 +26269,7 @@ async function initDb() {
   });
   db = drizzle(pool, { schema: schema_exports });
 }
-var Pool3, rawUrl, cleanUrl, useSSL, pool, db;
+var Pool3, rawUrl, parsedDatabaseUrl, sslMode, cleanUrl, sslRequested, isSupabase, useSSL, pool, db;
 var init_src = __esm({
   "../../lib/db/src/index.ts"() {
     "use strict";
@@ -26282,8 +26282,12 @@ var init_src = __esm({
       throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
     }
     rawUrl = process.env.DATABASE_URL;
+    parsedDatabaseUrl = new URL(rawUrl);
+    sslMode = parsedDatabaseUrl.searchParams.get("sslmode")?.toLowerCase();
     cleanUrl = rawUrl.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]$/, "").replace(/\?$/, "");
-    useSSL = process.env.NODE_ENV === "production" || rawUrl.includes("supabase.co");
+    sslRequested = sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
+    isSupabase = parsedDatabaseUrl.hostname.endsWith(".supabase.co") || parsedDatabaseUrl.hostname.endsWith(".supabase.com");
+    useSSL = sslMode !== "disable" && (sslRequested || isSupabase);
   }
 });
 
@@ -108310,6 +108314,24 @@ async function resetStreakIfBroken(profile) {
   return updated ?? profile;
 }
 
+// src/lib/logger.ts
+var import_pino = __toESM(require_pino(), 1);
+var isProduction = process.env.NODE_ENV === "production";
+var logger2 = (0, import_pino.default)({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "res.headers['set-cookie']"
+  ],
+  ...isProduction ? {} : {
+    transport: {
+      target: "pino-pretty",
+      options: { colorize: true }
+    }
+  }
+});
+
 // src/routes/profiles.ts
 var router2 = (0, import_express2.Router)();
 async function getOrCreateProfile(clerkUserId) {
@@ -108325,17 +108347,22 @@ router2.get("/profiles/me", async (req, res) => {
   res.json(healed);
 });
 router2.put("/profiles/me", async (req, res) => {
-  const { userId } = getAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-  const parsed = UpsertProfileBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
-  const existing = await getOrCreateProfile(userId);
-  if (existing) {
-    const [updated] = await db.update(profilesTable).set(parsed.data).where(eq(profilesTable.clerkUserId, userId)).returning();
-    return res.json(updated);
-  } else {
-    const [created] = await db.insert(profilesTable).values({ clerkUserId: userId, ...parsed.data }).returning();
-    return res.json(created);
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const parsed = UpsertProfileBody.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error });
+    const existing = await getOrCreateProfile(userId);
+    if (existing) {
+      const [updated] = await db.update(profilesTable).set(parsed.data).where(eq(profilesTable.clerkUserId, userId)).returning();
+      return res.json(updated);
+    } else {
+      const [created] = await db.insert(profilesTable).values({ clerkUserId: userId, ...parsed.data }).returning();
+      return res.json(created);
+    }
+  } catch (err) {
+    logger2.error({ err }, "Failed to upsert profile");
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 router2.patch("/profiles/plan", async (req, res) => {
@@ -136591,16 +136618,21 @@ init_src();
 init_drizzle_orm();
 var router14 = (0, import_express24.Router)();
 router14.get("/exams", async (_req, res) => {
-  const result = await db.execute(sql`
-    SELECT e.*,
-      COUNT(s.id)::int AS subject_count
-    FROM syllabus_exams e
-    LEFT JOIN syllabus_subjects s ON s.exam_id = e.id AND s.is_active = true
-    WHERE e.is_active = true
-    GROUP BY e.id
-    ORDER BY e.display_order, e.name
-  `);
-  res.json(result.rows);
+  try {
+    const result = await db.execute(sql`
+      SELECT e.*,
+        COUNT(s.id)::int AS subject_count
+      FROM syllabus_exams e
+      LEFT JOIN syllabus_subjects s ON s.exam_id = e.id AND s.is_active = true
+      WHERE e.is_active = true
+      GROUP BY e.id
+      ORDER BY e.display_order, e.name
+    `);
+    return res.json(result.rows);
+  } catch (err) {
+    logger2.error({ err }, "Failed to load public exams");
+    return res.status(500).json({ error: "Failed to load exams" });
+  }
 });
 router14.get("/exams/:code/subjects", async (req, res) => {
   const result = await db.execute(sql`
@@ -137093,26 +137125,6 @@ init_src();
 init_drizzle_orm();
 var import_razorpay = __toESM(require_razorpay(), 1);
 import crypto2 from "crypto";
-
-// src/lib/logger.ts
-var import_pino = __toESM(require_pino(), 1);
-var isProduction = process.env.NODE_ENV === "production";
-var logger2 = (0, import_pino.default)({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']"
-  ],
-  ...isProduction ? {} : {
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true }
-    }
-  }
-});
-
-// src/routes/payment.ts
 var router18 = (0, import_express30.Router)();
 function getRazorpay() {
   return new import_razorpay.default({
@@ -137459,6 +137471,13 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path3.join(staticDir, "index.html"));
   });
 }
+var apiErrorHandler = (err, req, res, next) => {
+  if (!req.path.startsWith("/api")) return next(err);
+  logger2.error({ err, method: req.method, path: req.path }, "Unhandled API request error");
+  if (res.headersSent) return next(err);
+  return res.status(500).json({ error: "Internal Server Error" });
+};
+app.use(apiErrorHandler);
 var app_default = app;
 
 // src/index.ts

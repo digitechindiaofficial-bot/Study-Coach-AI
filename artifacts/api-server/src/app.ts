@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type ErrorRequestHandler, type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -88,5 +88,15 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.join(staticDir, "index.html"));
   });
 }
+
+// Express's built-in error handler emits HTML. Keep all uncaught API failures
+// observable in server logs while returning a stable JSON contract to clients.
+const apiErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  if (!req.path.startsWith("/api")) return next(err);
+  logger.error({ err, method: req.method, path: req.path }, "Unhandled API request error");
+  if (res.headersSent) return next(err);
+  return res.status(500).json({ error: "Internal Server Error" });
+};
+app.use(apiErrorHandler);
 
 export default app;

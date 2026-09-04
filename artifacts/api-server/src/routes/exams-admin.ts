@@ -22,6 +22,7 @@ import { requireAdmin } from "../lib/require-admin.js";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -30,16 +31,21 @@ const router = Router();
 // ── Public routes ─────────────────────────────────────────────────────────────
 
 router.get("/exams", async (_req, res) => {
-  const result = await db.execute(sql`
-    SELECT e.*,
-      COUNT(s.id)::int AS subject_count
-    FROM syllabus_exams e
-    LEFT JOIN syllabus_subjects s ON s.exam_id = e.id AND s.is_active = true
-    WHERE e.is_active = true
-    GROUP BY e.id
-    ORDER BY e.display_order, e.name
-  `);
-  res.json(result.rows);
+  try {
+    const result = await db.execute(sql`
+      SELECT e.*,
+        COUNT(s.id)::int AS subject_count
+      FROM syllabus_exams e
+      LEFT JOIN syllabus_subjects s ON s.exam_id = e.id AND s.is_active = true
+      WHERE e.is_active = true
+      GROUP BY e.id
+      ORDER BY e.display_order, e.name
+    `);
+    return res.json(result.rows);
+  } catch (err) {
+    logger.error({ err }, "Failed to load public exams");
+    return res.status(500).json({ error: "Failed to load exams" });
+  }
 });
 
 router.get("/exams/:code/subjects", async (req, res) => {
