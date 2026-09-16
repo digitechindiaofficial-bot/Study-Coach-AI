@@ -8,7 +8,7 @@ export default function RefundPolicyPage() {
 
         <LegalSection title="1. Subscription Plans">
           <p>
-            GovtGuru offers Pro subscriptions at <strong>₹129/month</strong> or <strong>₹999/year</strong>, processed via Razorpay.
+            GovtGuru offers Pro subscriptions at <strong>₹39/month</strong> or <strong>₹348 paid upfront annually (₹29/month equivalent)</strong>, processed via Razorpay.
           </p>
         </LegalSection>
 

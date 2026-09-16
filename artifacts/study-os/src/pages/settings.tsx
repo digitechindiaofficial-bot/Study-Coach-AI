@@ -14,6 +14,7 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -176,12 +177,15 @@ export default function SettingsPage() {
                 ))}
               </div>
               <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground mb-3">Unlock all Pro features for just ₹129/month</p>
+                <p className="text-xs text-muted-foreground mb-3">Unlock all Pro features for ₹39/month, or ₹29/month billed annually at ₹348.</p>
                 <PaymentButton
                   userName={user?.fullName ?? ""}
                   userEmail={user?.primaryEmailAddress?.emailAddress ?? ""}
                   onSuccess={() => qc.invalidateQueries({ queryKey: getGetMyProfileQueryKey() })}
                 />
+                <Link href="/upgrade" className="block mt-3 text-sm text-primary underline">
+                  Compare plans or purchase annual Pro
+                </Link>
               </div>
             </div>
           )}

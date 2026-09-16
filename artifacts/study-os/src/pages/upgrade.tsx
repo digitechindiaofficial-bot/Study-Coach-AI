@@ -52,7 +52,7 @@ export default function UpgradePage() {
     query: { queryKey: getGetMyProfileQueryKey(), enabled: !preview },
   });
   const profileData = apiProfileData ?? (preview ? readPreviewProfile() : undefined);
-  const [billing, setBilling] = useState<BillingPeriod>("yearly");
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
   const isAlreadyPro = plan.isPro;
 
@@ -106,7 +106,7 @@ export default function UpgradePage() {
           >
             Yearly
             <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              🏷️ Save 36%
+              Save 26%
             </span>
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function UpgradePage() {
               {billing === "monthly" ? (
                 <>
                   <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold">₹129</span>
+                    <span className="text-4xl font-bold">₹39</span>
                     <span className="text-muted-foreground mb-1">/month</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">Billed monthly</p>
@@ -170,14 +170,14 @@ export default function UpgradePage() {
               ) : (
                 <>
                   <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold">₹83</span>
+                    <span className="text-4xl font-bold">₹29</span>
                     <span className="text-muted-foreground mb-1">/month</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Billed annually at{" "}
-                    <span className="font-semibold text-foreground">₹999/year</span>
+                    Annual purchase required — pay{" "}
+                    <span className="font-semibold text-foreground">₹348 upfront/year</span>
                     {" "}
-                    <span className="inline-block bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Save 36%</span>
+                    <span className="inline-block bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Save 26%</span>
                   </p>
                 </>
               )}
@@ -252,8 +252,8 @@ export default function UpgradePage() {
           />
           <p className="text-xs text-muted-foreground">
             {billing === "monthly"
-              ? "₹129/month · Cancel anytime"
-              : "₹999/year · Save 36% vs monthly"}
+              ? "₹39 for one month"
+              : "₹29/month · ₹348 paid upfront for one year"}
           </p>
         </div>
       )}

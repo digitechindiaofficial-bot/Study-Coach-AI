@@ -245,7 +245,7 @@ function LockedDayCard({ entry, isToday, onUpgrade }: {
           <span><span className="font-semibold">Pro only.</span> Upgrade to unlock your full personalised plan.</span>
         </p>
         <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline shrink-0 whitespace-nowrap">
-          ₹129/mo →
+          ₹39/mo →
         </span>
       </div>
     </div>
@@ -510,7 +510,7 @@ export default function PlannerPage() {
           <p className="text-sm text-amber-800 dark:text-amber-400">
             <span className="font-semibold">Free plan:</span> Your first {FREE_VISIBLE_PLAN_DAYS} days are included.
             Upgrade to Pro to unlock the remaining plan and regenerate anytime.
-            {" "}<span className="underline font-medium">Upgrade for ₹129/month →</span>
+            {" "}<span className="underline font-medium">Upgrade for ₹39/month →</span>
           </p>
         </div>
       )}

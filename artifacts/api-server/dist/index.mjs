@@ -137209,7 +137209,7 @@ router18.post("/payment/create-order", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   const billingPeriod = req.body?.billingPeriod === "yearly" ? "yearly" : "monthly";
-  const amount = billingPeriod === "yearly" ? 99900 : 12900;
+  const amount = billingPeriod === "yearly" ? 34800 : 3900;
   try {
     const razorpay = getRazorpay();
     const order = await razorpay.orders.create({
@@ -137249,12 +137249,19 @@ router18.post("/payment/verify", async (req, res) => {
   }
   let isYearly = false;
   try {
-    const rec = await pool.query(
-      `SELECT plan FROM payments WHERE order_id = $1 AND user_id = $2 LIMIT 1`,
-      [razorpay_order_id, userId]
-    );
-    isYearly = (rec.rows[0]?.plan ?? "") === "pro_yearly";
-  } catch {
+    const razorpay = getRazorpay();
+    const [order, payment] = await Promise.all([
+      razorpay.orders.fetch(razorpay_order_id),
+      razorpay.payments.fetch(razorpay_payment_id)
+    ]);
+    const period = order.notes?.billingPeriod;
+    if (order.notes?.userId !== userId || order.notes?.plan !== "pro" || period !== "monthly" && period !== "yearly" || payment.order_id !== order.id || payment.status !== "captured" || payment.currency !== "INR" || Number(payment.amount) !== Number(order.amount)) {
+      return res.status(400).json({ error: "Payment is not a captured Pro purchase for this account" });
+    }
+    isYearly = period === "yearly";
+  } catch (err) {
+    logger2.error({ err }, "Razorpay purchase lookup failed");
+    return res.status(502).json({ error: "Unable to confirm payment. Please retry verification." });
   }
   const planExpiry = /* @__PURE__ */ new Date();
   if (isYearly) {

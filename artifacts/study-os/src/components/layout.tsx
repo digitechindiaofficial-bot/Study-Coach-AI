@@ -117,7 +117,7 @@ function SidebarContent({ location, onNav }: { location: string; onNav?: () => v
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-md cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold shadow-sm hover:from-amber-600 hover:to-orange-600 transition-all">
               <Sparkles className="h-4 w-4 shrink-0" />
               <span>Upgrade to Pro</span>
-              <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px] px-1.5">₹129/mo</Badge>
+              <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px] px-1.5">₹39/mo</Badge>
             </div>
           </Link>
         )}

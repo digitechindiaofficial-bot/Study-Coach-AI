@@ -10,28 +10,28 @@
 
 export const PRICING = {
   monthly: {
-    amountINR: 129,
-    amountPaise: 12_900,
-    display: "₹129/month",
-    short: "₹129/mo",
-    buttonLabel: "Upgrade to Pro — ₹129/month",
+    amountINR: 39,
+    amountPaise: 3_900,
+    display: "₹39/month",
+    short: "₹39/mo",
+    buttonLabel: "Upgrade to Pro — ₹39/month",
   },
   yearly: {
-    amountINR: 999,
-    amountPaise: 99_900,
-    display: "₹999/year",
-    perMonthINR: 83,
-    perMonthDisplay: "₹83/month",
-    savingsPercent: 36,
-    savingsLabel: "Save 36%",
-    buttonLabel: "Upgrade to Pro → ₹999/year",
-    tagline: "or ₹999/year — save 36%",
+    amountINR: 348,
+    amountPaise: 34_800,
+    display: "₹348/year",
+    perMonthINR: 29,
+    perMonthDisplay: "₹29/month",
+    savingsPercent: 26,
+    savingsLabel: "Save 26%",
+    buttonLabel: "Buy annual Pro → ₹348/year",
+    tagline: "or ₹29/month — ₹348 paid upfront annually",
   },
 } as const;
 
 /** Shorthand helpers for the most common display strings */
-export const MONTHLY_DISPLAY  = PRICING.monthly.display;       // "₹129/month"
-export const MONTHLY_SHORT    = PRICING.monthly.short;          // "₹129/mo"
-export const YEARLY_DISPLAY   = PRICING.yearly.display;         // "₹999/year"
-export const YEARLY_TAGLINE   = PRICING.yearly.tagline;         // "or ₹999/year — save 36%"
-export const SAVINGS_LABEL    = PRICING.yearly.savingsLabel;    // "Save 36%"
+export const MONTHLY_DISPLAY = PRICING.monthly.display;
+export const MONTHLY_SHORT = PRICING.monthly.short;
+export const YEARLY_DISPLAY = PRICING.yearly.display;
+export const YEARLY_TAGLINE = PRICING.yearly.tagline;
+export const SAVINGS_LABEL = PRICING.yearly.savingsLabel;

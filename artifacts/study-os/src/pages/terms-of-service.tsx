@@ -45,7 +45,7 @@ export default function TermsOfServicePage() {
               </ul>
             </div>
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-1.5">
-              <p className="font-semibold text-foreground">Pro Plan — ₹129/month or ₹999/year</p>
+              <p className="font-semibold text-foreground">Pro Plan — ₹39/month or ₹348 paid upfront annually (₹29/month equivalent)</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Unlimited questions</li>
                 <li>AI-powered personalised study plan</li>

@@ -61,8 +61,8 @@ export function PaymentButton({
   const label = preview
     ? "Preview Pro features"
     : billingPeriod === "yearly"
-      ? "Upgrade to Pro → ₹999/year"
-      : "Upgrade to Pro →";
+      ? "Buy annual Pro → ₹348/year"
+      : "Upgrade to Pro → ₹39/month";
 
   const handlePayment = async () => {
     setLoading(true);
@@ -103,8 +103,8 @@ export function PaymentButton({
       const { order_id, amount, currency, key_id } = await orderRes.json();
 
       const description = billingPeriod === "yearly"
-        ? "Pro Plan — 1 Year (₹999)"
-        : "Pro Plan — 1 Month (₹129)";
+        ? "Pro Plan — 1 Year (₹348 upfront, equivalent to ₹29/month)"
+        : "Pro Plan — 1 Month (₹39)";
 
       const options = {
         key: key_id,

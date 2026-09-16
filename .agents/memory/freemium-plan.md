@@ -4,6 +4,12 @@ description: How free vs pro plan limits are enforced across the app
 ---
 
 ## Rule
+Payment duration must come from the verified Razorpay order's billing-period metadata, never a monthly fallback when local payment history is unavailable.
+
+**Why:** Payment-history writes are best-effort; relying on them can shorten a fully paid annual purchase to one month. Existing orders should retain their original billing period when prices change.
+
+**How to apply:** Verify order ownership and captured payment before granting access, and keep historical order verification independent of today's catalog prices.
+
 Quiz daily limit (10/day for free) is enforced **server-side** in `POST /api/quiz/attempts` — returns 429 with `{ error: "daily_limit_reached" }` when hit.
 
 Frontend tracks limits locally via `usePlan()` hook at `artifacts/study-os/src/hooks/use-plan.ts`.

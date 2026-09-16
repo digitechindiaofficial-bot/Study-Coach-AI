@@ -43,7 +43,7 @@ router.post("/payment/create-order", async (req, res) => {
 
   const billingPeriod: "monthly" | "yearly" =
     req.body?.billingPeriod === "yearly" ? "yearly" : "monthly";
-  const amount = billingPeriod === "yearly" ? 99900 : 12900; // paise
+  const amount = billingPeriod === "yearly" ? 34800 : 3900; // INR paise: annual is paid upfront
 
   try {
     const razorpay = getRazorpay();
@@ -96,16 +96,31 @@ router.post("/payment/verify", async (req, res) => {
     return res.status(400).json({ error: "Invalid payment signature" });
   }
 
-  // Determine billing period from the payment record (best-effort)
+  // Use the authenticated Razorpay order, not a best-effort local record:
+  // missing payment history must never turn a yearly purchase into one month.
   let isYearly = false;
   try {
-    const rec = await pool.query(
-      `SELECT plan FROM payments WHERE order_id = $1 AND user_id = $2 LIMIT 1`,
-      [razorpay_order_id, userId],
-    );
-    isYearly = (rec.rows[0]?.plan ?? "") === "pro_yearly";
-  } catch {
-    // payments table missing — default to monthly (safe fallback)
+    const razorpay = getRazorpay();
+    const [order, payment] = await Promise.all([
+      razorpay.orders.fetch(razorpay_order_id),
+      razorpay.payments.fetch(razorpay_payment_id),
+    ]);
+    const period = order.notes?.billingPeriod;
+    if (
+      order.notes?.userId !== userId ||
+      order.notes?.plan !== "pro" ||
+      (period !== "monthly" && period !== "yearly") ||
+      payment.order_id !== order.id ||
+      payment.status !== "captured" ||
+      payment.currency !== "INR" ||
+      Number(payment.amount) !== Number(order.amount)
+    ) {
+      return res.status(400).json({ error: "Payment is not a captured Pro purchase for this account" });
+    }
+    isYearly = period === "yearly";
+  } catch (err) {
+    logger.error({ err }, "Razorpay purchase lookup failed");
+    return res.status(502).json({ error: "Unable to confirm payment. Please retry verification." });
   }
 
   // Upgrade user to pro
