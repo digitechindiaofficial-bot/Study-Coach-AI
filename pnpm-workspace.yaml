@@ -36,10 +36,10 @@ minimumReleaseAgeExclude:
   - '@replit/*'
   - stripe-replit-sync
 
-onlyBuiltDependencies:
-  - '@google/genai'
-  - esbuild
-  - protobufjs
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  protobufjs: true
 
 overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0

@@ -9,13 +9,12 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
-  "packageManager": "pnpm@10.26.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "@google/genai",
-      "protobufjs"
-    ]
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.17.0",
+      "onFail": "warn"
+    }
   },
   "devDependencies": {
     "prettier": "^3.8.4",
