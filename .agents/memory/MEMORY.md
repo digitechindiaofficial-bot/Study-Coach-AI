@@ -10,3 +10,4 @@
 - [Clerk preview behavior](preview-clerk-domain.md) — production Clerk keys reject preview origins; protected screens use local fixtures instead of unauthenticated API calls; memoize preview objects used by effects
 - [Database TLS selection](database-tls.md) — never infer PostgreSQL TLS support from NODE_ENV; honor sslmode or known provider requirements
 - [pnpm 11 deployment policy](pnpm-11-deployment.md) — Corepack requires an exact devEngines pnpm version; use onFail warn and pnpm-workspace allowBuilds
+- [Hostinger esbuild execution](hostinger-esbuild.md) — esbuild is forced to 0.23.1 for Hostinger EACCES; retain the chmod safeguard and verify Vite builds
